@@ -33,13 +33,15 @@ string Function GetOStimOngoingSexScenes(Actor npc) global
     threads[5] = 5
     int i = 0
     string res = "{\"scenes\": ["
+    bool first = true
 
     while(i < threads.Length)
         ; this condition isn't needed when OThread.GetAllThreadIDs() is working properly
         if(OThread.IsRunning(threads[i]))
-            if(i != 0)
+            if(!first)
                 res += ","
             endif
+            first = false
 
             res += TTON_Utils.GetOStimSexSceneJson(npc, threads[i])
 

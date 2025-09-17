@@ -15,8 +15,9 @@ This integration mod creates a powerful bridge between **SkyrimNet** AI framewor
 - 🔄 Dynamic scene transitions and participant management
 - 📊 Integration with Lover's Ledger for improved relationship tracking
 - 📝 Comprehensive animation descriptions for enhanced AI understanding
-- 🎮 Seamless gameplay integration that respects character personalities\
+- 🎮 Seamless gameplay integration that respects character personalities
 - 👀 Other NPCs aware of nearby sexual encounters
+- 🔄 Support for multiple simultaneous scenes
 
 ## 📋 Requirements
 
@@ -29,7 +30,15 @@ This integration mod creates a powerful bridge between **SkyrimNet** AI framewor
 
 ## 🔧 How It Works
 
-The mod registers several actions with SkyrimNet that allow the AI to control OStim functionality through natural dialogue. When you chat with NPCs, the AI analyzes the conversation context and can trigger appropriate intimate scenes or modifications to ongoing encounters.
+The mod enhances SkyrimNet's capabilities in two key ways:
+
+1. **Action Registration**: Several specialized actions are registered with SkyrimNet, allowing the AI to control OStim functionality through natural dialogue. When you chat with NPCs, the AI analyzes the conversation and can trigger appropriate intimate scenes or modifications.
+
+2. **Context Enrichment**:
+   - Comprehensive animation descriptions help the LLM understand what's happening during scenes
+   - NPCs are made aware of nearby intimate encounters, allowing for realistic reactions
+   - The mod alters conversation context when NPCs are involved in intimate encounters
+   - SkyrimNet prompts are enhanced with scene-relevant information without making NPCs artificially forward
 
 ## 🎬 Available Actions
 
@@ -69,7 +78,7 @@ Simply engage in conversation with NPCs and let the AI interpret your dialogue n
 
 ## 🚀 Future Development
 
-- Make OStim threads finder more dynamic when OStim bug is fixed(right now it looks only at thread ids 0, 1, 2, 3, 4)
+- Make OStim running threads finder more dynamic when OStim bug is fixed(right now it looks only at thread ids 0, 1, 2, 3, 4)
 - More dynamic registering events(when I figure out how they work)
 - Trigger dynamic profile update after scene as significant event
 

@@ -24,7 +24,7 @@ string Function GetInitialDataKey() global
 EndFunction
 
 ;/ ==============================
-   SECTION: Object Top level 
+   SECTION: Object Top level
 ============================== /;
 ;/
   Clears all MARAS data from JContainers.

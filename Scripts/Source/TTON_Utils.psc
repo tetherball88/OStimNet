@@ -23,14 +23,9 @@ EndFunction
 ; Generates a detailed textual description of an ongoing OStim scene
 ; @param ThreadID The ID of the thread to describe
 ; @returns Natural language description of the scene and its participants
-string Function GenerateOStimSceneDescription(int ThreadID) global
-    if(ThreadID == -1)
-        return ""
-    endif
-    string sceneId = OThread.GetScene(ThreadID)
+string Function GenerateOStimSceneDescription(string sceneId, Actor[] actors) global
     string[] actionTypes = OMetadata.GetActionTypes(sceneId)
     string[] sceneTags = OMetadata.GetSceneTags(sceneId)
-    Actor[] actors = OThread.GetActors(ThreadID)
     string actorString = GetActorsNamesComaSeparated(actors)
 
     string result = actorString + " engaged in intimate scene."
@@ -77,6 +72,18 @@ EndFunction
 ; @returns Thread ID of the new scene, or -1 if failed
 int function StartOstim(actor[] actors, string tags = "") global
     actors = OActorUtil.Sort(actors, OActorUtil.EmptyArray())
+    bool someActorsBusy = false
+    int i = 0
+    while(i < actors.Length)
+        if(OActor.IsInOStim(actors[i]))
+            someActorsBusy = true
+        endif
+        i += 1
+    endwhile
+    if(someActorsBusy)
+        TTON_Debug.warn("StartOstim: tried to start new thread with actors who are busy in another thread.")
+        return -1
+    endif
     int builderID = OThreadBuilder.create(actors)
     string newScene = getSceneByActionsOrTags(actors, tags, true)
 
@@ -145,21 +152,25 @@ EndFunction
 ; @param ThreadID The ID of the thread to modify
 ; @param newActors Array of actors to add to the scene
 function AddActorsToActiveThread(int ThreadID, actor[] newActors) global
+    if(!OThread.IsRunning(ThreadID))
+        return
+    endif
     actor[] currentActors = OThread.GetActors(ThreadID)
     int totalActors = currentActors.Length + newActors.Length
     if totalActors <= 5
         int i = 0
+        int addedActors = 0
         while(i < newActors.Length)
-        currentActors = PapyrusUtil.PushActor(currentActors, newActors[i])
-        i += 1
+            currentActors = PapyrusUtil.PushActor(currentActors, newActors[i])
+            i += 1
         endwhile
         if(!UserHasScenesForActors(OActorUtil.Sort(currentActors, OActorUtil.EmptyArray())))
-        TTON_Debug.warn("AddActorsToActiveThread: Don't stop ongoing thread. User doesn't have suitable scene for new set of actors.")
-        return
+            TTON_Debug.warn("AddActorsToActiveThread: Don't stop ongoing thread. User doesn't have suitable scene for new set of actors.")
+            return
         endif
         OThread.Stop(ThreadID)
         while(OThread.isRunning(ThreadID))
-        Utility.Wait(0.2)
+            Utility.Wait(0.2)
         endwhile
         StartOstim(currentActors)
     else
@@ -167,19 +178,63 @@ function AddActorsToActiveThread(int ThreadID, actor[] newActors) global
     endif
 endfunction
 
+; return changed animation position based on actor's ostim tags or original position
+int Function GetActorAnimationIndex(Actor currentA, int position, string sceneId) global
+    string[] actorTags = OMetadata.GetActorTags(sceneId, position)
+    int k = 0
+    while(k < actorTags.Length)
+        string tag = actorTags[k]
+        if(StringUtil.Find(tag, "animationIndex") == 0)
+            if(tag == "animationIndex0")
+                return 0
+            elseif(tag == "animationIndex1")
+                return 1
+            elseif(tag == "animationIndex2")
+                return 2
+            elseif(tag == "animationIndex3")
+                return 3
+            elseif(tag == "animationIndex4")
+                return 4
+            endif
+        endif
+        k += 1
+    endwhile
+
+    return position
+EndFunction
+
+Actor[] Function SortOstimActorsWithAnimationIndex(Actor[] actors, string sceneId) global
+    int aLength = actors.length
+    Actor[] sortedActors = PapyrusUtil.ActorArray(aLength)
+
+    int j = 0
+    while(j < aLength)
+        Actor currentA = actors[j]
+        int animationIndex = GetActorAnimationIndex(currentA, j, sceneId)
+
+        sortedActors[animationIndex] = currentA
+        j += 1
+    endwhile
+
+    return sortedActors
+EndFunction
+
 ; Converts an array of actors into a JSON array of their names
 ; @param actors Array of actors to convert
 ; @returns JSON array string containing actor names
-string Function GetActorsNamesJson(Actor[] actors) global
+string Function GetActorsNamesJson(Actor[] actors, string sceneId, bool sortByAnimationIndex = false) global
     string actorNames = "["
     int i = 0
 
-    while(i < actors.length)
+    int aLength = actors.length
+    Actor[] sortedActors = SortOstimActorsWithAnimationIndex(actors, sceneId)
+
+    while(i < sortedActors.length)
         if(i != 0)
         actorNames += ","
         endif
 
-        actorNames += "\""+TTON_Utils.GetActorName(actors[i])+"\""
+        actorNames += "\""+TTON_Utils.GetActorName(sortedActors[i])+"\""
         i += 1
     endwhile
 
@@ -199,24 +254,50 @@ EndFunction
 ; Scene Data Serialization
 ;==========================================================================
 
+string Function GetBaseSceneId(string variantId) global
+    int idx = StringUtil.Find(variantId, "Swapped")
+    if idx != -1
+        ; return everything before "Swapped"
+        return StringUtil.Substring(variantId, 0, idx)
+    endif
+    ; no suffix found, return unchanged
+    return variantId
+EndFunction
+
+string Function GetSceneDescription(string sceneId, Actor[] actors) global
+    string baseSceneId = GetBaseSceneId(sceneId)
+
+    string actorsStrArr = GetActorsNamesJson(actors, sceneId, true)
+
+    string template = TTON_JData.GetDescription(baseSceneId)
+
+    string description = ""
+
+    if(template)
+        description = SkyrimNetApi.ParseString(template, "sceneData", "{\"actors\": "+actorsStrArr+"}")
+    endif
+
+    if(!description)
+      description = TTON_Utils.GenerateOStimSceneDescription(sceneId, actors)
+    endif
+
+    return description
+EndFunction
+
 ; Generates a JSON representation of an OStim scene
 ; @param npc The NPC requesting the scene information
 ; @param ThreadId The ID of the thread to get information about
 ; @returns JSON object containing scene details, participants, and description
 string Function GetOStimSexSceneJson(Actor npc, int ThreadId) global
     string sceneId = OThread.GetScene(ThreadID)
+    ; without Swapped suffix
+    string baseSceneId =  GetBaseSceneId(sceneId)
     bool isInThisScene = OThread.GetActorPosition(ThreadId, npc) != -1
     Actor[] actors = OThread.GetActors(ThreadId)
 
-    string actorsStrArr = GetActorsNamesJson(actors)
+    string actorsStrArr = GetActorsNamesJson(actors, ThreadID, true)
 
-    string template = TTON_JData.GetDescription(sceneId)
-
-    string description = SkyrimNetApi.ParseString(template, "sceneData", "{\"actors\": "+actorsStrArr+"}")
-
-    if(!description)
-      description = TTON_Utils.GenerateOStimSceneDescription(ThreadID)
-    endif
+    string description = GetSceneDescription(sceneId, actors)
 
     return "{\"isInThisScene\": "+isInThisScene+", \"sceneId\": \""+sceneId+"\", \"actors\": "+actorsStrArr+",  \"description\": \""+description+"\"}"
 EndFunction
@@ -256,6 +337,36 @@ String Function GetAvailableSpeedDirections(string SceneId, int currentSpeed) gl
         res = "decrease"
     elseif(currentSpeed < maxSpeed)
         res = "increase"
+    endif
+
+    return res
+EndFunction
+
+string Function GetShclongOrgasmedLocation(Actor npc, int ThreadID) global
+    string res = GetActorName(npc) + " ejaculated on/in "
+    bool hadLocations = false
+    ; those who can cum inside
+    if OActor.HasSchlong(npc)
+        string sceneId = OThread.GetScene(ThreadID)
+        int actorPosition = GetActorAnimationIndex(npc, OThread.GetActorPosition(ThreadID, npc), sceneId)
+        int[] Actions = OMetadata.FindActionsSuperloadCSVv2(sceneId, ActorPositions = actorPosition, AnyCustomStringListRecord = ";cum")
+        int i = 0
+
+        string locations = ""
+
+        While (i < Actions.Length)
+            String[] Slots = OMetadata.GetCustomActionTargetStringList(sceneId, Actions[i], "cum")
+            Actor Target = OThread.GetActor(ThreadID, OMetadata.GetActionTarget(SceneID, Actions[i]))
+            locations += GetActorName(Target) + "'s " + OCSV.ToCSVList(Slots) + ";"
+            hadLocations = true
+            i += 1
+        EndWhile
+
+        res += locations
+    endif
+
+    if(!hadLocations)
+        return ""
     endif
 
     return res

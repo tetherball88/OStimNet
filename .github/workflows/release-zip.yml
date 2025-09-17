@@ -1,0 +1,41 @@
+name: Release (selective zip)
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  make-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # build steps here if needed
+
+      - name: Create selective zip
+        run: |
+          mkdir -p out
+          # use the tag from a push context
+          TAG="${{ github.ref_name }}"
+          # quote paths in case
+          zip -r "out/OStimNet_${TAG}.zip" \
+            Scripts/ \
+            SKSE/ \
+            TT_OStimNet.esp \
+            -x ".github/*"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body: "Automated release for ${{ github.ref_name }}"
+          files: |
+            out/OStimNet_${{ github.ref_name }}.zip
