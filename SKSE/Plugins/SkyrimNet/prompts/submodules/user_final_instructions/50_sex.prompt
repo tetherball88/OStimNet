@@ -1,0 +1,4 @@
+{% set sceneData = tton_ostim_npc_sex_scene(npc.UUID) %}
+{% if sceneData and sceneData.isInThisScene %}
+Generate natural, character-consistent dialogue as someone engaged in an intimate encounter, expressing physical and emotional reactions to the scene while responding authentically to any questions or comments from partners or others, maintaining your passionate state and personality throughout any interaction.
+{% endif %}

@@ -1,0 +1,35 @@
+{% set scenesData = tton_ostim_ongoing_scenes(npc.UUID).scenes %}
+{% if responseTarget %}
+{% set targetScene = tton_ostim_npc_sex_scene(responseTarget.UUID) %}
+{% endif %}
+{% if length(scenesData) > 0 %}
+{{ "## Sexual Scenes Context "}}
+{% for scene in scenesData %}
+{% if length(scenesData) > 1 %}
+{{ "### Scene " }}{{ loop.index }}:
+{% endif %}
+
+{% if scene.isInThisScene %}
+**{{decnpc(npc.UUID).name}}** is directly participating in this sexual activity:
+{% else %}
+**{{decnpc(npc.UUID).name}}** is observing this sexual encounter:
+{% endif %}
+{% if responseTarget %}
+{% if targetScene and targetScene.sceneId == scene.sceneId %}
+- **{{decnpc(responseTarget.UUID).name}}** is {% if targetScene.isInThisScene %} participating in this same scene{% else %}watching this scene{% endif %}
+{% else %}
+- **{{decnpc(responseTarget.UUID).name}}** is {% if targetScene.isInThisScene %}participating in a different sexual scene{% else %}not involved in any sexual activity{% endif %}
+{% endif %}
+{% endif %}
+
+{{ scene.description }}
+
+{% if not loop.is_last %}
+---
+{% endif %}
+{% endfor %}
+
+{% if length(scenesData) > 1 %}
+Note: Multiple sexual scenes are occurring simultaneously. The dialogue should acknowledge this complex situation appropriately.
+{% endif %}
+{% endif %}
