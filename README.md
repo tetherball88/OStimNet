@@ -15,7 +15,8 @@ This integration mod creates a powerful bridge between **SkyrimNet** AI framewor
 - 🔄 Dynamic scene transitions and participant management
 - 📊 Integration with Lover's Ledger for improved relationship tracking
 - 📝 Comprehensive animation descriptions for enhanced AI understanding
-- 🎮 Seamless gameplay integration that respects character personalities
+- 🎮 Seamless gameplay integration that respects character personalities\
+- 👀 Other NPCs aware of nearby sexual encounters
 
 ## 📋 Requirements
 
