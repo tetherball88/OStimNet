@@ -30,7 +30,8 @@ EndFunction
   Clears all MARAS data from JContainers.
 /;
 Function Clear() global
-    JDB_solveObjSetter(GetNamespaceKey(), 0)
+    JDB_solveObjSetter(GetNamespaceKey(), JMap_object())
+    ImportStaticData()
 EndFunction
 
 ;/
@@ -52,6 +53,10 @@ EndFunction
   Imports static data (initialData.json) into JContainers.
 /;
 Function ImportStaticData() global
+    int JRoot = JDB_solveObj(GetNamespaceKey())
+    if(JRoot == 0)
+        JDB_solveObjSetter(GetNamespaceKey(), JMap_object())
+    endif
     JDB_solveObjSetter(GetStaticKey() + ".initialData", JValue_readFromFile("Data/SKSE/Plugins/OStimNet/initialData.json"), true)
     ImportAnimationsDescriptions()
 EndFunction

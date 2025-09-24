@@ -50,8 +50,8 @@ event OnOptionHighlight(int option)
     if(option == oid_SettingsClearData)
         SetInfoText("Clears whole data from save")
     elseif(option == oid_SettingsExportData)
-        SetInfoText("Exports json data to file in Documents\\My Games\\Skyrim Special Edition\\JCUser\\MARAS\\main.json")
+        SetInfoText("Exports json data to file in Documents\\My Games\\Skyrim Special Edition\\JCUser\\MARAS\\store.json")
     elseif(option == oid_SettingsImportData)
-        SetInfoText("Imports data from file in Documents\\My Games\\Skyrim Special Edition\\JCUser\\MARAS\\main.json")
+        SetInfoText("Imports data from file in Documents\\My Games\\Skyrim Special Edition\\JCUser\\MARAS\\store.json")
     endif
 endevent
