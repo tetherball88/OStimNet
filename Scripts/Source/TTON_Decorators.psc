@@ -24,7 +24,7 @@ EndFunction
 string Function GetOStimOngoingSexScenes(Actor npc) global
     ; todo as of now this method doesn't work, check later releases
     ; int[] threads = OThread.GetAllThreadIDs()
-    int[] threads = new int[5]
+    int[] threads = new int[6]
     threads[0] = 0
     threads[1] = 1
     threads[2] = 2
