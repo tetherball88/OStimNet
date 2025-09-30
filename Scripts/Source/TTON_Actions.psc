@@ -30,9 +30,9 @@ EndFunction
 ; @returns True if registration was successful, false otherwise
 Bool Function RegisterActionStartSex() global
     int res = SkyrimNetApi.RegisterAction("StartNewSex", \
-  "{% set speakingNpc = tton_get_speaking_npc_sex_action_info(npc.UUID) %}Initiates an sexual encounter with the {{speakingNpc.name}} and selected partners. Use ONLY for starting new scenes (for joining use JoinOngoingSex action). Consider {{speakingNpc.name}}'s personality and relationship status. Requires at least one partner. Select partners only from: {{speakingNpc.nearbyPotentialPartners}}. Select particular action/position from: {{speakingNpc.actions}}", \
+  "{% set speakingNpc = tton_get_speaking_npc_sex_action_info(npc.UUID) %}Initiates an sexual encounter with the {{speakingNpc.name}} and selected partners. Use ONLY for starting new scenes (for joining use JoinOngoingSex action). Consider {{speakingNpc.name}}'s personality and relationship status. Requires at least one partner. Select partners only from: {{speakingNpc.nearbyPotentialPartners}}. Select particular action/position from: {{speakingNpc.actions}}. List of available furniture: {{speakingNpc.furniture}}", \
   "TTON_Actions", "StartSexActionIsElgigible", "TTON_Actions", "StartSexAction", "", "PAPYRUS", 1, \
-  "{\"participant1\": \"Primary partner to engage in sexual activities with the speaking NPC (required)\", \"participant2\": \"Optional second partner for the sexual encounter\", \"participant3\": \"Optional third partner for the sexual encounter\", \"participant4\": \"Optional fourth partner for the sexual encounter\", \"type\": \"Specific sexual activity type.\"}")
+  "{\"participant1\": \"Primary partner to engage in sexual activities with the speaking NPC (required)\", \"participant2\": \"Optional second partner for the sexual encounter\", \"participant3\": \"Optional third partner for the sexual encounter\", \"participant4\": \"Optional fourth partner for the sexual encounter\", \"type\": \"Specific sexual activity type.\", \"furniture\": \"Furniture or location for the sexual activity. Choose from the available furniture list or specify none\"}")
 
   return res == 1
 EndFunction
@@ -43,7 +43,7 @@ EndFunction
 ; @param paramsJson The parameters data in JSON format
 ; @returns True if the actor is eligible to start a new sexual encounter
 Bool Function StartSexActionIsElgigible(Actor akActor, string contextJson, string paramsJson) global
-    return !OActor.IsInOStim(akActor) && TTON_Utils.IsOStimEligible(akActor)
+    return !OActor.IsInOStim(akActor) && TTON_Utils.IsOStimEligible(akActor) && TTON_JData.IsActionAvailableAfterDeny(akActor, "startSex")
 EndFunction
 
 ; Starts a new sexual encounter with specified participants
@@ -51,7 +51,8 @@ EndFunction
 ; @param contextJson The context data in JSON format
 ; @param paramsJson The parameters containing participant info and encounter type
 Function StartSexAction(Actor akActor, string contextJson, string paramsJson) global
-    string type = SkyrimNetApi.GetJsonString(paramsJson, "type", "vaginalsex")
+    string actions = SkyrimNetApi.GetJsonString(paramsJson, "type", "vaginalsex")
+    string furn = SkyrimNetApi.GetJsonString(paramsJson, "furniture", "none")
     Actor participant1 = TTON_Utils.GetEligibleActorFromParam(paramsJson, "participant1")
     Actor participant2 = TTON_Utils.GetEligibleActorFromParam(paramsJson, "participant2")
     Actor participant3 = TTON_Utils.GetEligibleActorFromParam(paramsJson, "participant3")
@@ -64,7 +65,7 @@ Function StartSexAction(Actor akActor, string contextJson, string paramsJson) gl
     endif
 
     Actor[] actors = OActorUtil.ToArray(akActor, participant1, participant2, participant3, participant4)
-    TTON_Utils.StartOstim(actors, type)
+    TTON_OStimIntegration.StartOstim(actors, actions, furn, initiator = akActor)
 EndFunction
 
 ;==========================================================================
@@ -89,7 +90,7 @@ EndFunction
 ; @param paramsJson The parameters data in JSON format
 ; @returns True if the actor is currently in an OStim scene
 Bool Function ChangeSexPositionIsElgigible(Actor akActor, string contextJson, string paramsJson) global
-    return OActor.IsInOStim(akActor)
+    return OActor.IsInOStim(akActor) && TTON_JData.IsActionAvailableAfterDeny(akActor, "sceneChange")
 EndFunction
 
 ; Changes the sexual position or activity in an ongoing encounter
@@ -99,13 +100,7 @@ EndFunction
 ; @returns True if the position was successfully changed
 Bool Function ChangeSexPositionAction(Actor akActor, string contextJson, string paramsJson) global
     string type = SkyrimNetApi.GetJsonString(paramsJson, "type", "empty")
-    int ThreadID = OActor.GetSceneID(akActor)
-    string sceneId = TTON_Utils.getSceneByActionsOrTags(OThread.GetActors(ThreadID), type)
-    ; try to navigate to new scene
-    ; if no scene with requested action type skup this scene change
-    if(sceneId)
-        OThread.QueueNavigation(ThreadID, sceneId, 5)
-    endif
+    TTON_OStimIntegration.OStimChangeScene(akActor, type)
 EndFunction
 
 ;==========================================================================
@@ -132,7 +127,7 @@ EndFunction
 ; @param paramsJson The parameters data in JSON format
 ; @returns True if the actor is currently in an OStim scene
 Bool Function SexInviteIsElgigible(Actor akActor, string contextJson, string paramsJson) global
-    return OActor.IsInOStim(akActor)
+    return OActor.IsInOStim(akActor) && TTON_JData.IsActionAvailableAfterDeny(akActor, "invite")
 EndFunction
 
 ; Handles the invitation of new participants to an ongoing sexual encounter
@@ -155,18 +150,33 @@ Bool Function SexInviteAction(Actor akActor, string contextJson, string paramsJs
     ; 1 or more free spaces in current thread
     if(currentActorsLength < 5)
         target1 = TTON_Utils.GetEligibleActorFromParam(paramsJson, "target1")
+        if(StorageUtil.GetIntValue(target1, "SexInviteConsidering") == 1)
+            target1 = none
+        else
+            StorageUtil.SetIntValue(target1, "SexInviteConsidering", 1)
+        endif
     endif
 
     ; 2 or more free spaces in current thread
     if(currentActorsLength < 4)
         target2 = TTON_Utils.GetEligibleActorFromParam(paramsJson, "target2")
+        if(StorageUtil.GetIntValue(target2, "SexInviteConsidering") == 1)
+            target2 = none
+        else
+            StorageUtil.SetIntValue(target2, "SexInviteConsidering", 1)
+        endif
     endif
 
     ; 3 or more free spaces in current thread
     if(currentActorsLength < 3)
         target3 = TTON_Utils.GetEligibleActorFromParam(paramsJson, "target3")
+        if(StorageUtil.GetIntValue(target3, "SexInviteConsidering") == 1)
+            target3 = none
+        else
+            StorageUtil.SetIntValue(target3, "SexInviteConsidering", 1)
+        endif
     endif
-    TTON_Utils.AddActorsToActiveThread(ThreadID, OActorUtil.ToArray(target1, target2, target3))
+    TTON_OStimIntegration.AddActorsToActiveThread(ThreadID, OActorUtil.ToArray(target1, target2, target3), "invite", akActor)
 EndFunction
 
 ;==========================================================================
@@ -191,7 +201,7 @@ EndFunction
 ; @param paramsJson The parameters data in JSON format
 ; @returns True if the actor is not in a scene, there are active scenes, and the actor is eligible
 Bool Function SexJoinIsElgigible(Actor akActor, string contextJson, string paramsJson) global
-    return !OActor.IsInOStim(akActor) && OThread.GetThreadCount() > 0 && TTON_Utils.IsOStimEligible(akActor)
+    return TTON_Utils.IsActorEligibleToJoin(akActor) && TTON_JData.IsActionAvailableAfterDeny(akActor, "selfjoin")
 EndFunction
 
 ; Handles joining an ongoing sexual encounter
@@ -207,7 +217,11 @@ Bool Function SexJoinAction(Actor akActor, string contextJson, string paramsJson
     if(currentActorsLength == 5)
         return false
     endif
-    TTON_Utils.AddActorsToActiveThread(ThreadID, OActorUtil.ToArray(akActor))
+    if(StorageUtil.GetIntValue(akTarget, "SexInviteConsidering") == 1)
+        return false
+    endif
+    StorageUtil.SetIntValue(akTarget, "SexInviteConsidering", 1)
+    TTON_OStimIntegration.AddActorsToActiveThread(ThreadID, OActorUtil.ToArray(akActor), "selfjoin", akActor)
 EndFunction
 
 ;==========================================================================
@@ -250,7 +264,7 @@ Function ChangeSexPaceAction(Actor akActor, string contextJson, string paramsJso
         return
     endif
 
-    TTON_Utils.OStimChangeSpeed(ThreadId, speed)
+    TTON_OStimIntegration.OStimChangeSpeed(ThreadId, speed)
 EndFunction
 
 ;==========================================================================
@@ -275,7 +289,7 @@ EndFunction
 ; @param paramsJson The parameters data in JSON format
 ; @returns True if the actor is currently in an OStim scene
 bool Function StopSexIsEligible(Actor akActor, string contextJson, string paramsJson) global
-    return OActor.IsInOStim(akActor)
+    return OActor.IsInOStim(akActor) &&  TTON_JData.IsActionAvailableAfterDeny(akActor, "stopSex")
 EndFunction
 
 ; Stops the current sexual encounter
@@ -283,7 +297,6 @@ EndFunction
 ; @param contextJson The context data in JSON format
 ; @param paramsJson The parameters data in JSON format
 Function StopSexAction(Actor akActor, string contextJson, string paramsJson) global
-    int ThreadId = OActor.GetSceneID(akActor)
-    OThread.Stop(ThreadId)
+    TTON_OStimIntegration.StopOStim(akActor)
 EndFunction
 

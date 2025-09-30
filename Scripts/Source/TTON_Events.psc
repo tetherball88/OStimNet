@@ -64,29 +64,13 @@ Function RegisterSexClimaxEvent(int ThreadID, Actor orgasmedActor) global
 
     msg +=  " during sexual activity with " + TTON_Utils.GetActorsNamesComaSeparated(actors)
 
-    string renderParams = "{\"recent_events\":\"{{msg}}\",\"raw\":\"{{msg}}\",\"compact\":\"{{msg}}\",\"verbose\":\"{{msg}}\"}"
+    bool requestedComment = TTON_Utils.RequestSexComment(msg, speaker = orgasmedActor)
 
-    SkyrimNetApi.RegisterEvent(type, "{ \"msg\": \""+msg+"\" }", orgasmedActor, none)
+    if(!requestedComment)
+        string renderParams = "{\"recent_events\":\"{{msg}}\",\"raw\":\"{{msg}}\",\"compact\":\"{{msg}}\",\"verbose\":\"{{msg}}\"}"
+        SkyrimNetApi.RegisterEvent(type, "{ \"msg\": \""+msg+"\" }", orgasmedActor, none)
+    endif
 EndFunction
-
-; still testing what's better permanent climax event or short lived
-; Function RegisterSexClimaxEvent(int ThreadID, Actor orgasmedActor) global
-;     string id = JString.generateUUID()
-;     string type = "tton_sex_climax"
-;     string description = "Happens when one of OStim actors reach climax"
-;     string climaxLocations = TTON_Utils.GetShclongOrgasmedLocation(orgasmedActor, ThreadID)
-;     Actor[] actors = OThread.GetActors(ThreadID)
-;     string msg = "CLIMAX OCCURRED: Participant "+TTON_Utils.GetActorName(orgasmedActor)
-;     if(climaxLocations != "")
-;         msg += " " + climaxLocations
-;     else
-;         msg += " reached orgasm"
-;     endif
-
-;     msg +=  " during sexual activity with " + TTON_Utils.GetActorsNamesComaSeparated(actors)
-
-;     SkyrimNetApi.RegisterShortLivedEvent(id, type, description, msg, 20 * 1000, orgasmedActor, none)
-; EndFunction
 
 Function RegisterSexStopEvent(int ThreadID) global
     bool hadSex = TTLL_OstimThreadsCollector.GetHadSex(ThreadID)
@@ -133,4 +117,15 @@ Function RegisterSexStopEvent(int ThreadID) global
     string type = "tton_sex_stop"
     string jsonData = "{\"msg\": \""+msg+"\"}"
     SkyrimNetApi.RegisterEvent(type, jsonData, actors[0], none)
+    TTON_Utils.RequestSexComment(TTON_Utils.GetActorsNamesComaSeparated(actors) + " just finished their sexual encounter. Based on the recent context, generate a single in-character, post-sex comment that reflects how the encounter likely went.", actors)
+EndFunction
+
+Function RegisterStopSexDeniedEvent(int ThreadID, Actor initiator) global
+    Actor player = TTON_JData.GetPlayer()
+    string id = JString.generateUUID()
+    string type = "tton_sex_stop_denied"
+    string description = "Happens when npc wants to stop OStim sex scene but Player denied"
+    Actor[] actors = OThread.GetActors(ThreadID)
+    string msg = "SEX STOP DENIED: " + TTON_Utils.GetActorName(initiator) + " attempted to end sexual activity, but "+TTON_Utils.GetActorName(player)+" insisted on continuing."
+    SkyrimNetApi.RegisterShortLivedEvent(id, type, description, msg, 20 * 1000, actors[0], none)
 EndFunction

@@ -4,6 +4,16 @@ int property oid_SettingsClearData auto
 int property oid_SettingsExportData auto
 int property oid_SettingsImportData auto
 
+int property oid_EnableStartSexConfirmationModal auto
+int property oid_EnableChangePositionConfirmationModal auto
+int property oid_EnableAddNewActorsConfirmationModal auto
+int property oid_EnableStopSexConfirmationModal auto
+
+int property oid_SexCommentsFrequency auto
+int property oid_SexCommentsGenderWeight auto
+
+int property oid_DeniesCooldown auto
+
 string selectedPage
 
 Event OnConfigInit()
@@ -23,9 +33,30 @@ Function RenderPage()
     SetCursorFillMode(TOP_TO_BOTTOM)
     RenderLeftColumn()
     SetCursorPosition(1)
+    RenderRightColumn()
 EndFunction
 
 Function RenderLeftColumn()
+    AddHeaderOption("Confirmation messages: ")
+    oid_EnableStartSexConfirmationModal = AddToggleOption("Enable start sex confirmation modal:", TTON_JData.GetMcmCheckbox("confirmStartSex"))
+    oid_EnableChangePositionConfirmationModal = AddToggleOption("Enable change scene confirmation modal:", TTON_JData.GetMcmCheckbox("confirmChangeScene"))
+    oid_EnableAddNewActorsConfirmationModal = AddToggleOption("Add another actors confirmation modal:", TTON_JData.GetMcmCheckbox("confirmAddActors"))
+    oid_EnableStopSexConfirmationModal = AddToggleOption("Enable stop sex confirmation modal:", TTON_JData.GetMcmCheckbox("confirmStopSex"))
+
+    AddHeaderOption("Sex comments: ")
+    float frequency = TTON_JData.GetMcmCommentsFrequency() as float
+    float genderWeight = TTON_JData.GetMcmCommentsGenderWeight() as float
+
+    oid_SexCommentsFrequency = AddSliderOption("Cooldown between triggering sex comments:", frequency)
+    oid_SexCommentsGenderWeight = AddSliderOption("Which gender has more chances to start comment:", genderWeight)
+
+    AddHeaderOption("Denies: ")
+    float denyCooldown = TTON_JData.GetMcmDenyCooldown() as float
+    oid_DeniesCooldown = AddSliderOption("Action cooldown after player's deny:", denyCooldown)
+EndFunction
+
+Function RenderRightColumn()
+    AddHeaderOption("JContainer export/import: ")
     oid_SettingsExportData = AddTextOption("", "Export data to file")
     oid_SettingsImportData = AddTextOption("", "Import data from file")
     oid_SettingsClearData = AddTextOption("", "Clear whole data")
@@ -42,6 +73,14 @@ event OnOptionSelect(int option)
         TTON_JData.ExportData()
     elseif (oid_SettingsImportData == option)
         TTON_JData.ImportData()
+    elseif(option == oid_EnableStartSexConfirmationModal)
+        SetToggleOptionValue(oid_EnableStartSexConfirmationModal, TTON_JData.ToggleMcmCheckbox("confirmStartSex"))
+    elseif(option == oid_EnableChangePositionConfirmationModal)
+        SetToggleOptionValue(oid_EnableChangePositionConfirmationModal, TTON_JData.ToggleMcmCheckbox("confirmChangeScene"))
+    elseif(option == oid_EnableAddNewActorsConfirmationModal)
+        SetToggleOptionValue(oid_EnableAddNewActorsConfirmationModal, TTON_JData.ToggleMcmCheckbox("confirmAddActors"))
+    elseif(option == oid_EnableStopSexConfirmationModal)
+        SetToggleOptionValue(oid_EnableStopSexConfirmationModal, TTON_JData.ToggleMcmCheckbox("confirmStopSex"))
     endif
 endevent
 
@@ -53,5 +92,59 @@ event OnOptionHighlight(int option)
         SetInfoText("Exports json data to file in Documents\\My Games\\Skyrim Special Edition\\JCUser\\MARAS\\store.json")
     elseif(option == oid_SettingsImportData)
         SetInfoText("Imports data from file in Documents\\My Games\\Skyrim Special Edition\\JCUser\\MARAS\\store.json")
+    elseif(option == oid_EnableStartSexConfirmationModal)
+        SetInfoText("Toggle confirmation modal. When OStim scene is initiated by npc on player - it will ask player's confirmation.")
+    elseif(option == oid_EnableChangePositionConfirmationModal)
+        SetInfoText("Toggle confirmation modal. When in player's scene npc initiate change scene - it will ask player's confirmation.")
+    elseif(option == oid_EnableAddNewActorsConfirmationModal)
+        SetInfoText("Toggle confirmation modal. When in player's scene npc will invite somebody else, or outside npc will decide to join - it will ask player's confirmation.")
+    elseif(option == oid_EnableStopSexConfirmationModal)
+        SetInfoText("Toggle confirmation modal. When npc decides to stop player's OStim scene - it will ask player's confirmation. If player say no - scene will be marked as forced(not agressive though)")
+    elseif(option == oid_SexCommentsFrequency)
+        SetInfoText("Set in seconds interval between sex comments can be triggered during OStim events")
+    elseif(option == oid_SexCommentsGenderWeight)
+        SetInfoText("Set chances of specific gender to make comments during OStim scenes. 0 - always male, 100 - always female, 50 - 50%/50% that male/female will be selected. Works only if scene has more than one gender.")
+    elseif(option == oid_DeniesCooldown)
+        SetInfoText("Set cooldown in seconds for actions which were rejected by player before they become available again. Works individually for each asking npc.")
     endif
 endevent
+
+event OnOptionSliderOpen(int a_option)
+    if(a_option == oid_SexCommentsFrequency)
+        SetSliderDialogStartValue(TTON_JData.GetMcmCommentsFrequency() as float)
+        SetSliderDialogRange(0, 400)
+        SetSliderDialogInterval(1)
+    elseif(a_option == oid_SexCommentsGenderWeight)
+        SetSliderDialogStartValue(TTON_JData.GetMcmCommentsGenderWeight() as float)
+        SetSliderDialogRange(0, 100)
+        SetSliderDialogInterval(1)
+    elseif(a_option == oid_DeniesCooldown)
+        SetSliderDialogStartValue(TTON_JData.GetMcmDenyCooldown() as float)
+        SetSliderDialogRange(0, 120)
+        SetSliderDialogInterval(1)
+    endif
+endEvent
+
+event OnOptionSliderAccept(int a_option, float a_value)
+    SetSliderOptionValue(a_option, a_value)
+    if(a_option == oid_SexCommentsFrequency)
+        TTON_JData.SetMcmCommentsFrequency(a_value as int)
+    elseif(a_option == oid_SexCommentsGenderWeight)
+        TTON_JData.SetMcmCommentsGenderWeight(a_value as int)
+    elseif(a_option == oid_DeniesCooldown)
+        TTON_JData.SetMcmDenyCooldown(a_value as int)
+    endif
+endEvent
+
+event OnOptionDefault(int a_option)
+	if(a_option == oid_SexCommentsFrequency)
+        SetSliderDialogStartValue(40)
+        TTON_JData.SetMcmCommentsFrequency(40)
+    elseif(a_option == oid_SexCommentsGenderWeight)
+        SetSliderDialogStartValue(50)
+        TTON_JData.SetMcmCommentsGenderWeight(50)
+    elseif(a_option == oid_DeniesCooldown)
+        SetSliderDialogStartValue(20)
+        TTON_JData.SetMcmDenyCooldown(20)
+    endif
+endEvent

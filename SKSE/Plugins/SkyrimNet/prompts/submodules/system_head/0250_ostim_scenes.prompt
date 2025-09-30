@@ -1,8 +1,6 @@
 {% if not isTimePaused and get_global_value("TTON_IsOstimActive") == 1.0 %}
+    {% set npcName = decnpc(npc.UUID).name %}
     {% set scenesData = tton_ostim_ongoing_scenes(npc.UUID) %}
-    {% if responseTarget %}
-        {% set targetScene = tton_ostim_npc_sex_scene(responseTarget.UUID) %}
-    {% endif %}
     {% if isArray(scenesData.scenes) and length(scenesData.scenes) > 0 %}
 {{ "## Sexual Scenes Context "}}
         {% for scene in scenesData.scenes %}
@@ -11,18 +9,18 @@
             {% endif %}
 
             {% if scene.isInThisScene %}
-**{{decnpc(npc.UUID).name}}** is directly participating in this sexual activity:
+**{{npcName}}** is directly participating in this sexual activity:
             {% else %}
-**{{decnpc(npc.UUID).name}}** is observing this sexual encounter:
+**{{npcName}}** is observing this sexual encounter:
             {% endif %}
-            {% if responseTarget %}
+            {% if responseTarget.UUID %}
+                {% set targetScene = tton_ostim_npc_sex_scene(responseTarget.UUID) %}
                 {% if targetScene and targetScene.sceneId == scene.sceneId %}
-- **{{decnpc(responseTarget.UUID).name}}** is {% if targetScene.isInThisScene %} participating in this same scene{% else %}watching this scene{% endif %}
+- **{{npcName}}** is {% if targetScene.isInThisScene %} participating in this same scene{% else %}watching this scene{% endif %}
                 {% else %}
-- **{{decnpc(responseTarget.UUID).name}}** is {% if targetScene.isInThisScene %}participating in a different sexual scene{% else %}not involved in any sexual activity{% endif %}
+- **{{npcName}}** is {% if targetScene.isInThisScene %}participating in a different sexual scene{% else %}not involved in any sexual activity{% endif %}
                 {% endif %}
             {% endif %}
-
 {{ scene.description }}
 
             {% if not loop.is_last %}

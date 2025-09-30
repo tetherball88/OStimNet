@@ -10,14 +10,7 @@ This integration mod creates a powerful bridge between **SkyrimNet** AI framewor
 
 ## ✨ Features
 
-- 🤖 AI-powered intimate encounters through natural conversation
-- 🎭 Context-aware scene selection based on relationships and surroundings
-- 🔄 Dynamic scene transitions and participant management
-- 📊 Integration with Lover's Ledger for improved relationship tracking
-- 📝 Comprehensive animation descriptions for enhanced AI understanding
-- 🎮 Seamless gameplay integration that respects character personalities
-- 👀 Other NPCs aware of nearby sexual encounters
-- 🔄 Support for multiple simultaneous scenes
+**[📚 View complete features documentation](FEATURES.md)**
 
 ## 📋 Requirements
 
@@ -27,6 +20,7 @@ This integration mod creates a powerful bridge between **SkyrimNet** AI framewor
 - [PapyrusUtil SE](https://www.nexusmods.com/skyrimspecialedition/mods/13048) - Modders Scripting Utility Functions
 - [powerofthree's Papyrus Extender](https://www.nexusmods.com/skyrimspecialedition/mods/22854) - Scripting utility
 - [Lover's Ledger](https://www.nexusmods.com/skyrimspecialedition/mods/158983) - For enhanced relationship statistics
+- (!!!new from version v0.1.0) [Papyrus MessageBox - SKSE NG](https://www.nexusmods.com/skyrimspecialedition/mods/83578)
 
 ## 🔧 How It Works
 

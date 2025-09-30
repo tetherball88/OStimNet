@@ -159,5 +159,16 @@ string Function GetSpeakingNpcSexActionInfo(Actor npc, string inOStim = "exclude
 
     string availableActions = "analfingering | analfisting | analsex | analtoying | anilingus | blowjob | boobjob | buttjob | cumonbutt | cumonchest | cumonvulva | cunnilingus | deepthroat | facial | femalemasturbation | footjob | grindingobject | grindingpenis | grindingthigh | gropingtesticles | handjob | lickingnipple | lickingpenis | lickingtesticles | lickingvagina | malemasturbation | rimjob | rubbingclitoris | rubbingpenisagainstface | suckingnipple | thighjob | tribbing | vaginalfingering | vaginalfisting | vaginalsex | vaginaltoying"
 
-    return "{\"name\": \""+TTON_Utils.GetActorName(npc)+"\", \"nearbyPotentialPartners\": \""+actorsString+"\", \"actions\": \""+availableActions+"\"}"
+    ObjectReference[] availableFurniture = OFurniture.FindFurniture(2, npc, 1000.0, 100.0)
+
+    string furnitureList = ""
+
+    int j = 0
+
+    while(j < availableFurniture.Length)
+        furnitureList += OFurniture.GetFurnitureType(availableFurniture[j]) + ","
+        j += 1
+    endwhile
+
+    return "{\"name\": \""+TTON_Utils.GetActorName(npc)+"\", \"nearbyPotentialPartners\": \""+actorsString+"\", \"actions\": \""+availableActions+"\", \"furniture\": \""+furnitureList+"\"}"
 EndFunction

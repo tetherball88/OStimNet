@@ -25,7 +25,6 @@ EndFunction
 ; @returns Natural language description of the scene and its participants
 string Function GenerateOStimSceneDescription(string sceneId, Actor[] actors) global
     string[] actionTypes = OMetadata.GetActionTypes(sceneId)
-    string[] sceneTags = OMetadata.GetSceneTags(sceneId)
     string actorString = GetActorsNamesComaSeparated(actors)
 
     string result = actorString + " engaged in intimate scene."
@@ -66,76 +65,22 @@ EndFunction
 ; OStim Scene Management
 ;==========================================================================
 
-; Starts a new OStim scene with the given actors and tags
-; @param actors Array of actors to include in the scene
-; @param tags Optional scene tags or actions to filter by
-; @returns Thread ID of the new scene, or -1 if failed
-int function StartOstim(actor[] actors, string tags = "") global
-    actors = OActorUtil.Sort(actors, OActorUtil.EmptyArray())
-    bool someActorsBusy = false
-    int i = 0
-    while(i < actors.Length)
-        if(OActor.IsInOStim(actors[i]))
-            someActorsBusy = true
-        endif
-        i += 1
-    endwhile
-    if(someActorsBusy)
-        TTON_Debug.warn("StartOstim: tried to start new thread with actors who are busy in another thread.")
-        return -1
-    endif
-    int builderID = OThreadBuilder.create(actors)
-    string newScene = getSceneByActionsOrTags(actors, tags, true)
-
-    if(!UserHasScenesForActors(actors))
-        TTON_Debug.warn("StartOstim: can't start new thread, user doesn't have suitable scene for this set of actors")
-    endif
-    OThreadBuilder.SetStartingAnimation(builderID, newScene)
-    int newThreadID = OThreadBuilder.Start(builderID)
-
-    return newThreadID
-endfunction
-
-; Changes the animation speed of an ongoing OStim scene
-; @param ThreadId The ID of the thread to modify
-; @param speed Direction to change speed ("increase" or "decrease")
-Function OStimChangeSpeed(int ThreadId, string speed) global
-    int currentSpeed = OThread.GetSpeed(ThreadId)
-    string sceneId = OThread.GetScene(ThreadId)
-    int maxSpeed = OMetadata.GetMaxSpeed(sceneId)
-    int minSpeed = OMetadata.GetDefaultSpeed(sceneId)
-    if(speed == "increase" && currentSpeed < maxSpeed)
-        currentSpeed += 1
-    elseif(speed == "decrease" && currentSpeed > minSpeed)
-        currentSpeed -= 1
-    endif
-    OThread.SetSpeed(ThreadId, currentSpeed)
-EndFunction
-
-; Finds an appropriate scene based on actors and specified tags
+; Finds an appropriate scene based on actors and specified actions
 ; @param actors Array of actors to find a scene for
-; @param tags CSV string of action types or scene tags to search for
+; @param actions CSV string of action types or scene actions to search for
 ; @param useRandom Whether to fall back to a random scene if no matching scene is found
 ; @returns Scene ID if found, empty string if no suitable scene
-string function getSceneByActionsOrTags(actor[] actors, string tags, bool useRandom = false) global
-    string newScene
-    if tags != ""
-        newScene = OLibrary.GetRandomSceneWithAnyActionCSV(actors, tags)
-        if(newScene == "")
-        newScene = OLibrary.GetRandomSceneWithAnySceneTagCSV(actors, tags)
-        endif
-    else
-        TTON_Debug.Debug("No OStim tags provided")
+string function getSceneByActions(actor[] actors, string actions, string furn = "") global
+    string newScene = OLibrary.GetRandomSceneSuperloadCSV(actors, furn, AnyActionType = actions)
+
+    ; try to find by action but without furniture
+    if(newScene == "")
+        newScene = OLibrary.GetRandomSceneSuperloadCSV(actors, AnyActionType = actions)
     endif
 
+    ; still no match, try any sexual scene
     if(newScene == "")
-        if(useRandom)
-        newScene = OLibrary.GetRandomScene(actors)
-        else
-        TTON_Debug.Debug("No OStim scene found for: " + tags)
-        endif
-    else
-        TTON_Debug.Debug("Found " + tags + " scene: " + newScene)
+        newScene = OLibrary.GetRandomSceneSuperloadCSV(actors, furn, ActionWhitelistTypes = "sexual")
     endif
 
     return newScene
@@ -144,39 +89,16 @@ endfunction
 ; Checks if there are any available scenes for the given actor combination
 ; @param actors Array of actors to check scenes for
 ; @returns True if at least one suitable scene exists
-bool Function UserHasScenesForActors(Actor[] actors) global
-    return OLibrary.GetRandomSceneSuperloadCSV(actors, AnyActionType = "sexual") != ""
-EndFunction
-
-; Adds new actors to an ongoing OStim scene
-; @param ThreadID The ID of the thread to modify
-; @param newActors Array of actors to add to the scene
-function AddActorsToActiveThread(int ThreadID, actor[] newActors) global
-    if(!OThread.IsRunning(ThreadID))
-        return
-    endif
-    actor[] currentActors = OThread.GetActors(ThreadID)
-    int totalActors = currentActors.Length + newActors.Length
-    if totalActors <= 5
-        int i = 0
-        int addedActors = 0
-        while(i < newActors.Length)
-            currentActors = PapyrusUtil.PushActor(currentActors, newActors[i])
-            i += 1
-        endwhile
-        if(!UserHasScenesForActors(OActorUtil.Sort(currentActors, OActorUtil.EmptyArray())))
-            TTON_Debug.warn("AddActorsToActiveThread: Don't stop ongoing thread. User doesn't have suitable scene for new set of actors.")
-            return
-        endif
-        OThread.Stop(ThreadID)
-        while(OThread.isRunning(ThreadID))
-            Utility.Wait(0.2)
-        endwhile
-        StartOstim(currentActors)
+string Function UserHasScenesForActors(Actor[] actors, string furn = "") global
+    string sceneId = OLibrary.GetRandomSceneSuperloadCSV(actors, furn, AnyActionType = "sexual") != ""
+    if(sceneId == "")
+        return "no-furn"
     else
-        TTON_Debug.warn("AddActorsToActiveThread: New set of actors exceed 5 actors in one scene. New actors length: " + totalActors)
+        return "furn"
     endif
-endfunction
+
+    return "none"
+EndFunction
 
 ; return changed animation position based on actor's ostim tags or original position
 int Function GetActorAnimationIndex(Actor currentA, int position, string sceneId) global
@@ -370,4 +292,128 @@ string Function GetShclongOrgasmedLocation(Actor npc, int ThreadID) global
     endif
 
     return res
+EndFunction
+
+bool Function ShowConfirmMessage(string msg, string type) global
+    if(!TTON_JData.GetMcmCheckbox(type))
+        return true
+    endif
+    string result = SkyMessage.Show(msg, "Yes", "No")
+    if(result != "Yes" && result != "No")
+        Debug.Notification("Dynamic Message Box Not Found (Please install Papyrus MessageBox - SKSE NG plugin)")
+        return true
+    endif
+
+    return result == "Yes"
+EndFunction
+
+bool Function RequestSexComment(string msg, Actor[] actors = none, Actor speaker = none) global
+    if(!TTON_JData.CanMakeLastComment())
+        return false
+    endif
+
+    if(!speaker)
+        if(actors == none || actors.Length == 0)
+            return false
+        endif
+        speaker = GetWeightedRandomActorToSpeak(actors)
+    endif
+
+    TTON_JData.SetLastCommentTime()
+    SkyrimNetApi.DirectNarration(msg, speaker)
+
+    return true
+EndFunction
+
+; if it's player only scene it will return none
+; assume that actors are only actors from scene
+actor Function GetWeightedRandomActorToSpeak(actor[] actors) global
+    Actor player = TTON_JData.GetPlayer()
+    actor[] maleActors = PapyrusUtil.ActorArray(0)
+    actor[] femaleActors = PapyrusUtil.ActorArray(0)
+    int count = 0
+    if !actors || count == 0
+        return none
+    endif
+    while count < actors.Length
+        actor currActor = actors[count]
+        int currSex = GetGender(currActor)
+        bool isMuted = false
+
+        if(OActor.IsMuted(currActor))
+            isMuted = true
+        endif
+        if(currActor == player || isMuted)
+        ; player doesn't participate in llm talking :)
+        ; some actions in ostim prevents actors from talking, which makes sense
+        elseif(currSex == 0)
+            maleActors = PapyrusUtil.PushActor(maleActors, currActor)
+        else
+            femaleActors = PapyrusUtil.PushActor(femaleActors, currActor)
+        endif
+
+        count += 1
+    endwhile
+
+    ; if no female npc, just pick random male. Can be none though if it's player only scene
+    if(femaleActors.length == 0 && maleActors.Length > 0)
+        return getRandomActor(maleActors)
+    endif
+
+    ; if no male npc, just pick random female. Can be none though if it's player only scene
+    if(maleActors.length == 0 && femaleActors.Length > 0)
+        return getRandomActor(femaleActors)
+    endif
+
+    ; pick weighted type of npc who will talk
+    bool isFemale = Utility.RandomInt(1, 100) <= TTON_JData.GetMcmCommentsGenderWeight()
+
+    if(isFemale && femaleActors.Length > 0)
+        return getRandomActor(femaleActors)
+    elseif(!isFemale && maleActors.Length > 0)
+        return getRandomActor(maleActors)
+    endif
+
+    return none
+EndFunction
+
+int Function GetGender(Actor akActor) global
+  if !akActor
+    return -1 ; Invalid actor
+  endif
+  return akActor.GetActorBase().GetSex()
+endfunction
+
+actor function getRandomActor(actor[] actors) global
+  int index = PO3_SKSEFunctions.GenerateRandomInt(0, actors.length - 1)
+
+  return actors[index]
+endfunction
+
+Actor[] Function GetAllActorsAfterJoin(int ThreadID, Actor[] newActors) global
+    actor[] originalActors = OThread.GetActors(ThreadID)
+    actor[] currentActors = originalActors
+    int totalActors = currentActors.Length + newActors.Length
+    Actor[] eligibleActors = PapyrusUtil.ActorArray(0)
+
+    if(totalActors > 5)
+        TTON_Debug.warn("AddActorsToActiveThread: New set of actors exceed 5 actors in one scene. New actors length: " + totalActors)
+        return originalActors
+    endif
+
+    int i = 0
+    int addedActors = 0
+    while(i < newActors.Length)
+        if(newActors[i] && PapyrusUtil.CountActor(currentActors, newActors[i]) == 0 && IsActorEligibleToJoin(newActors[i]))
+            currentActors = PapyrusUtil.PushActor(currentActors, newActors[i])
+        endif
+        i += 1
+    endwhile
+
+    return currentActors
+EndFunction
+
+bool Function IsActorEligibleToJoin(Actor akActor) global
+    bool isConsidering = StorageUtil.GetIntValue(akActor, "SexInviteConsidering") == 1
+    return !OActor.IsInOStim(akActor) && OThread.GetThreadCount() > 0 && TTON_Utils.IsOStimEligible(akActor) && !isConsidering
 EndFunction
