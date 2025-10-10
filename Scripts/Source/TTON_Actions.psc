@@ -15,6 +15,19 @@ Function RegisterActions() global
     RegisterActionSexStop()
 EndFunction
 
+; -------------------------------------------------
+; Body Animation Tag
+; -------------------------------------------------
+
+string Function GetTags() global
+    Form cuddle = Game.GetFormFromFile(0x800, "SkyrimNet_Cuddle.esp")
+    Form sexlab = Game.GetFormFromFile(0x800, "SkyrimNet_SexLab.esp")
+    if(cuddle || sexlab)
+        return "BodyAnimation"
+    endif
+    return ""
+EndFunction
+
 ;==========================================================================
 ; Start New Sex Action
 ; This action allows NPCs to initiate new sexual encounters with up to 4 participants - total up to 5 participants including speaking npc.
@@ -32,7 +45,8 @@ Bool Function RegisterActionStartSex() global
     int res = SkyrimNetApi.RegisterAction("StartNewSex", \
   "{% set speakingNpc = tton_get_speaking_npc_sex_action_info(npc.UUID) %}Initiates an sexual encounter with the {{speakingNpc.name}} and selected partners. Use ONLY for starting new scenes (for joining use JoinOngoingSex action). Consider {{speakingNpc.name}}'s personality and relationship status. Requires at least one partner. Select partners only from: {{speakingNpc.nearbyPotentialPartners}}. Select particular action/position from: {{speakingNpc.actions}}. List of available furniture: {{speakingNpc.furniture}}", \
   "TTON_Actions", "StartSexActionIsElgigible", "TTON_Actions", "StartSexAction", "", "PAPYRUS", 1, \
-  "{\"participant1\": \"Primary partner to engage in sexual activities with the speaking NPC (required)\", \"participant2\": \"Optional second partner for the sexual encounter\", \"participant3\": \"Optional third partner for the sexual encounter\", \"participant4\": \"Optional fourth partner for the sexual encounter\", \"type\": \"Specific sexual activity type.\", \"furniture\": \"Furniture or location for the sexual activity. Choose from the available furniture list or specify none\"}")
+  "{\"participant1\": \"Primary partner to engage in sexual activities with the speaking NPC (required)\", \"participant2\": \"Optional second partner for the sexual encounter\", \"participant3\": \"Optional third partner for the sexual encounter\", \"participant4\": \"Optional fourth partner for the sexual encounter\", \"type\": \"Specific sexual activity type.\", \"furniture\": \"Furniture or location for the sexual activity. Choose from the available furniture list or specify none\"}", \
+  "", GetTags())
 
   return res == 1
 EndFunction
