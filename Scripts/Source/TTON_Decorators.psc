@@ -71,6 +71,9 @@ EndFunction
 ; @param npc The NPC whose sexual history to retrieve
 ; @returns JSON string containing counts of different types of encounters and lover information
 string Function GetNpcSexualData(Actor npc) global
+    if(npc == none)
+        return "{}"
+    endif
     float currentTime = Utility.GetCurrentGameTime()
     int solo = TTLL_Store.GetSoloSexCount(npc)
     int exclusive = TTLL_Store.GetExclusiveSexCount(npc)

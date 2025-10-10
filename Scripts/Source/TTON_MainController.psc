@@ -2,6 +2,10 @@ Scriptname TTON_MainController extends Quest
 
 GlobalVariable Property TTON_IsOstimActive  Auto
 
+Event OnInit()
+    Maintenance()
+EndEvent
+
 Function Maintenance()
     TTON_JData.ImportStaticData()
 
@@ -16,7 +20,6 @@ Function Maintenance()
     TTON_Actions.RegisterActions()
     TTON_Events.RegisterEvents()
     TTON_Decorators.RegisterDecorators()
-
 EndFunction
 
 Event OStimStart(string eventName, string strArg, float numArg, Form sender)

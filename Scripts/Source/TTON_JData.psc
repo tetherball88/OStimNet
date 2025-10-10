@@ -122,7 +122,6 @@ EndFunction
 ; if not set - default true
 bool Function GetMcmCheckbox(string propName, int default = 1) global
     bool res = JDB_solveInt(GetNamespaceKey() + ".mcm." + propName, default) != 0
-    TTON_debug.trace("GetMcmCheckbox:"+propName+":"+res)
     return res
 EndFunction
 
