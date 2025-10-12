@@ -70,17 +70,26 @@ EndFunction
 ; @param actions CSV string of action types or scene actions to search for
 ; @param useRandom Whether to fall back to a random scene if no matching scene is found
 ; @returns Scene ID if found, empty string if no suitable scene
-string function getSceneByActions(actor[] actors, string actions, string furn = "") global
-    string newScene = OLibrary.GetRandomSceneSuperloadCSV(actors, furn, AnyActionType = actions)
+string function getSceneByActions(actor[] actors, string actions, string furn = "", bool nonSexual = false) global
+    string newScene
 
-    ; try to find by action but without furniture
-    if(newScene == "")
-        newScene = OLibrary.GetRandomSceneSuperloadCSV(actors, AnyActionType = actions)
-    endif
-
-    ; still no match, try any sexual scene
-    if(newScene == "")
-        newScene = OLibrary.GetRandomSceneSuperloadCSV(actors, furn, ActionWhitelistTypes = "sexual")
+    if(!nonSexual)
+        newScene = OLibrary.GetRandomSceneSuperloadCSV(actors, furn, AnyActionType = actions)
+        ; try to find by action but without furniture
+        if(newScene == "")
+            newScene = OLibrary.GetRandomSceneSuperloadCSV(actors, AnyActionType = actions)
+        endif
+        ; still no match, try any sexual scene
+        if(newScene == "")
+            newScene = OLibrary.GetRandomSceneSuperloadCSV(actors, furn, ActionWhitelistTypes = "sexual")
+        endif
+    else
+        ; try to find non sexual scene for standing actors
+        newScene = OLibrary.GetRandomSceneSuperloadCSV(actors, AnyActionType = actions, ActionBlacklistTypes = "sexual", AllActorTagsForAll = "standing")
+        if(newScene == "")
+            ; try to find by action but without standing restriction
+            newScene = OLibrary.GetRandomSceneSuperloadCSV(actors, AnyActionType = actions, ActionBlacklistTypes = "sexual")
+        endif
     endif
 
     return newScene

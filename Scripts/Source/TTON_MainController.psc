@@ -47,7 +47,7 @@ Event OStimSceneChange(string eventName, string strArg, float numArg, Form sende
 
     TTON_Events.RegisterSexChangeEvent(ThreadID)
     Actor[] actors = OThread.GetActors(ThreadID)
-    TTON_Utils.RequestSexComment(TTON_Utils.GetActorsNamesComaSeparated(actors) + " changed their sex position to : " + TTON_Utils.GetSceneDescription(sceneId, actors), actors)
+    TTON_Utils.RequestSexComment(TTON_Utils.GetActorsNamesComaSeparated(actors) + " changed their position to :" + TTON_Utils.GetSceneDescription(sceneId, actors), actors)
 EndEvent
 
 Event OStimOrgasm(string eventName, string strArg, float numArg, Form sender)
@@ -68,4 +68,5 @@ Event ThreadFinished(int ThreadID)
     endif
 
     TTON_JData.SetThreadForced(ThreadId, 0)
+    TTON_JData.SetThreadAffectionOnly(ThreadId, 0)
 EndEvent

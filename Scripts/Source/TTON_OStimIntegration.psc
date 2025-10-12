@@ -4,7 +4,8 @@ scriptname TTON_OStimIntegration
 ; @param actors Array of actors to include in the scene
 ; @param actions Optional scene actions or actions to filter by
 ; @returns Thread ID of the new scene, or -1 if failed
-int function StartOstim(actor[] actors, string actions = "", string furn = "", bool continuation = false, Actor initiator = none) global
+int function StartOstim(actor[] actors, string actions = "", string furn = "", bool continuation = false, Actor initiator = none, bool nonSexual = false) global
+    TTON_Debug.trace("StartOstim called with actors: " + TTON_Utils.GetActorsNamesComaSeparated(actors) + ", actions: " + actions + ", furn: " + furn + ", continuation: " + continuation + ", initiator: " + TTON_Utils.GetActorName(initiator) + ", nonSexual: " + nonSexual)
     Actor player = TTON_JData.GetPlayer()
     actors = OActorUtil.Sort(actors, OActorUtil.EmptyArray())
     bool someActorsBusy = false
@@ -24,28 +25,54 @@ int function StartOstim(actor[] actors, string actions = "", string furn = "", b
         return -1
     endif
     if(hasPlayer && !continuation)
-        bool yes = TTON_Utils.ShowConfirmMessage("Sexual encounter about to begin with " + TTON_Utils.GetActorsNamesComaSeparated(actors) + ". Do you accept?", "confirmStartSex")
-        if(!yes)
-            TTON_JData.SetDeniedLastTime(initiator, "startSex")
-            TTON_Utils.RequestSexComment(TTON_Utils.GetActorName(initiator) + " wanted to have sex with " + TTON_Utils.GetActorName(player) + ", but for some reason "+TTON_Utils.GetActorName(player)+" declined it.", \
-            speaker = initiator )
-            return -1
+        if(nonSexual)
+            bool yes = TTON_Utils.ShowConfirmMessage("An affectionate non-sexual scene with " + TTON_Utils.GetActorsNamesComaSeparated(actors) + " is about to begin. Do you accept?", "confirmStartAffection")
+            if(!yes)
+                TTON_JData.SetDeniedLastTime(initiator, "startAffection")
+                TTON_Utils.RequestSexComment(TTON_Utils.GetActorName(initiator) + " wanted to have an affectionate non-sexual moment with " + TTON_Utils.GetActorName(player) + ", but for some reason "+TTON_Utils.GetActorName(player)+" declined it.", \
+                speaker = initiator )
+                return -1
+            endif
+        else
+            bool yes = TTON_Utils.ShowConfirmMessage("Sexual encounter about to begin with " + TTON_Utils.GetActorsNamesComaSeparated(actors) + ". Do you accept?", "confirmStartSex")
+            if(!yes)
+                TTON_JData.SetDeniedLastTime(initiator, "startSex")
+                TTON_Utils.RequestSexComment(TTON_Utils.GetActorName(initiator) + " wanted to have sex with " + TTON_Utils.GetActorName(player) + ", but for some reason "+TTON_Utils.GetActorName(player)+" declined it.", \
+                speaker = initiator )
+                return -1
+            endif
         endif
+
     endif
     int builderID = OThreadBuilder.create(actors)
-    ObjectReference furnObject = OFurniture.FindFurnitureOfType(furn, player, 1000)
     string newScene
 
-    if(furnObject)
-        OThreadBuilder.SetFurniture(builderId, furnObject)
-        newScene = TTON_Utils.getSceneByActions(actors, actions, furn)
+    if(!nonSexual)
+        ObjectReference furnObject = OFurniture.FindFurnitureOfType(furn, player, 1000)
+
+
+        if(furnObject)
+            OThreadBuilder.SetFurniture(builderId, furnObject)
+            newScene = TTON_Utils.getSceneByActions(actors, actions, furn)
+        else
+            OThreadBuilder.NoFurniture(builderId)
+            newScene = TTON_Utils.getSceneByActions(actors, actions)
+        endif
     else
+        newScene = TTON_Utils.getSceneByActions(actors, actions, nonSexual = true)
         OThreadBuilder.NoFurniture(builderId)
-        newScene = TTON_Utils.getSceneByActions(actors, actions)
+        OThreadBuilder.SetDuration(builderId, TTON_JData.GetMcmAffectionDuration() as float)
+        OThreadBuilder.NoAutoMode(builderId)
+        OThreadBuilder.NoPlayerControl(builderId)
     endif
+
 
     OThreadBuilder.SetStartingAnimation(builderID, newScene)
     int newThreadID = OThreadBuilder.Start(builderID)
+
+    if(nonSexual)
+        TTON_JData.SetThreadAffectionOnly(newThreadID, 1)
+    endif
 
     return newThreadID
 endfunction

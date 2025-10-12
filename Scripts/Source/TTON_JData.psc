@@ -172,6 +172,19 @@ int Function GetMcmDenyCooldown() global
     return val
 EndFunction
 
+Function SetMcmAffectionDuration(int value) global
+    SetMcmInt("affectionDuration", value)
+EndFunction
+
+int Function GetMcmAffectionDuration() global
+    int val = GetMcmInt("affectionDuration")
+    if(val == -1)
+        val = 20
+    endif
+
+    return val
+EndFunction
+
 ; Sets the start new sex enable flag
 ; 0 = disabled, 1 = enabled
 Function SetStartNewSexEnable(int enabled) global
@@ -237,6 +250,14 @@ EndFunction
 
 int Function GetThreadContinuationFrom(int ThreadID) global
     return GetThreadInt(ThreadID, "continuationFrom", -1)
+EndFunction
+
+Function SetThreadAffectionOnly(int ThreadID, int val = 1) global
+    SetThreadInt(ThreadID, "affectionOnly", val)
+EndFunction
+
+bool Function GetThreadAffectionOnly(int ThreadID) global
+    return GetThreadInt(ThreadID, "affectionOnly") == 1
 EndFunction
 
 ;/ ==============================

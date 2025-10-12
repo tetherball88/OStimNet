@@ -36,6 +36,10 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
-          body: "Automated release for ${{ github.ref_name }}"
+          body: |-
+            Automated release for ${{ github.ref_name }}
+
+            ## Release Notes
+            See the changelog for full details: https://github.com/${{ github.repository }}/blob/${{ github.ref_name }}/CHANGELOG.md
           files: |
             out/OStimNet_${{ github.ref_name }}.zip

@@ -8,6 +8,7 @@ scriptname TTON_Actions
 ; This is the main entry point for registering all sex-related actions.
 Function RegisterActions() global
     RegisterActionStartSex()
+    RegisterActionStartAffection()
     RegisterActionChangeSexPosition()
     RegisterActionSexInvite()
     RegisterActionSexJoin()
@@ -26,6 +27,54 @@ string Function GetTags() global
         return "BodyAnimation"
     endif
     return ""
+EndFunction
+
+;==========================================================================
+; Start Affection Scene Action
+; This action initiates a strictly non-sexual intimacy scene focused on
+; gentle interactions like kissing, hugging, or cuddling.
+; Parameters:
+;   partner1: Primary companion to share the affectionate moment (required)
+;   interaction: Specific gentle interaction to focus on (kiss | hug | cuddle)
+;==========================================================================
+
+; Registers the StartAffectionScene action with SkyrimNet.
+; @returns True if registration was successful, false otherwise
+Bool Function RegisterActionStartAffection() global
+    int res = SkyrimNetApi.RegisterAction("StartAffectionScene", \
+  "{% set speakingNpc = tton_get_speaking_npc_social_action_info(npc.UUID) %}Initiates a gentle, non-sexual intimacy scene with {{speakingNpc.name}} that focuses on cuddling, hugging, or kissing. Use when {{speakingNpc.name}} seeks emotional closeness without any sexual progression. Choose participants only from: {{speakingNpc.nearbyPotentialPartners}}. Select sensual action from: {{speakingNpc.actions}}.", \
+  "TTON_Actions", "StartAffectionSceneIsEligible", "TTON_Actions", "StartAffectionSceneAction", "", "PAPYRUS", 1, \
+  "{\"participant1\": \"Primary partner to share the affectionate moment (required)\", \"interaction\": \"Gentle interaction such as kiss | hug | cuddle\"}", \
+  "", GetTags())
+
+    return res == 1
+EndFunction
+
+; Placeholder eligibility check for the affection scene action.
+; Implementation should ensure actors are free from ongoing OStim threads and mutually willing.
+Bool Function StartAffectionSceneIsEligible(Actor akActor, string contextJson, string paramsJson) global
+    return !OActor.IsInOStim(akActor) && TTON_Utils.IsOStimEligible(akActor) && TTON_JData.IsActionAvailableAfterDeny(akActor, "startAffection") && TTON_JData.GetStartNewSexEnable()
+EndFunction
+
+; Placeholder handler for initiating the affection scene.
+; Actual implementation should be added when the underlying scene logic is available.
+Function StartAffectionSceneAction(Actor akActor, string contextJson, string paramsJson) global
+    string actions = SkyrimNetApi.GetJsonString(paramsJson, "type", "kissing")
+    Actor participant1 = TTON_Utils.GetEligibleActorFromParam(paramsJson, "participant1")
+
+    if(!participant1)
+        TTON_Debug.warn(TTON_Utils.GetActorName(akActor) + " wanted to start affection scene but failed to get participant1.")
+        return
+    endif
+
+    ; check if any of potential participants are already in other ostim threads
+    if(OActor.IsInOStim(akActor) || OActor.IsInOStim(participant1))
+        TTON_Debug.warn("Can't start new OStim scene one or more of potential participants is already a part of ongoing OStim thread.")
+        return
+    endif
+
+    Actor[] actors = OActorUtil.ToArray(akActor, participant1)
+    TTON_OStimIntegration.StartOstim(actors, actions, nonSexual = true, initiator = akActor)
 EndFunction
 
 ;==========================================================================
@@ -104,7 +153,8 @@ EndFunction
 ; @param paramsJson The parameters data in JSON format
 ; @returns True if the actor is currently in an OStim scene
 Bool Function ChangeSexPositionIsElgigible(Actor akActor, string contextJson, string paramsJson) global
-    return OActor.IsInOStim(akActor) && TTON_JData.IsActionAvailableAfterDeny(akActor, "sceneChange")
+    int ThreadID =OActor.GetSceneID(akActor)
+    return OActor.IsInOStim(akActor) && TTON_JData.IsActionAvailableAfterDeny(akActor, "sceneChange") && !TTON_JData.GetThreadAffectionOnly(ThreadID)
 EndFunction
 
 ; Changes the sexual position or activity in an ongoing encounter
@@ -141,7 +191,8 @@ EndFunction
 ; @param paramsJson The parameters data in JSON format
 ; @returns True if the actor is currently in an OStim scene
 Bool Function SexInviteIsElgigible(Actor akActor, string contextJson, string paramsJson) global
-    return OActor.IsInOStim(akActor) && TTON_JData.IsActionAvailableAfterDeny(akActor, "invite")
+    int ThreadID =OActor.GetSceneID(akActor)
+    return OActor.IsInOStim(akActor) && TTON_JData.IsActionAvailableAfterDeny(akActor, "invite") && !TTON_JData.GetThreadAffectionOnly(ThreadID)
 EndFunction
 
 ; Handles the invitation of new participants to an ongoing sexual encounter
@@ -234,6 +285,9 @@ Bool Function SexJoinAction(Actor akActor, string contextJson, string paramsJson
     if(StorageUtil.GetIntValue(akTarget, "SexInviteConsidering") == 1)
         return false
     endif
+    if(TTON_JData.GetThreadAffectionOnly(ThreadID))
+        return false
+    endif
     StorageUtil.SetIntValue(akTarget, "SexInviteConsidering", 1)
     TTON_OStimIntegration.AddActorsToActiveThread(ThreadID, OActorUtil.ToArray(akActor), "selfjoin", akActor)
 EndFunction
@@ -264,7 +318,7 @@ Bool Function SexChangePaceIsElgigible(Actor akActor, string contextJson, string
     string SceneId = OThread.GetScene(ThreadId)
     int currentSpeed = OThread.GetSpeed(ThreadId)
     string hasSpeedsToMove = TTON_Utils.GetAvailableSpeedDirections(SceneId, currentSpeed)
-    return OActor.IsInOStim(akActor) && hasSpeedsToMove != "none"
+    return OActor.IsInOStim(akActor) && hasSpeedsToMove != "none" && !TTON_JData.GetThreadAffectionOnly(ThreadId)
 EndFunction
 
 ; Changes the pace of the current sexual activity
@@ -303,7 +357,8 @@ EndFunction
 ; @param paramsJson The parameters data in JSON format
 ; @returns True if the actor is currently in an OStim scene
 bool Function StopSexIsEligible(Actor akActor, string contextJson, string paramsJson) global
-    return OActor.IsInOStim(akActor) &&  TTON_JData.IsActionAvailableAfterDeny(akActor, "stopSex")
+    int ThreadID =OActor.GetSceneID(akActor)
+    return OActor.IsInOStim(akActor) &&  TTON_JData.IsActionAvailableAfterDeny(akActor, "stopSex") && !TTON_JData.GetThreadAffectionOnly(ThreadID)
 EndFunction
 
 ; Stops the current sexual encounter
