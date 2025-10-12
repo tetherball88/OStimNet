@@ -14,11 +14,12 @@
 **{{npcName}}** is observing this sexual encounter:
             {% endif %}
             {% if responseTarget.UUID %}
+                {% set responseTargetName = decnpc(responseTarget.UUID).name %}
                 {% set targetScene = tton_ostim_npc_sex_scene(responseTarget.UUID) %}
                 {% if targetScene and targetScene.sceneId == scene.sceneId %}
-- **{{npcName}}** is {% if targetScene.isInThisScene %} participating in this same scene{% else %}watching this scene{% endif %}
+- **{{responseTargetName}}** is {% if targetScene.isInThisScene %}participating in this same scene{% else %}watching this scene{% endif %}
                 {% else %}
-- **{{npcName}}** is {% if targetScene.isInThisScene %}participating in a different sexual scene{% else %}not involved in any sexual activity{% endif %}
+- **{{responseTargetName}}** is {% if targetScene.isInThisScene %}participating in a different sexual scene{% else %}not involved in any sexual activity{% endif %}
                 {% endif %}
             {% endif %}
 {{ scene.description }}

@@ -57,7 +57,7 @@ EndFunction
 ; @param paramsJson The parameters data in JSON format
 ; @returns True if the actor is eligible to start a new sexual encounter
 Bool Function StartSexActionIsElgigible(Actor akActor, string contextJson, string paramsJson) global
-    return !OActor.IsInOStim(akActor) && TTON_Utils.IsOStimEligible(akActor) && TTON_JData.IsActionAvailableAfterDeny(akActor, "startSex")
+    return !OActor.IsInOStim(akActor) && TTON_Utils.IsOStimEligible(akActor) && TTON_JData.IsActionAvailableAfterDeny(akActor, "startSex") && TTON_JData.GetStartNewSexEnable()
 EndFunction
 
 ; Starts a new sexual encounter with specified participants

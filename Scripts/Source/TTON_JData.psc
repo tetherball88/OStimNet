@@ -172,6 +172,22 @@ int Function GetMcmDenyCooldown() global
     return val
 EndFunction
 
+; Sets the start new sex enable flag
+; 0 = disabled, 1 = enabled
+Function SetStartNewSexEnable(int enabled) global
+    SetMcmInt("startNewSexEnable", enabled)
+EndFunction
+
+; Gets the start new sex enable flag
+; default is enabled (true)
+bool Function GetStartNewSexEnable() global
+    int val = GetMcmInt("startNewSexEnable")
+    if(val == -1)
+        val = 1
+    endif
+    return val == 1
+EndFunction
+
 ;/ ==============================
    SECTION: Temporary data which cleans on each load
 ============================== /;
