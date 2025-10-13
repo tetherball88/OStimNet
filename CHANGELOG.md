@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.2.1] - 2025-10-12
+### Changed
+- Temporarily disable the `BodyAnimation` tag when SkyrimNet Cuddle or SexLab integrations are present so encounters are not misclassified until tag handling is corrected.
+
 ## [v0.2.0] - 2025-10-12
 ### Added
 - `StartAffectionScene` action so NPCs can initiate gentle, non-sexual encounters with curated interaction prompts.

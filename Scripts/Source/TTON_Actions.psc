@@ -24,7 +24,9 @@ string Function GetTags() global
     Form cuddle = Game.GetFormFromFile(0x800, "SkyrimNet_Cuddle.esp")
     Form sexlab = Game.GetFormFromFile(0x800, "SkyrimNet_SexLab.esp")
     if(cuddle || sexlab)
-        return "BodyAnimation"
+        ; commenting it for now until wind's sexlab/cuddle implement tag begavior
+        ; return "BodyAnimation"
+        return ""
     endif
     return ""
 EndFunction
