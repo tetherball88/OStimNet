@@ -2,10 +2,10 @@
     {% set npcName = decnpc(npc.UUID).name %}
     {% set scenesData = tton_ostim_ongoing_scenes(npc.UUID) %}
     {% if isArray(scenesData.scenes) and length(scenesData.scenes) > 0 %}
-{{ "## Intimate Scenes Context "}}
+{{ "### Intimate Scenes Context"}}
         {% for scene in scenesData.scenes %}
             {% if length(scenesData.scenes) > 1 %}
-{{ "### Scene " }}{{ loop.index }}:
+{{ "#### Scene " }}{{ loop.index }}:
             {% endif %}
 
             {% if scene.isInThisScene %}

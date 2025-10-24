@@ -46,7 +46,7 @@ Bool Function RegisterActionStartAffection() global
     int res = SkyrimNetApi.RegisterAction("StartAffectionScene", \
   "{% set speakingNpc = tton_get_speaking_npc_social_action_info(npc.UUID) %}Initiates a gentle, non-sexual intimacy scene with {{speakingNpc.name}} that focuses on cuddling, hugging, or kissing. Use when {{speakingNpc.name}} seeks emotional closeness without any sexual progression. Choose participants only from: {{speakingNpc.nearbyPotentialPartners}}. Select sensual action from: {{speakingNpc.actions}}.", \
   "TTON_Actions", "StartAffectionSceneIsEligible", "TTON_Actions", "StartAffectionSceneAction", "", "PAPYRUS", 1, \
-  "{\"participant1\": \"Primary partner to share the affectionate moment (required)\", \"interaction\": \"Gentle interaction such as kiss | hug | cuddle\"}", \
+  "{\"participant1\": \"Primary partner to share the affectionate moment (required)\", \"interaction\": \"Select one interaction from provided list\"}", \
   "", GetTags())
 
     return res == 1

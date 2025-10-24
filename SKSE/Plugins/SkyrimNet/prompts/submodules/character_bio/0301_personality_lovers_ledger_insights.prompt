@@ -7,7 +7,7 @@
         {# Start if totalEncounters #}
         {% if totalEncounters > 0 %}
             {% if render_mode == "full" %}
-{{ "## Character Insights from Intimate History" }}
+{{ "## Character Sexual Behavior" }}
             {% endif %}
             {% set sameSexRatio = npcData.sameSexEncounter / totalEncounters %}
             {% set soloRatio = npcData.soloSex / totalEncounters %}

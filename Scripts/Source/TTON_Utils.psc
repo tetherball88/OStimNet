@@ -204,8 +204,10 @@ string Function GetSceneDescription(string sceneId, Actor[] actors) global
 
     string description = ""
 
+    TTON_Debug.trace("GetSceneDescription: sceneId=" + sceneId + ", baseSceneId=" + baseSceneId + ", actors=" + actorsStrArr)
+
     if(template)
-        description = SkyrimNetApi.ParseString(template, "sceneData", "{\"actors\": "+actorsStrArr+"}")
+        description = SkyrimNetApi.ParseString(template, "scenedata", "{\"actors\": "+actorsStrArr+"}")
     endif
 
     if(!description)

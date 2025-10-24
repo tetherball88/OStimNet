@@ -1,0 +1,43 @@
+{% if not isTimePaused and (render_mode == "full" or render_mode == "thoughts" or render_mode == "transform") %}
+    {% set npcData = tton_get_npc_sexual_data(actorUUID) %}
+    {% set npcName = decnpc(actorUUID).name %}
+    {% if npcData and npcData.totalEncounters > 0 %}
+        {% if isArray(npcData.lovers) and length(npcData.lovers) > 0 %}
+{{ "### Intimate Relationships" }}
+            {% for loverData in npcData.lovers %}
+                {% if loverData.score > 0 %}
+                    {% set relationship_type = "" %}
+                    {% set intensity = "" %}
+                    {% set recency = "" %}
+                    {% set loverEncounters = loverData.exclusiveSex + loverData.groupSex %}
+                    {% set encounterRatio = loverEncounters / npcData.totalEncounters %}
+                    {% if loverData.exclusiveSex > loverData.groupSex * 3 %}
+                        {% set relationship_type = "deeply personal" %}
+                    {% else if loverData.exclusiveSex > loverData.groupSex %}
+                        {% set relationship_type = "somewhat intimate" %}
+                    {% else %}
+                        {% set relationship_type = "casual" %}
+                    {% endif %}
+                    {% if encounterRatio > 0.5 %}
+                        {% set intensity = "primary" %}
+                    {% else if encounterRatio > 0.3 %}
+                        {% set intensity = "significant" %}
+                    {% else if encounterRatio > 0.15 %}
+                        {% set intensity = "notable" %}
+                    {% else %}
+                        {% set intensity = "occasional" %}
+                    {% endif %}
+                    {% if npcData.daysAgo <= 3 %}
+                        {% set recency = "with ongoing interactions" %}
+                    {% else if npcData.daysAgo <= 7 %}
+                        {% set recency = "with some recent interactions" %}
+                    {% else %}
+                        {% set recency = "but interactions have ceased for a while" %}
+                    {% endif %}
+- **{{ loverData.name }}**: A {{ relationship_type }}, {{ intensity }} connection {{ recency }} {% if loverData.exclusiveSex > 0 and loverData.groupSex == 0 %} (exclusively one-on-one encounters) {% else if loverData.exclusiveSex == 0 and loverData.groupSex > 0 %} (only in group settings) {% else if loverData.exclusiveSex > 0 and loverData.groupSex > 0 %} (mix of private and group encounters) {% endif %}
+                {% endif %}
+            {% endfor %}
+When developing {{ npcName }}'s relationships and social dynamics, consider how these past and current intimate connections might influence their behavior, trust levels, and emotional attachments. The nature, intensity, and recency of these relationships could affect how they interact with these individuals and potentially shape their broader attitudes toward intimacy and commitment.
+        {% endif %}
+    {% endif %}
+{% endif %}
