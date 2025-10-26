@@ -1,6 +1,11 @@
 {% if not isTimePaused and get_global_value("TTON_IsOstimActive") == 1.0 %}
     {% set sceneData = tton_ostim_npc_sex_scene(npc.UUID) %}
     {% if sceneData and sceneData.isInThisScene %}
-Generate natural, character-consistent dialogue as someone engaged in an intimate encounter, expressing physical and emotional reactions to the scene while responding authentically to any questions or comments from partners or others, maintaining your passionate state and personality throughout any interaction.
+{{sceneData}}
+        {% if sceneData.isSexual %}
+Stay firmly in character while delivering explicit dialogue that directly references the current sexual activity. Respond naturally to recent events and conversations, maintaining your established personality, previously expressed consent or refusal, and relationship dynamics throughout the intimate encounter.
+        {% else %}
+During this non-sexual interaction, continue to embody your character's personality and relationship dynamics. Engage in affectionate behaviors and dialogue that reflect your established connections, ensuring the scene feels genuine and true to your character's nature.
+        {% endif %}
     {% endif %}
 {% endif %}

@@ -4,8 +4,7 @@ scriptname TTON_OStimIntegration
 ; @param actors Array of actors to include in the scene
 ; @param actions Optional scene actions or actions to filter by
 ; @returns Thread ID of the new scene, or -1 if failed
-int function StartOstim(actor[] actors, string actions = "", string furn = "", bool continuation = false, Actor initiator = none, bool nonSexual = false) global
-    TTON_Debug.trace("StartOstim called with actors: " + TTON_Utils.GetActorsNamesComaSeparated(actors) + ", actions: " + actions + ", furn: " + furn + ", continuation: " + continuation + ", initiator: " + TTON_Utils.GetActorName(initiator) + ", nonSexual: " + nonSexual)
+int function StartOstim(actor[] actors, string actions = "", string furn = "", bool continuation = false, Actor initiator = none, bool nonSexual = false, string type = "") global
     Actor player = TTON_JData.GetPlayer()
     actors = OActorUtil.Sort(actors, OActorUtil.EmptyArray())
     bool someActorsBusy = false
@@ -26,18 +25,26 @@ int function StartOstim(actor[] actors, string actions = "", string furn = "", b
     endif
     if(hasPlayer && !continuation)
         if(nonSexual)
-            bool yes = TTON_Utils.ShowConfirmMessage("An affectionate non-sexual scene with " + TTON_Utils.GetActorsNamesComaSeparated(actors) + " is about to begin. Do you accept?", "confirmStartAffection")
+            if(type == "")
+                type = "non-sexual interaction"
+            endif
+            bool yes = TTON_Utils.ShowConfirmMessage(TTON_Utils.GetActorName(initiator) + " wants to have " + type + " with " + TTON_Utils.GetActorsNamesComaSeparated(actors, initiator) + ". Do you accept?", "confirmStartAffection")
+            ; bool yes = TTON_Utils.ShowConfirmMessage("An affectionate non-sexual scene with " + TTON_Utils.GetActorsNamesComaSeparated(actors) + " is about to begin. Do you accept?", "confirmStartAffection")
             if(!yes)
                 TTON_JData.SetDeniedLastTime(initiator, "startAffection")
-                TTON_Utils.RequestSexComment(TTON_Utils.GetActorName(initiator) + " wanted to have an affectionate non-sexual moment with " + TTON_Utils.GetActorName(player) + ", but for some reason "+TTON_Utils.GetActorName(player)+" declined it.", \
+                TTON_Utils.RequestSexComment(TTON_Utils.GetActorName(initiator) + " wanted to start "+ type +" with " + TTON_Utils.GetActorName(player) + ", but for some reason "+TTON_Utils.GetActorName(player)+" declined it.", \
                 speaker = initiator )
                 return -1
             endif
         else
-            bool yes = TTON_Utils.ShowConfirmMessage("Sexual encounter about to begin with " + TTON_Utils.GetActorsNamesComaSeparated(actors) + ". Do you accept?", "confirmStartSex")
+            if(type == "")
+                type = "sexual encounter"
+            endif
+            ; bool yes = TTON_Utils.ShowConfirmMessage("Sexual encounter about to begin with " + TTON_Utils.GetActorsNamesComaSeparated(actors) + ". Do you accept?", "confirmStartSex")
+            bool yes = TTON_Utils.ShowConfirmMessage(TTON_Utils.GetActorName(initiator) + " wants to have " + type + " with " + TTON_Utils.GetActorsNamesComaSeparated(actors, initiator) + ". Do you accept?", "confirmStartSex")
             if(!yes)
                 TTON_JData.SetDeniedLastTime(initiator, "startSex")
-                TTON_Utils.RequestSexComment(TTON_Utils.GetActorName(initiator) + " wanted to have sex with " + TTON_Utils.GetActorName(player) + ", but for some reason "+TTON_Utils.GetActorName(player)+" declined it.", \
+                TTON_Utils.RequestSexComment(TTON_Utils.GetActorName(initiator) + " wanted to have " + type + " with " + TTON_Utils.GetActorName(player) + ", but for some reason "+TTON_Utils.GetActorName(player)+" declined it.", \
                 speaker = initiator )
                 return -1
             endif
@@ -48,15 +55,23 @@ int function StartOstim(actor[] actors, string actions = "", string furn = "", b
     string newScene
 
     if(!nonSexual)
-        ObjectReference furnObject = OFurniture.FindFurnitureOfType(furn, player, 1000)
+        ; Check if player furniture selection is enabled
+        bool allowPlayerFurnitureSelection = TTON_JData.GetAllowPlayerFurnitureSelection()
 
-
-        if(furnObject)
-            OThreadBuilder.SetFurniture(builderId, furnObject)
-            newScene = TTON_Utils.getSceneByActions(actors, actions, furn)
-        else
-            OThreadBuilder.NoFurniture(builderId)
+        if(allowPlayerFurnitureSelection)
+            ; Don't assign furniture automatically, let player choose during scene
             newScene = TTON_Utils.getSceneByActions(actors, actions)
+        else
+            ; Use automatic furniture detection (original behavior)
+            ObjectReference furnObject = OFurniture.FindFurnitureOfType(furn, player, 1000)
+
+            if(furnObject)
+                OThreadBuilder.SetFurniture(builderId, furnObject)
+                newScene = TTON_Utils.getSceneByActions(actors, actions, furn)
+            else
+                OThreadBuilder.NoFurniture(builderId)
+                newScene = TTON_Utils.getSceneByActions(actors, actions)
+            endif
         endif
     else
         newScene = TTON_Utils.getSceneByActions(actors, actions, nonSexual = true)

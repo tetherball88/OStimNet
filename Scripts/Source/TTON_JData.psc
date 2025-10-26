@@ -159,6 +159,19 @@ int Function GetMcmCommentsGenderWeight() global
     return val
 EndFunction
 
+Function SetMcmCommentsDistance(int value) global
+    SetMcmInt("sexCommentsDistance", value)
+EndFunction
+
+int Function GetMcmCommentsDistance() global
+    int val = GetMcmInt("sexCommentsDistance")
+    if(val == -1)
+        val = 768
+    endif
+
+    return val
+EndFunction
+
 Function SetMcmDenyCooldown(int value) global
     SetMcmInt("denyCooldown", value)
 EndFunction
@@ -199,6 +212,12 @@ bool Function GetStartNewSexEnable() global
         val = 1
     endif
     return val == 1
+EndFunction
+
+; Gets the allow player furniture selection flag
+; default is disabled (false)
+bool Function GetAllowPlayerFurnitureSelection() global
+    return GetMcmCheckbox("allowPlayerFurnitureSelection", 0)
 EndFunction
 
 ;/ ==============================

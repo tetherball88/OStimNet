@@ -9,9 +9,11 @@ int property oid_EnableStartAffectionateConfirmationModal auto
 int property oid_EnableChangePositionConfirmationModal auto
 int property oid_EnableAddNewActorsConfirmationModal auto
 int property oid_EnableStopSexConfirmationModal auto
+int property oid_AllowPlayerFurnitureSelection auto
 
 int property oid_SexCommentsFrequency auto
 int property oid_SexCommentsGenderWeight auto
+int property oid_SexCommentsDistance auto
 
 int property oid_DeniesCooldown auto
 int property oid_AffectionSceneDuration auto
@@ -46,12 +48,17 @@ Function RenderLeftColumn()
     oid_EnableAddNewActorsConfirmationModal = AddToggleOption("Add another actors confirmation modal:", TTON_JData.GetMcmCheckbox("confirmAddActors"))
     oid_EnableStopSexConfirmationModal = AddToggleOption("Enable stop sex confirmation modal:", TTON_JData.GetMcmCheckbox("confirmStopSex"))
 
+    AddHeaderOption("OStim Settings: ")
+    oid_AllowPlayerFurnitureSelection = AddToggleOption("Allow player to select furniture:", TTON_JData.GetMcmCheckbox("allowPlayerFurnitureSelection"))
+
     AddHeaderOption("Sex comments: ")
     float frequency = TTON_JData.GetMcmCommentsFrequency() as float
     float genderWeight = TTON_JData.GetMcmCommentsGenderWeight() as float
+    float distance = TTON_JData.GetMcmCommentsDistance() as float
 
     oid_SexCommentsFrequency = AddSliderOption("Cooldown between triggering sex comments:", frequency)
     oid_SexCommentsGenderWeight = AddSliderOption("Which gender has more chances to start comment:", genderWeight)
+    oid_SexCommentsDistance = AddSliderOption("Max distance from player to generate comments:", distance)
 
     AddHeaderOption("Affection scenes: ")
     float affectionDuration = TTON_JData.GetMcmAffectionDuration() as float
@@ -90,6 +97,8 @@ event OnOptionSelect(int option)
         SetToggleOptionValue(oid_EnableAddNewActorsConfirmationModal, TTON_JData.ToggleMcmCheckbox("confirmAddActors"))
     elseif(option == oid_EnableStopSexConfirmationModal)
         SetToggleOptionValue(oid_EnableStopSexConfirmationModal, TTON_JData.ToggleMcmCheckbox("confirmStopSex"))
+    elseif(option == oid_AllowPlayerFurnitureSelection)
+        SetToggleOptionValue(oid_AllowPlayerFurnitureSelection, TTON_JData.ToggleMcmCheckbox("allowPlayerFurnitureSelection"))
     endif
 endevent
 
@@ -111,10 +120,14 @@ event OnOptionHighlight(int option)
         SetInfoText("Toggle confirmation modal. When in player's scene npc will invite somebody else, or outside npc will decide to join - it will ask player's confirmation.")
     elseif(option == oid_EnableStopSexConfirmationModal)
         SetInfoText("Toggle confirmation modal. When npc decides to stop player's OStim scene - it will ask player's confirmation. If player say no - scene will be marked as forced(not agressive though)")
+    elseif(option == oid_AllowPlayerFurnitureSelection)
+        SetInfoText("When enabled, OStim will not automatically assign furniture and will allow the player to select furniture during scene. When disabled, OStim will automatically find and assign suitable furniture.")
     elseif(option == oid_SexCommentsFrequency)
         SetInfoText("Set in seconds interval between sex comments can be triggered during OStim events")
     elseif(option == oid_SexCommentsGenderWeight)
         SetInfoText("Set chances of specific gender to make comments during OStim scenes. 0 - always male, 100 - always female, 50 - 50%/50% that male/female will be selected. Works only if scene has more than one gender.")
+    elseif(option == oid_SexCommentsDistance)
+        SetInfoText("Set maximum distance in game units from player at which sex comments will be generated. 0 = unlimited distance. Ignored if speaker is in the line of sight of player.")
     elseif(option == oid_AffectionSceneDuration)
         SetInfoText("Set duration in seconds for affectionate non-sexual scenes. Scene stops automatically when time expires.")
     elseif(option == oid_DeniesCooldown)
@@ -140,6 +153,12 @@ event OnOptionSliderOpen(int a_option)
         startRange = 0
         endRange = 100
         interval = 1
+    elseif(a_option == oid_SexCommentsDistance)
+        startValue = TTON_JData.GetMcmCommentsDistance() as float
+        defaultValue = 768.0
+        startRange = 0
+        endRange = 10240
+        interval = 64
     elseif(a_option == oid_AffectionSceneDuration)
         startValue = TTON_JData.GetMcmAffectionDuration() as float
         defaultValue = 20.0
@@ -166,6 +185,8 @@ event OnOptionSliderAccept(int a_option, float a_value)
         TTON_JData.SetMcmCommentsFrequency(a_value as int)
     elseif(a_option == oid_SexCommentsGenderWeight)
         TTON_JData.SetMcmCommentsGenderWeight(a_value as int)
+    elseif(a_option == oid_SexCommentsDistance)
+        TTON_JData.SetMcmCommentsDistance(a_value as int)
     elseif(a_option == oid_AffectionSceneDuration)
         TTON_JData.SetMcmAffectionDuration(a_value as int)
     elseif(a_option == oid_DeniesCooldown)
@@ -180,6 +201,9 @@ event OnOptionDefault(int a_option)
     elseif(a_option == oid_SexCommentsGenderWeight)
         SetSliderDialogStartValue(50)
         TTON_JData.SetMcmCommentsGenderWeight(50)
+    elseif(a_option == oid_SexCommentsDistance)
+        SetSliderDialogStartValue(2048)
+        TTON_JData.SetMcmCommentsDistance(2048)
     elseif(a_option == oid_AffectionSceneDuration)
         SetSliderDialogStartValue(30)
         TTON_JData.SetMcmAffectionDuration(30)

@@ -64,7 +64,7 @@ Function RegisterSexClimaxEvent(int ThreadID, Actor orgasmedActor) global
 
     msg +=  " during sexual activity with " + TTON_Utils.GetActorsNamesComaSeparated(actors)
 
-    bool requestedComment = TTON_Utils.RequestSexComment(msg, speaker = orgasmedActor)
+    bool requestedComment = TTON_Utils.RequestSexComment(msg, speaker = orgasmedActor, ignoreCooldown = true)
 
     if(!requestedComment)
         string renderParams = "{\"recent_events\":\"{{msg}}\",\"raw\":\"{{msg}}\",\"compact\":\"{{msg}}\",\"verbose\":\"{{msg}}\"}"
@@ -117,7 +117,7 @@ Function RegisterSexStopEvent(int ThreadID) global
     string type = "tton_sex_stop"
     string jsonData = "{\"msg\": \""+msg+"\"}"
     SkyrimNetApi.RegisterEvent(type, jsonData, actors[0], none)
-    TTON_Utils.RequestSexComment(TTON_Utils.GetActorsNamesComaSeparated(actors) + " just finished their sexual encounter. Based on the recent context, generate a single in-character, post-sex comment that reflects how the encounter likely went.", actors)
+    TTON_Utils.RequestSexComment(TTON_Utils.GetActorsNamesComaSeparated(actors) + " just finished their sexual encounter. Based on the recent context, generate a single in-character, post-sex comment that reflects how the encounter likely went.", actors, none, true)
 EndFunction
 
 Function RegisterStopSexDeniedEvent(int ThreadID, Actor initiator) global

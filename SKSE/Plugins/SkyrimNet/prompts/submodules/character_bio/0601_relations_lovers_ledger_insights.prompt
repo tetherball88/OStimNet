@@ -27,9 +27,9 @@
                     {% else %}
                         {% set intensity = "occasional" %}
                     {% endif %}
-                    {% if npcData.daysAgo <= 3 %}
+                    {% if loverData.daysAgo <= 3 %}
                         {% set recency = "with ongoing interactions" %}
-                    {% else if npcData.daysAgo <= 7 %}
+                    {% else if loverData.daysAgo <= 7 %}
                         {% set recency = "with some recent interactions" %}
                     {% else %}
                         {% set recency = "but interactions have ceased for a while" %}

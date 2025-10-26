@@ -177,8 +177,19 @@ EndFunction
 ; Converts an array of actors into a comma-separated string of their names
 ; @param actors Array of actors to convert
 ; @returns Comma-separated string of actor names
-string Function GetActorsNamesComaSeparated(Actor[] actors) global
-    return PapyrusUtil.StringJoin(OActorUtil.ActorsToNames(actors), ", ")
+string Function GetActorsNamesComaSeparated(Actor[] actors, Actor exclude = none) global
+    int i = 0
+    string res = ""
+    while(i < actors.Length)
+        if(actors[i] != exclude)
+            if(res != "")
+                res += ", "
+            endif
+            res += TTON_Utils.GetActorName(actors[i])
+        endif
+        i += 1
+    endwhile
+    return res
 EndFunction
 
 ;==========================================================================
@@ -231,8 +242,9 @@ string Function GetOStimSexSceneJson(Actor npc, int ThreadId) global
     string actorsStrArr = GetActorsNamesJson(actors, ThreadID, true)
 
     string description = GetSceneDescription(sceneId, actors)
+    string isSexual = TTLL_OstimThreadsCollector.GetHadSex(ThreadId)
 
-    return "{\"isInThisScene\": "+isInThisScene+", \"sceneId\": \""+sceneId+"\", \"actors\": "+actorsStrArr+",  \"description\": \""+description+"\"}"
+    return "{\"isInThisScene\": "+isInThisScene+", \"sceneId\": \""+sceneId+"\", \"actors\": "+actorsStrArr+",  \"description\": \""+description+"\", \"isSexual\": "+isSexual+"}"
 EndFunction
 
 
@@ -318,8 +330,9 @@ bool Function ShowConfirmMessage(string msg, string type) global
     return result == "Yes"
 EndFunction
 
-bool Function RequestSexComment(string msg, Actor[] actors = none, Actor speaker = none) global
-    if(!TTON_JData.CanMakeLastComment())
+bool Function RequestSexComment(string msg, Actor[] actors = none, Actor speaker = none, bool ignoreCooldown = false) global
+    TTON_Debug.trace("RequestSexComment: ignoreCooldown=" + ignoreCooldown)
+    if(!ignoreCooldown && !TTON_JData.CanMakeLastComment())
         return false
     endif
 
@@ -328,6 +341,21 @@ bool Function RequestSexComment(string msg, Actor[] actors = none, Actor speaker
             return false
         endif
         speaker = GetWeightedRandomActorToSpeak(actors)
+    endif
+
+    ; Check distance from player if distance limit is set
+    int maxDistance = TTON_JData.GetMcmCommentsDistance()
+    if(maxDistance > 0)
+        Actor player = TTON_JData.GetPlayer()
+        if(player && speaker)
+            float distance = player.GetDistance(speaker)
+            ; Ignore distance check if player has line of sight to the speaker
+            bool hasLineOfSight = player.HasLOS(speaker)
+            TTON_Debug.trace("RequestSexComment: Speaker distance from player=" + distance + ", maxDistance=" + maxDistance + ", hasLineOfSight=" + hasLineOfSight)
+            if(distance > maxDistance && !hasLineOfSight)
+                return false
+            endif
+        endif
     endif
 
     TTON_JData.SetLastCommentTime()
@@ -339,13 +367,16 @@ EndFunction
 ; if it's player only scene it will return none
 ; assume that actors are only actors from scene
 actor Function GetWeightedRandomActorToSpeak(actor[] actors) global
+    TTON_Debug.trace("GetWeightedRandomActorToSpeak: actors length=" + actors.length)
     Actor player = TTON_JData.GetPlayer()
     actor[] maleActors = PapyrusUtil.ActorArray(0)
     actor[] femaleActors = PapyrusUtil.ActorArray(0)
-    int count = 0
-    if !actors || count == 0
+
+    if !actors || actors.Length == 0
         return none
     endif
+
+    int count = 0
     while count < actors.Length
         actor currActor = actors[count]
         int currSex = GetGender(currActor)
