@@ -75,11 +75,22 @@ string function getSceneByActions(actor[] actors, string actions, string furn = 
 
     if(!nonSexual)
         if(furn != "")
-            newScene = OLibrary.GetRandomSceneSuperloadCSV(actors, furn, AnyActionType = actions)
-
-            ; still no match, try any sexual scene
+            if(OFurniture.IsChildOf("bed", furn))
+                ; prioritize scenes without standing actors if bed is used
+                newScene = OLibrary.GetRandomSceneSuperloadCSV(actors, furn, AnyActionType = actions, ActorTagBlacklistForAll ="standing")
+                if(newScene == "")
+                    ; while using bed, prioritize finding scene without standing actors over specific action types
+                    newScene = OLibrary.GetRandomSceneSuperloadCSV(actors, furn, ActionWhitelistTypes = "sexual", ActorTagBlacklistForAll ="standing")
+                endif
+            endif
             if(newScene == "")
-                newScene = OLibrary.GetRandomSceneSuperloadCSV(actors, furn, ActionWhitelistTypes = "sexual")
+                ; try to find by action with furniture
+                newScene = OLibrary.GetRandomSceneSuperloadCSV(actors, furn, AnyActionType = actions)
+
+                ; still no match, try any sexual scene
+                if(newScene == "")
+                    newScene = OLibrary.GetRandomSceneSuperloadCSV(actors, furn, ActionWhitelistTypes = "sexual")
+                endif
             endif
         else
             ; prioritize scenes with at least one standing actor if no furniture specified
@@ -264,7 +275,7 @@ EndFunction
 ; @param npc The actor to check for eligibility
 ; @returns True if the actor is eligible (not a child and passes OStim verification)
 bool Function IsOStimEligible(Actor npc) global
-    return !OUtils.IsChild(npc) && OActor.VerifyActors(OActorUtil.ToArray(npc))
+    return !OUtils.IsChild(npc) && OActor.VerifyActors(OActorUtil.ToArray(npc)) && !npc.IsInDialogueWithPlayer()
 EndFunction
 
 ; Gets an eligible actor from JSON parameters

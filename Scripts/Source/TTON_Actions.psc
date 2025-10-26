@@ -167,6 +167,7 @@ EndFunction
 Bool Function ChangeSexPositionAction(Actor akActor, string contextJson, string paramsJson) global
     string type = SkyrimNetApi.GetJsonString(paramsJson, "type", "empty")
     TTON_OStimIntegration.OStimChangeScene(akActor, type)
+    SkyrimNetApi.SetActionCooldown("ChangeSexPosition", TTON_JData.GetMcmDenyCooldown())
 EndFunction
 
 ;==========================================================================
@@ -369,5 +370,6 @@ EndFunction
 ; @param paramsJson The parameters data in JSON format
 Function StopSexAction(Actor akActor, string contextJson, string paramsJson) global
     TTON_OStimIntegration.StopOStim(akActor)
+    SkyrimNetApi.SetActionCooldown("StopSex", TTON_JData.GetMcmDenyCooldown())
 EndFunction
 
