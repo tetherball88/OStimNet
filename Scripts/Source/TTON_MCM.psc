@@ -41,39 +41,38 @@ Function RenderPage()
 EndFunction
 
 Function RenderLeftColumn()
-    AddHeaderOption("Confirmation messages: ")
-    oid_EnableStartSexConfirmationModal = AddToggleOption("Enable start sex confirmation modal:", TTON_JData.GetMcmCheckbox("confirmStartSex"))
-    oid_EnableStartAffectionateConfirmationModal = AddToggleOption("Enable start affectionate confirmation modal:", TTON_JData.GetMcmCheckbox("confirmStartAffection"))
-    oid_EnableChangePositionConfirmationModal = AddToggleOption("Enable change scene confirmation modal:", TTON_JData.GetMcmCheckbox("confirmChangeScene"))
-    oid_EnableAddNewActorsConfirmationModal = AddToggleOption("Add another actors confirmation modal:", TTON_JData.GetMcmCheckbox("confirmAddActors"))
-    oid_EnableStopSexConfirmationModal = AddToggleOption("Enable stop sex confirmation modal:", TTON_JData.GetMcmCheckbox("confirmStopSex"))
+    AddHeaderOption("Player Consent & Control")
+    oid_EnableStartSexConfirmationModal = AddToggleOption("Confirm before sex scenes:", TTON_JData.GetMcmCheckbox("confirmStartSex"))
+    oid_EnableStartAffectionateConfirmationModal = AddToggleOption("Confirm before affection scenes:", TTON_JData.GetMcmCheckbox("confirmStartAffection"))
+    oid_EnableStopSexConfirmationModal = AddToggleOption("Confirm before stopping scenes:", TTON_JData.GetMcmCheckbox("confirmStopSex"))
+    oid_AllowPlayerFurnitureSelection = AddToggleOption("Allow manual furniture selection:", TTON_JData.GetMcmCheckbox("allowPlayerFurnitureSelection"))
 
-    AddHeaderOption("OStim Settings: ")
-    oid_AllowPlayerFurnitureSelection = AddToggleOption("Allow player to select furniture:", TTON_JData.GetMcmCheckbox("allowPlayerFurnitureSelection"))
+    AddHeaderOption("Scene Management")
+    oid_EnableChangePositionConfirmationModal = AddToggleOption("Confirm scene position changes:", TTON_JData.GetMcmCheckbox("confirmChangeScene"))
+    oid_EnableAddNewActorsConfirmationModal = AddToggleOption("Confirm adding new actors:", TTON_JData.GetMcmCheckbox("confirmAddActors"))
 
-    AddHeaderOption("Sex comments: ")
+    float affectionDuration = TTON_JData.GetMcmAffectionDuration() as float
+    oid_AffectionSceneDuration = AddSliderOption("Affection scene duration (seconds):", affectionDuration)
+EndFunction
+
+Function RenderRightColumn()
+    AddHeaderOption("Immersion & Feedback")
     float frequency = TTON_JData.GetMcmCommentsFrequency() as float
     float genderWeight = TTON_JData.GetMcmCommentsGenderWeight() as float
     float distance = TTON_JData.GetMcmCommentsDistance() as float
 
-    oid_SexCommentsFrequency = AddSliderOption("Cooldown between triggering sex comments:", frequency)
-    oid_SexCommentsGenderWeight = AddSliderOption("Which gender has more chances to start comment:", genderWeight)
-    oid_SexCommentsDistance = AddSliderOption("Max distance from player to generate comments:", distance)
+    oid_SexCommentsFrequency = AddSliderOption("Comment cooldown (seconds):", frequency)
+    oid_SexCommentsGenderWeight = AddSliderOption("Gender preference (0=Male, 100=Female):", genderWeight)
+    oid_SexCommentsDistance = AddSliderOption("Comment hearing range (units):", distance)
 
-    AddHeaderOption("Affection scenes: ")
-    float affectionDuration = TTON_JData.GetMcmAffectionDuration() as float
-    oid_AffectionSceneDuration = AddSliderOption("Duration of affection scene:", affectionDuration)
-
-    AddHeaderOption("Denies: ")
+    AddHeaderOption("Behavior & Timing")
     float denyCooldown = TTON_JData.GetMcmDenyCooldown() as float
-    oid_DeniesCooldown = AddSliderOption("Action cooldown after player's deny:", denyCooldown)
-EndFunction
+    oid_DeniesCooldown = AddSliderOption("Deny action cooldown (seconds):", denyCooldown)
 
-Function RenderRightColumn()
-    AddHeaderOption("JContainer export/import: ")
+    AddHeaderOption("Data Management")
     oid_SettingsExportData = AddTextOption("", "Export data to file")
     oid_SettingsImportData = AddTextOption("", "Import data from file")
-    oid_SettingsClearData = AddTextOption("", "Clear whole data")
+    oid_SettingsClearData = AddTextOption("", "Clear all data")
 EndFunction
 
 ; Select
@@ -105,33 +104,33 @@ endevent
 ; Highlight
 event OnOptionHighlight(int option)
     if(option == oid_SettingsClearData)
-        SetInfoText("Clears whole data from save")
+        SetInfoText("Permanently removes all OStimNet data from your save file.")
     elseif(option == oid_SettingsExportData)
-        SetInfoText("Exports json data to file in Documents\\My Games\\Skyrim Special Edition\\JCUser\\MARAS\\store.json")
+        SetInfoText("Saves your settings to: Documents\\My Games\\Skyrim Special Edition\\JCUser\\MARAS\\store.json")
     elseif(option == oid_SettingsImportData)
-        SetInfoText("Imports data from file in Documents\\My Games\\Skyrim Special Edition\\JCUser\\MARAS\\store.json")
+        SetInfoText("Loads settings from: Documents\\My Games\\Skyrim Special Edition\\JCUser\\MARAS\\store.json")
     elseif(option == oid_EnableStartSexConfirmationModal)
-        SetInfoText("Toggle confirmation modal. When OStim scene is initiated by npc on player - it will ask player's confirmation.")
+        SetInfoText("Ask for permission when NPCs want to start intimate scenes with you.")
     elseif(option == oid_EnableStartAffectionateConfirmationModal)
-        SetInfoText("Toggle confirmation modal. When affectionate non-sexual scene is initiated by npc on player - it will ask player's confirmation.")
+        SetInfoText("Ask for permission when NPCs want to start non-sexual affectionate scenes with you.")
     elseif(option == oid_EnableChangePositionConfirmationModal)
-        SetInfoText("Toggle confirmation modal. When in player's scene npc initiate change scene - it will ask player's confirmation.")
+        SetInfoText("Ask for permission when NPCs want to change positions during your scene.")
     elseif(option == oid_EnableAddNewActorsConfirmationModal)
-        SetInfoText("Toggle confirmation modal. When in player's scene npc will invite somebody else, or outside npc will decide to join - it will ask player's confirmation.")
+        SetInfoText("Ask for permission when NPCs want to join your scene or invite others.")
     elseif(option == oid_EnableStopSexConfirmationModal)
-        SetInfoText("Toggle confirmation modal. When npc decides to stop player's OStim scene - it will ask player's confirmation. If player say no - scene will be marked as forced(not agressive though)")
+        SetInfoText("Ask for permission when NPCs want to end your scene. Refusing marks the scene as forced.")
     elseif(option == oid_AllowPlayerFurnitureSelection)
-        SetInfoText("When enabled, OStim will not automatically assign furniture and will allow the player to select furniture during scene. When disabled, OStim will automatically find and assign suitable furniture.")
+        SetInfoText("Let you manually choose furniture during scenes instead of automatic selection.")
     elseif(option == oid_SexCommentsFrequency)
-        SetInfoText("Set in seconds interval between sex comments can be triggered during OStim events")
+        SetInfoText("Minimum time between NPC comments during intimate scenes.")
     elseif(option == oid_SexCommentsGenderWeight)
-        SetInfoText("Set chances of specific gender to make comments during OStim scenes. 0 - always male, 100 - always female, 50 - 50%/50% that male/female will be selected. Works only if scene has more than one gender.")
+        SetInfoText("Controls which gender is more likely to speak. 50 = equal chance for both genders.")
     elseif(option == oid_SexCommentsDistance)
-        SetInfoText("Set maximum distance in game units from player at which sex comments will be generated. 0 = unlimited distance. Ignored if speaker is in the line of sight of player.")
+        SetInfoText("Maximum distance for NPCs to make comments. 0 = unlimited. Line of sight overrides distance.")
     elseif(option == oid_AffectionSceneDuration)
-        SetInfoText("Set duration in seconds for affectionate non-sexual scenes. Scene stops automatically when time expires.")
+        SetInfoText("How long affectionate scenes last before automatically ending.")
     elseif(option == oid_DeniesCooldown)
-        SetInfoText("Set cooldown in seconds for actions which were rejected by player before they become available again. Works individually for each asking npc.")
+        SetInfoText("How long each NPC waits before asking again after you refuse their request.")
     endif
 endevent
 
