@@ -74,14 +74,26 @@ string function getSceneByActions(actor[] actors, string actions, string furn = 
     string newScene
 
     if(!nonSexual)
-        newScene = OLibrary.GetRandomSceneSuperloadCSV(actors, furn, AnyActionType = actions)
+        if(furn != "")
+            newScene = OLibrary.GetRandomSceneSuperloadCSV(actors, furn, AnyActionType = actions)
+
+            ; still no match, try any sexual scene
+            if(newScene == "")
+                newScene = OLibrary.GetRandomSceneSuperloadCSV(actors, furn, ActionWhitelistTypes = "sexual")
+            endif
+        else
+            ; prioritize scenes with at least one standing actor if no furniture specified
+            newScene = OLibrary.GetRandomSceneSuperloadCSV(actors, AnyActionType = actions, ActorTagWhitelistForAny ="standing")
+        endif
+
         ; try to find by action but without furniture
         if(newScene == "")
             newScene = OLibrary.GetRandomSceneSuperloadCSV(actors, AnyActionType = actions)
         endif
-        ; still no match, try any sexual scene
+
         if(newScene == "")
-            newScene = OLibrary.GetRandomSceneSuperloadCSV(actors, furn, ActionWhitelistTypes = "sexual")
+            ; try to find any sexual scene
+            newScene = OLibrary.GetRandomSceneSuperloadCSV(actors, ActionWhitelistTypes = "sexual")
         endif
     else
         ; try to find non sexual scene for standing actors
@@ -318,7 +330,7 @@ string Function GetShclongOrgasmedLocation(Actor npc, int ThreadID) global
 EndFunction
 
 bool Function ShowConfirmMessage(string msg, string type) global
-    if(!TTON_JData.GetMcmCheckbox(type))
+    if(!TTON_JData.GetMcmCheckbox(type, 1))
         return true
     endif
     string result = SkyMessage.Show(msg, "Yes", "No")

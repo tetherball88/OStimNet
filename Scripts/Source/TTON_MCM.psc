@@ -42,14 +42,14 @@ EndFunction
 
 Function RenderLeftColumn()
     AddHeaderOption("Player Consent & Control")
-    oid_EnableStartSexConfirmationModal = AddToggleOption("Confirm before sex scenes:", TTON_JData.GetMcmCheckbox("confirmStartSex"))
-    oid_EnableStartAffectionateConfirmationModal = AddToggleOption("Confirm before affection scenes:", TTON_JData.GetMcmCheckbox("confirmStartAffection"))
-    oid_EnableStopSexConfirmationModal = AddToggleOption("Confirm before stopping scenes:", TTON_JData.GetMcmCheckbox("confirmStopSex"))
-    oid_AllowPlayerFurnitureSelection = AddToggleOption("Allow manual furniture selection:", TTON_JData.GetMcmCheckbox("allowPlayerFurnitureSelection"))
+    oid_EnableStartSexConfirmationModal = AddToggleOption("Confirm before sex scenes:", TTON_JData.GetConfirmStartSexScenes())
+    oid_EnableStartAffectionateConfirmationModal = AddToggleOption("Confirm before affection scenes:", TTON_JData.GetConfirmStartAffectionScenes())
+    oid_EnableStopSexConfirmationModal = AddToggleOption("Confirm before stopping scenes:", TTON_JData.GetConfirmStopSexScenes())
+    oid_AllowPlayerFurnitureSelection = AddToggleOption("Allow manual bed selection:", TTON_JData.GetAllowPlayerFurnitureSelection())
 
     AddHeaderOption("Scene Management")
-    oid_EnableChangePositionConfirmationModal = AddToggleOption("Confirm scene position changes:", TTON_JData.GetMcmCheckbox("confirmChangeScene"))
-    oid_EnableAddNewActorsConfirmationModal = AddToggleOption("Confirm adding new actors:", TTON_JData.GetMcmCheckbox("confirmAddActors"))
+    oid_EnableChangePositionConfirmationModal = AddToggleOption("Confirm scene position changes:", TTON_JData.GetConfirmChangeScenePosition())
+    oid_EnableAddNewActorsConfirmationModal = AddToggleOption("Confirm adding new actors:", TTON_JData.GetConfirmAddNewActors())
 
     float affectionDuration = TTON_JData.GetMcmAffectionDuration() as float
     oid_AffectionSceneDuration = AddSliderOption("Affection scene duration (seconds):", affectionDuration)
@@ -87,17 +87,17 @@ event OnOptionSelect(int option)
     elseif (oid_SettingsImportData == option)
         TTON_JData.ImportData()
     elseif(option == oid_EnableStartSexConfirmationModal)
-        SetToggleOptionValue(oid_EnableStartSexConfirmationModal, TTON_JData.ToggleMcmCheckbox("confirmStartSex"))
+        SetToggleOptionValue(oid_EnableStartSexConfirmationModal, TTON_JData.ToggleMcmCheckbox("confirmStartSex", 1))
     elseif(option == oid_EnableStartAffectionateConfirmationModal)
-        SetToggleOptionValue(oid_EnableStartAffectionateConfirmationModal, TTON_JData.ToggleMcmCheckbox("confirmStartAffection"))
+        SetToggleOptionValue(oid_EnableStartAffectionateConfirmationModal, TTON_JData.ToggleMcmCheckbox("confirmStartAffection", 1))
     elseif(option == oid_EnableChangePositionConfirmationModal)
-        SetToggleOptionValue(oid_EnableChangePositionConfirmationModal, TTON_JData.ToggleMcmCheckbox("confirmChangeScene"))
+        SetToggleOptionValue(oid_EnableChangePositionConfirmationModal, TTON_JData.ToggleMcmCheckbox("confirmChangeScene", 1))
     elseif(option == oid_EnableAddNewActorsConfirmationModal)
-        SetToggleOptionValue(oid_EnableAddNewActorsConfirmationModal, TTON_JData.ToggleMcmCheckbox("confirmAddActors"))
+        SetToggleOptionValue(oid_EnableAddNewActorsConfirmationModal, TTON_JData.ToggleMcmCheckbox("confirmAddActors", 1))
     elseif(option == oid_EnableStopSexConfirmationModal)
-        SetToggleOptionValue(oid_EnableStopSexConfirmationModal, TTON_JData.ToggleMcmCheckbox("confirmStopSex"))
+        SetToggleOptionValue(oid_EnableStopSexConfirmationModal, TTON_JData.ToggleMcmCheckbox("confirmStopSex", 1))
     elseif(option == oid_AllowPlayerFurnitureSelection)
-        SetToggleOptionValue(oid_AllowPlayerFurnitureSelection, TTON_JData.ToggleMcmCheckbox("allowPlayerFurnitureSelection"))
+        SetToggleOptionValue(oid_AllowPlayerFurnitureSelection, TTON_JData.ToggleMcmCheckbox("allowPlayerFurnitureSelection", 0))
     endif
 endevent
 
@@ -120,7 +120,7 @@ event OnOptionHighlight(int option)
     elseif(option == oid_EnableStopSexConfirmationModal)
         SetInfoText("Ask for permission when NPCs want to end your scene. Refusing marks the scene as forced.")
     elseif(option == oid_AllowPlayerFurnitureSelection)
-        SetInfoText("Let you manually choose furniture during scenes instead of automatic selection.")
+        SetInfoText("If no furniture selected by LLM, let you manually choose to use bed or not.")
     elseif(option == oid_SexCommentsFrequency)
         SetInfoText("Minimum time between NPC comments during intimate scenes.")
     elseif(option == oid_SexCommentsGenderWeight)
@@ -142,10 +142,10 @@ event OnOptionSliderOpen(int a_option)
     float interval
     if(a_option == oid_SexCommentsFrequency)
         startValue = TTON_JData.GetMcmCommentsFrequency() as float
-        defaultValue = 40.0
+        defaultValue = 20.0
         startRange = 0
         endRange = 400
-        interval = 1
+        interval = 5
     elseif(a_option == oid_SexCommentsGenderWeight)
         startValue = TTON_JData.GetMcmCommentsGenderWeight() as float
         defaultValue = 50.0
@@ -195,8 +195,8 @@ endEvent
 
 event OnOptionDefault(int a_option)
 	if(a_option == oid_SexCommentsFrequency)
-        SetSliderDialogStartValue(40)
-        TTON_JData.SetMcmCommentsFrequency(40)
+        SetSliderDialogStartValue(20)
+        TTON_JData.SetMcmCommentsFrequency(20)
     elseif(a_option == oid_SexCommentsGenderWeight)
         SetSliderDialogStartValue(50)
         TTON_JData.SetMcmCommentsGenderWeight(50)

@@ -106,8 +106,8 @@ EndFunction
    SECTION: MCM data
 ============================== /;
 
-bool Function ToggleMcmCheckbox(string propName) global
-    bool current = GetMcmCheckbox(propName)
+bool Function ToggleMcmCheckbox(string propName, int default = -1) global
+    bool current = GetMcmCheckbox(propName, default)
     int val = -1
     if(current)
         val = 0
@@ -120,7 +120,7 @@ bool Function ToggleMcmCheckbox(string propName) global
 EndFunction
 
 ; if not set - default true
-bool Function GetMcmCheckbox(string propName, int default = 1) global
+bool Function GetMcmCheckbox(string propName, int default = -1) global
     bool res = JDB_solveInt(GetNamespaceKey() + ".mcm." + propName, default) != 0
     return res
 EndFunction
@@ -140,7 +140,7 @@ EndFunction
 int Function GetMcmCommentsFrequency() global
     int val = GetMcmInt("sexCommentsFrequency")
     if(val == -1)
-        val = 40
+        val = 20
     endif
 
     return val
@@ -218,6 +218,26 @@ EndFunction
 ; default is disabled (false)
 bool Function GetAllowPlayerFurnitureSelection() global
     return GetMcmCheckbox("allowPlayerFurnitureSelection", 0)
+EndFunction
+
+bool Function GetConfirmStartSexScenes() global
+    return GetMcmCheckbox("confirmStartSex", 1)
+EndFunction
+
+bool Function GetConfirmStartAffectionScenes() global
+    return GetMcmCheckbox("confirmStartAffection", 1)
+EndFunction
+
+bool Function GetConfirmStopSexScenes() global
+    return GetMcmCheckbox("confirmStopSex", 1)
+EndFunction
+
+bool Function GetConfirmChangeScenePosition() global
+    return GetMcmCheckbox("confirmChangeScene", 1)
+EndFunction
+
+bool Function GetConfirmAddNewActors() global
+    return GetMcmCheckbox("confirmAddActors", 1)
 EndFunction
 
 ;/ ==============================
