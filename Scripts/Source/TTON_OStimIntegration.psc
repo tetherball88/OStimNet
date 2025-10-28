@@ -24,37 +24,31 @@ int function StartOstim(actor[] actors, string actions = "", string furn = "", b
         return -1
     endif
     if(hasPlayer && !continuation)
+        string initiatorName = TTON_Utils.GetActorName(initiator)
         if(nonSexual)
-            if(type == "")
-                type = "non-sexual interaction"
-            endif
-            bool yes = TTON_Utils.ShowConfirmMessage(TTON_Utils.GetActorName(initiator) + " wants to have " + type + " with " + TTON_Utils.GetActorsNamesComaSeparated(actors, initiator) + ". Do you accept?", "confirmStartAffection")
+            bool yes = TTON_Utils.Ask("StartAffectionScene", initiator, \
+                initiatorName + " wants to have non-sexual interaction with you. Do you accept?")
             if(!yes)
-                TTON_JData.SetDeniedLastTime(initiator, "startAffection")
-                TTON_Utils.RequestSexComment(TTON_Utils.GetActorName(initiator) + " wanted to start "+ type +" with " + TTON_Utils.GetActorName(player) + ", but for some reason "+TTON_Utils.GetActorName(player)+" declined it.", \
-                speaker = initiator )
                 return -1
             endif
         else
-            if(type == "")
-                type = "sexual encounter"
-            endif
-            bool yes = TTON_Utils.ShowConfirmMessage(TTON_Utils.GetActorName(initiator) + " wants to have " + type + " with " + TTON_Utils.GetActorsNamesComaSeparated(actors, initiator) + ". Do you accept?", "confirmStartSex")
+            bool yes = TTON_Utils.Ask("StartNewSex", initiator, \
+            initiatorName + " wants to have sexual encounter with " + TTON_Utils.GetActorsNamesComaSeparated(actors, initiator) + ". Do you accept?")
             if(!yes)
-                TTON_JData.SetDeniedLastTime(initiator, "startSex")
-                TTON_Utils.RequestSexComment(TTON_Utils.GetActorName(initiator) + " wanted to have " + type + " with " + TTON_Utils.GetActorName(player) + ", but for some reason "+TTON_Utils.GetActorName(player)+" declined it.", \
-                speaker = initiator )
                 return -1
             endif
         endif
-
     endif
     int builderID = OThreadBuilder.create(actors)
     string newScene
 
     if(!nonSexual)
         ; Check if player furniture selection is enabled
-        bool allowPlayerFurnitureSelection = TTON_JData.GetAllowPlayerFurnitureSelection()
+        bool ostimDefaultStart = TTON_JData.GetUseOStimDefaultStartSelection()
+
+        if(ostimDefaultStart)
+            return OThread.QuickStart(actors)
+        endif
 
         ; Use automatic furniture detection (original behavior)
         ObjectReference furnObject = OFurniture.FindFurnitureOfType(furn, player, 1000)
@@ -64,9 +58,7 @@ int function StartOstim(actor[] actors, string actions = "", string furn = "", b
             newScene = TTON_Utils.getSceneByActions(actors, actions, furn)
         else
             ; Mark scene to not use furniture if none found and player selection is disabled
-            if(!allowPlayerFurnitureSelection)
-                OThreadBuilder.NoFurniture(builderId)
-            endif
+            OThreadBuilder.NoFurniture(builderId)
             newScene = TTON_Utils.getSceneByActions(actors, actions)
         endif
     else
@@ -94,39 +86,81 @@ endfunction
 Function StopOStim(Actor initiator) global
     int ThreadId = OActor.GetSceneID(initiator)
     if(ThreadId == 0 && !TTON_JData.GetThreadAddNewActors(ThreadId))
-        bool yes = TTON_Utils.ShowConfirmMessage(TTON_Utils.GetActorName(initiator) + " wishes to end your sexual encounter. Allow them to withdraw?", "confirmStopSex")
+        string initiatorName = TTON_Utils.GetActorName(initiator)
+        bool yes = TTON_Utils.Ask("StopSex", initiator, \
+        initiatorName + " wishes to end your sexual encounter. Allow them to withdraw?")
         if(!yes)
-            TTON_JData.SetDeniedLastTime(initiator, "stopSex")
-            TTON_JData.SetThreadForced(ThreadId)
-            TTON_Events.RegisterStopSexDeniedEvent(ThreadId, initiator)
-            Actor player = TTON_JData.GetPlayer()
-            TTON_Utils.RequestSexComment(TTON_Utils.GetActorName(initiator) + " expresses what they think about " + TTON_Utils.GetActorName(player) + "'s decision to ignore their request to stop sexual activity. It is not necessarily negative tone, decide based on previous events and dialogue.", \
-            speaker = initiator )
             return
         endif
     endif
     OThread.Stop(ThreadId)
+
+    bool hadSex = TTLL_OstimThreadsCollector.GetHadSex(ThreadID)
+
+    Form[] actorsForms = TTLL_OstimThreadsCollector.GetActorsForms(ThreadID)
+    Actor[] actors = PapyrusUtil.ActorArray(actorsForms.Length)
+    int i = 0
+    string climaxedActors = ""
+    while(i < actors.Length)
+        actors[i] = actorsForms[i] as Actor
+        if(TTLL_OstimThreadsCollector.GetOrgasmed(ThreadID, actors[i]))
+            climaxedActors += TTON_Utils.GetActorName(actors[i]) + ","
+        endif
+
+        i += 1
+    endwhile
+
+    climaxedActors += ""
+
+    string msg = ""
+
+    if(hadSex)
+        msg += "INTIMATE "
+    else
+        msg += "SEXUAL "
+    endif
+    msg += "ACTIVITY CONCLUDED: Participants "+TTON_Utils.GetActorsNamesComaSeparated(actors)
+    string LastSexualSceneId = TTLL_OstimThreadsCollector.GetLastSexualSceneId(ThreadID)
+
+    if(hadSex)
+        if(climaxedActors != "")
+            msg += ", with " + climaxedActors + " having reached orgasm."
+        else
+            msg += "."
+        endif
+    else
+        if(LastSexualSceneId)
+            msg +=  TTON_Utils.GetSceneDescription(LastSexualSceneId, actors)
+        endif
+        msg += " without sexual activities."
+    endif
+
+    ; string last5Scenes = TTON_Utils.Get5LastScenesInThread(ThreadID)
+    ; if(last5Scenes != "")
+    ;     msg += " During encounter participant engaged in such scenes: \\n- "
+    ;     msg += TTON_Utils.Get5LastScenesInThread(ThreadID)
+    ; endif
+
+    ; TTON_Utils.RequestSexComment(msg, actors, none, true)
 EndFunction
 
 ; Changes the animation scene of an ongoing OStim scene
 ; @param ThreadId The ID of the thread to modify
-Function OStimChangeScene(Actor akActor, string type) global
+Function OStimChangeScene(Actor akActor, string activity) global
     int ThreadID = OActor.GetSceneID(akActor)
     string furn = OThread.GetFurnitureType(ThreadID)
 
     if(ThreadID == 0)
-        bool yes = TTON_Utils.ShowConfirmMessage("Your partner "+TTON_Utils.GetActorName(akActor)+" suggests changing to " + type + ". Do you wish to proceed?", "confirmChangeScene")
+        string initiatorName = TTON_Utils.GetActorName(akActor)
+        bool yes = TTON_Utils.Ask("ChangeSexActivity", akActor, \
+            initiatorName + " wants to change the sexual activity to " + activity + ". Do you wish to proceed?")
         if(!yes)
-            TTON_JData.SetDeniedLastTime(akActor, "sceneChange")
-            Actor player = TTON_JData.GetPlayer()
-            TTON_Utils.RequestSexComment(TTON_Utils.GetActorName(akActor) + " wanted to change sex position, but "+TTON_Utils.GetActorName(player)+" declined and decided to stay in current position.", \
-            speaker = akActor )
             return
         endif
     endif
 
     Actor[] actors = OThread.GetActors(ThreadID)
-    string sceneId = TTON_Utils.getSceneByActions(actors, type, furn)
+    string sceneId = TTON_Utils.getSceneByActions(actors, activity, furn)
     ; try to navigate to new scene
     ; if no scene with requested action type skup this scene change
     if(sceneId)
@@ -153,7 +187,7 @@ EndFunction
 ; Adds new actors to an ongoing OStim scene
 ; @param ThreadID The ID of the thread to modify
 ; @param newActors Array of actors to add to the scene
-function AddActorsToActiveThread(int ThreadID, actor[] newActors, string type, Actor initiator) global
+function AddActorsToActiveThread(int ThreadID, actor[] newActors, string actionName, Actor initiator) global
     if(!OThread.IsRunning(ThreadID))
         return
     endif
@@ -171,25 +205,23 @@ function AddActorsToActiveThread(int ThreadID, actor[] newActors, string type, A
         TTON_Debug.warn("AddActorsToActiveThread: Don't stop ongoing thread. User doesn't have suitable scene for new set of actors.")
         shouldSkip = true
     endif
-    if(ThreadID == 0 && !shouldSkip)
+    bool youInvited = PapyrusUtil.CountActor(newActors, TTON_JData.GetPlayer()) > 0
+    if((ThreadID == 0 || youInvited) && !shouldSkip)
         string joinInvite
-        if(type == "invite")
-            joinInvite = "were invited to"
-        else
-            joinInvite = "seeks to join"
-        endif
-        bool yes = TTON_Utils.ShowConfirmMessage(TTON_Utils.GetActorsNamesComaSeparated(newActors) + " " + joinInvite + " your sexual activities. Will you allow them?", "confirmAddActors")
-        if(!yes)
-            TTON_JData.SetDeniedLastTime(initiator, type)
-            string msg = TTON_Utils.GetActorName(initiator)
-            if(type == "invite")
-                msg += " wanted to invite to their sex "+TTON_Utils.GetActorsNamesComaSeparated(newActors)
+        string initiatorName = TTON_Utils.GetActorName(initiator)
+        if(actionName == "InviteToYourSex")
+            if(youInvited)
+                question = initiatorName + " invites you to join their ongoing sexual activities. Do you accept?"
             else
-                msg += " wanted to join ongoing their sex involving "+TTON_Utils.GetActorsNamesComaSeparated(originalActors)
+                question = initiatorName + " invites " + TTON_Utils.GetActorsNamesComaSeparated(newActors) + " to join their ongoing sexual activities with you. Will you allow them?"
             endif
-            Actor player = TTON_JData.GetPlayer()
-            msg += ", but " + TTON_Utils.GetActorName(player) + " declined it."
-            TTON_Utils.RequestSexComment(msg, speaker = initiator)
+        else
+            question = initiatorName + " seeks to join your sexual activities. Will you allow them?"
+        endif
+        string question
+
+        bool yes = TTON_Utils.Ask(actionName, initiator, question, youInvited)
+        if(!yes)
             shouldSkip = true
         endif
     endif

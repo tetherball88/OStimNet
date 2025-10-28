@@ -102,6 +102,34 @@ Actor Function GetPlayer() global
     return JDB_solveForm(GetInitialDataKey() + ".player") as Actor
 EndFunction
 
+int Function GetActions() global
+    return JDB_solveObj(GetInitialDataKey() + ".actions")
+EndFunction
+
+string Function NextAction(string previousKey = "") global
+    return JMap_nextKey(GetActions(), previousKey)
+EndFunction
+
+string Function GetActionName(string actionName) global
+    return JDB_solveStr(GetInitialDataKey() + ".actions." + actionName + ".name")
+EndFunction
+
+string Function GetActionScriptFileName(string actionName) global
+    return JDB_solveStr(GetInitialDataKey() + ".actions." + actionName + ".scriptFileName")
+EndFunction
+
+string Function GetActionIsEligible(string actionName) global
+    return JDB_solveStr(GetInitialDataKey() + ".actions." + actionName + ".isEligible")
+EndFunction
+
+string Function GetActionExecute(string actionName) global
+    return JDB_solveStr(GetInitialDataKey() + ".actions." + actionName + ".execute")
+EndFunction
+
+bool Function GetActionAddTags(string actionName) global
+    return JDB_solveInt(GetInitialDataKey() + ".actions." + actionName + ".addTags") == 1
+EndFunction
+
 string Function GetActionDescription(string actionName) global
     return JDB_solveStr(GetInitialDataKey() + ".actions." + actionName + ".description")
 EndFunction
@@ -206,26 +234,10 @@ int Function GetMcmAffectionDuration() global
     return val
 EndFunction
 
-; Sets the start new sex enable flag
-; 0 = disabled, 1 = enabled
-Function SetStartNewSexEnable(int enabled) global
-    SetMcmInt("startNewSexEnable", enabled)
-EndFunction
-
-; Gets the start new sex enable flag
-; default is enabled (true)
-bool Function GetStartNewSexEnable() global
-    int val = GetMcmInt("startNewSexEnable")
-    if(val == -1)
-        val = 1
-    endif
-    return val == 1
-EndFunction
-
-; Gets the allow player furniture selection flag
+; Gets the use OStim default start selection flag
 ; default is disabled (false)
-bool Function GetAllowPlayerFurnitureSelection() global
-    return GetMcmCheckbox("allowPlayerFurnitureSelection", 0)
+bool Function GetUseOStimDefaultStartSelection() global
+    return GetMcmCheckbox("useOStimDefaultStartSelection", 0)
 EndFunction
 
 bool Function GetConfirmStartSexScenes() global
@@ -246,6 +258,19 @@ EndFunction
 
 bool Function GetConfirmAddNewActors() global
     return GetMcmCheckbox("confirmAddActors", 1)
+EndFunction
+
+Function SetMcmContinueNarrationChance(int value) global
+    SetMcmInt("continueNarrationChance", value)
+EndFunction
+
+int Function GetMcmContinueNarrationChance() global
+    int val = GetMcmInt("continueNarrationChance")
+    if(val == -1)
+        val = 50
+    endif
+
+    return val
 EndFunction
 
 ;/ ==============================
@@ -338,35 +363,22 @@ bool Function CanMakeLastComment() global
     return HasCooldownPassed(".sexComment", TTON_JData.GetMcmCommentsFrequency())
 EndFunction
 
-;/ ==============================
-   SECTION: Denies cooldowns
-============================== /;
+Function SetDeclineActionCooldown(Actor akActor, string actionName) global
+    StorageUtil.SetFloatValue(akActor, "deny." + actionName, Utility.GetCurrentRealTime())
+EndFunction
 
-int Function SetGetDeniedActorMap(Actor deniedTo) global
-    int JDeniesFormMap = JDB_solveObj(GetNamespaceKey() + ".tmp.denies")
-    int JDeniedActor = JFormMap_getObj(JDeniesFormMap, deniedTo)
-    if(JDeniedActor == 0)
-        JDeniedActor = JMap_object()
-        JFormMap_setObj(JDeniesFormMap, deniedTo, JDeniedActor)
+float Function GetDeclineActionCooldown(Actor akActor, string actionName) global
+    return StorageUtil.GetFloatValue(akActor, "deny." + actionName)
+EndFunction
+
+bool Function CanUseActionAfterDecline(Actor akActor, string actionName) global
+    float lastDeclineTime = GetDeclineActionCooldown(akActor, actionName)
+    if(lastDeclineTime == 0.0)
+        return true
     endif
-    return JDeniedActor
-EndFunction
 
-Function SetDeniedLastTime(Actor deniedTo, string denyType) global
-    int JDeniedActor = SetGetDeniedActorMap(deniedTo)
-
-    JMap_setFlt(JDeniedActor, denyType, Utility.GetCurrentRealTime())
-EndFunction
-
-float Function GetDeniedLastTime(Actor deniedTo, string denyType) global
-    int JDeniedActor = SetGetDeniedActorMap(deniedTo)
-
-    return JMap_getFlt(JDeniedActor, denyType)
-EndFunction
-
-bool Function IsActionAvailableAfterDeny(Actor akTarget, string denyType) global
     float now = Utility.GetCurrentRealTime()
-    float diff = now - GetDeniedLastTime(akTarget, denyType)
+    float diff = now - lastDeclineTime
 
     return TTON_JData.GetMcmDenyCooldown() <= diff
 EndFunction

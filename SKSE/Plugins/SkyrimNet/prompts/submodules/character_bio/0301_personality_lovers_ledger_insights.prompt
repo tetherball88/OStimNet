@@ -1,84 +1,18 @@
 {% if not isTimePaused %}
     {% set npcData = tton_get_npc_sexual_data(actorUUID) %}
     {% set npcName = decnpc(actorUUID).name %}
-    {# Start if npcData #}
     {% if npcData %}
         {% set totalEncounters = npcData.totalEncounters %}
-        {# Start if totalEncounters #}
         {% if totalEncounters > 0 %}
             {% if render_mode == "full" %}
-{{ "## Character Sexual Behavior" }}
+{{ "### Character Sexual Behavior" }}
             {% endif %}
             {% set sameSexRatio = npcData.sameSexEncounter / totalEncounters %}
             {% set soloRatio = npcData.soloSex / totalEncounters %}
             {% set exclusiveRatio = npcData.exclusiveSex / totalEncounters %}
             {% set groupRatio = npcData.groupSex / totalEncounters %}
-            {% if sameSexRatio > 0.8 %}
-- {{ npcName }} appears to be primarily attracted to the same sex
-            {% else if sameSexRatio > 0.4 %}
-- Shows significant bisexual tendencies, with a slight preference for same-sex partners
-            {% else if sameSexRatio > 0.2 %}
-- Has some bisexual experiences but generally prefers opposite-sex partners
-            {% else if sameSexRatio > 0 %}
-- Has had limited same-sex experiences but primarily shows heterosexual preferences
-            {% else %}
-- Demonstrates exclusively heterosexual preferences in intimate encounters
-            {% endif %}
-            {% if soloRatio > 0.5 %}
-- Tends toward solitary intimate experiences, possibly indicating independence or privacy concerns
-            {% endif %}
-            {% if exclusiveRatio > 0.7 %}
-- Values one-on-one intimacy and potentially deeper emotional connections
-            {% else if groupRatio > 0.7 %}
-- Shows comfort with group settings and possibly more adventurous or socially-oriented intimacy
-            {% endif %}
-            {% if render_mode == "full" %}
-Consider how these patterns might have influenced {{ npcName }}'s worldview, relationships, and self-perception. These insights should inform their character without defining them completely.
-            {% endif %}
-            {# Start if lovers #}
-            {% if isArray(npcData.lovers) and length(npcData.lovers) > 0 %}
-                {% if render_mode == "full" %}
-{{ "## Significant Intimate Relationships" }}
-                {% endif %}
-                {% for loverData in npcData.lovers %}
-                    {# Start if score #}
-                    {% if loverData.score > 0 %}
-                        {% set relationship_type = "" %}
-                        {% set intensity = "" %}
-                        {% set recency = "" %}
-                        {% set loverEncounters = loverData.exclusiveSex + loverData.groupSex %}
-                        {% set encounterRatio = loverEncounters / totalEncounters %}
-                        {# Determine relationship type based on exclusive vs group ratio #}
-                        {% if loverData.exclusiveSex > loverData.groupSex * 3 %}
-                            {% set relationship_type = "deeply personal" %}
-                        {% else if loverData.exclusiveSex > loverData.groupSex %}
-                            {% set relationship_type = "somewhat intimate" %}
-                        {% else %}
-                            {% set relationship_type = "casual" %}
-                        {% endif %}
-                        {# Determine intensity based on percentage of NPC's total encounters #}
-                        {% if encounterRatio > 0.5 %}
-                            {% set intensity = "primary" %}
-                        {% else if encounterRatio > 0.3 %}
-                            {% set intensity = "significant" %}
-                        {% else if encounterRatio > 0.15 %}
-                            {% set intensity = "notable" %}
-                        {% else if encounterRatio > 0.05 %}
-                            {% set intensity = "recurring" %}
-                        {% else %}
-                            {% set intensity = "occasional" %}
-                        {% endif %}
-    - **{{ loverData.name }}**: A {{ relationship_type }}, {{ intensity }} connection {{ recency }} {% if loverData.exclusiveSex > 0 and loverData.groupSex == 0 %} (exclusively one-on-one encounters) {% else if loverData.exclusiveSex == 0 and loverData.groupSex > 0 %} (only in group settings) {% else if loverData.exclusiveSex > 0 and loverData.groupSex > 0 %} (mix of private and group encounters) {% endif %}
-                    {# End if score #}
-                    {% endif %}
-                {% endfor %}
-            {# End if lovers #}
-            {% endif %}
-            {% if render_mode == "full" %}
-When developing {{ npcName }}'s relationships and social dynamics, consider how these past and current intimate connections might influence their behavior, trust levels, and emotional attachments. The nature, intensity, and recency of these relationships could affect how they interact with these individuals and potentially shape their broader attitudes toward intimacy and commitment.
-            {% endif %}
-        {# End if totalEncounters #}
+**Sexual orientation:** {% if sameSexRatio > 0.8 %}primarily same-sex{% else if sameSexRatio > 0.4 %}bisexual{% else if sameSexRatio > 0.1 %}mostly opposite-sex with some same-sex experience{% else %}exclusively opposite-sex{% endif %}
+**Sexual preference:** {% if soloRatio > 0.5 %}frequently solo{% endif %}{% if exclusiveRatio > 0.7 %}prefers one-on-one encounters{% else if groupRatio > 0.5 %}comfortable with group settings{% else %}mix of private and group encounters{% endif %}
         {% endif %}
-    {# End if npcData #}
     {% endif %}
 {% endif %}

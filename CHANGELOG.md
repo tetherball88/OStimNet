@@ -1,10 +1,27 @@
 # Changelog
 
+## [v0.4.0] - 2025-11-06
+### Added
+- MCM slider for "Continue narration chance (%)" to control how often AI continues narrating after sex comments.
+- Moved action declarations to `initialData.json` for easier editing without recompiling scripts.
+
+### Changed
+- MCM option changed from "Allow manual bed selection" to "Use default OStim start scene", and now makes start scene behaves same way as default OStim starts.
+- Improved climax event messages with more natural language and better context. Enhanced orgasm detection with detailed tracking of ejaculation locations (on/in specific body parts).
+- Event handling refactored to use direct narration requests instead of event schemas for more natural flow.
+- Sex start, scene change, and climax events now trigger AI comments directly with rich context.
+- Decline/rejection system unified across all action types with consistent cooldown handling.
+- Improved confirmation dialogs with more natural language and better context for player choices.
+- Declines now just log short lived event(present for 2 minutes in your recent events history) instead of triggering NPC reaction. It is up to you to explain your decline.
+
+### Fixed
+- Orgasm messages now properly exclude the climaxing actor from the "with" participants list.
+- Removed debug trace calls that were cluttering logs.
+
 ## [v0.3.0.dev] - 2025-10-27
 ### Added
 - MCM toggle for manual bed/furniture selection when LLM doesn't specify furniture preference.
 - MCM slider for comment hearing range to control maximum distance for NPC comments (0 = unlimited, respects line of sight).
-
 
 ### Changed
 - Action descriptions and parameters now stored in `initialData.json` for easier editing without recompiling scripts.

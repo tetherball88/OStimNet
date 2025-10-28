@@ -3,41 +3,38 @@
     {% set npcName = decnpc(actorUUID).name %}
     {% if npcData and npcData.totalEncounters > 0 %}
         {% if isArray(npcData.lovers) and length(npcData.lovers) > 0 %}
-{{ "### Intimate Relationships" }}
+{{ "### Sexual Partners" }}
             {% for loverData in npcData.lovers %}
-                {% if loverData.score > 0 %}
-                    {% set relationship_type = "" %}
-                    {% set intensity = "" %}
-                    {% set recency = "" %}
+                {% if loverData.score > 5 %}
                     {% set loverEncounters = loverData.exclusiveSex + loverData.groupSex %}
-                    {% set encounterRatio = loverEncounters / npcData.totalEncounters %}
-                    {% if loverData.exclusiveSex > loverData.groupSex * 3 %}
-                        {% set relationship_type = "deeply personal" %}
-                    {% else if loverData.exclusiveSex > loverData.groupSex %}
-                        {% set relationship_type = "somewhat intimate" %}
+                    {% set bond = "" %}
+                    {% set recency = "" %}
+
+                    {% if loverData.score > 40 %}
+                        {% set bond = "deep bond" %}
+                    {% else if loverData.score > 20 %}
+                        {% set bond = "strong connection" %}
+                    {% else if loverData.score > 10 %}
+                        {% set bond = "established relationship" %}
                     {% else %}
-                        {% set relationship_type = "casual" %}
+                        {% set bond = "casual connection" %}
                     {% endif %}
-                    {% if encounterRatio > 0.5 %}
-                        {% set intensity = "primary" %}
-                    {% else if encounterRatio > 0.3 %}
-                        {% set intensity = "significant" %}
-                    {% else if encounterRatio > 0.15 %}
-                        {% set intensity = "notable" %}
-                    {% else %}
-                        {% set intensity = "occasional" %}
-                    {% endif %}
-                    {% if loverData.daysAgo <= 3 %}
-                        {% set recency = "with ongoing interactions" %}
+
+                    {% if loverData.daysAgo <= 1 %}
+                        {% set recency = "yesterday or today" %}
                     {% else if loverData.daysAgo <= 7 %}
-                        {% set recency = "with some recent interactions" %}
+                        {% set recency = round(loverData.daysAgo, 0) %}
+                    {% else if loverData.daysAgo <= 30 %}
+                        {% set recency = round(loverData.daysAgo / 7, 0) %}
+                    {% else if loverData.daysAgo <= 365 %}
+                        {% set recency = round(loverData.daysAgo / 30, 0) %}
                     {% else %}
-                        {% set recency = "but interactions have ceased for a while" %}
+                        {% set recency = "over a year ago" %}
                     {% endif %}
-- **{{ loverData.name }}**: A {{ relationship_type }}, {{ intensity }} connection {{ recency }} {% if loverData.exclusiveSex > 0 and loverData.groupSex == 0 %} (exclusively one-on-one encounters) {% else if loverData.exclusiveSex == 0 and loverData.groupSex > 0 %} (only in group settings) {% else if loverData.exclusiveSex > 0 and loverData.groupSex > 0 %} (mix of private and group encounters) {% endif %}
+
+- **{{ loverData.name }}** ({{ bond }}): {{ loverEncounters }} encounters ({{ loverData.exclusiveSex }} private, {{ loverData.groupSex }} group), last {% if loverData.daysAgo <= 1 %}{{ recency }}{% else if loverData.daysAgo <= 7 %}{{ recency }} days ago{% else if loverData.daysAgo <= 30 %}{{ recency }} weeks ago{% else if loverData.daysAgo <= 365 %}{{ recency }} months ago{% else %}{{ recency }}{% endif %}
                 {% endif %}
             {% endfor %}
-When developing {{ npcName }}'s relationships and social dynamics, consider how these past and current intimate connections might influence their behavior, trust levels, and emotional attachments. The nature, intensity, and recency of these relationships could affect how they interact with these individuals and potentially shape their broader attitudes toward intimacy and commitment.
         {% endif %}
     {% endif %}
 {% endif %}

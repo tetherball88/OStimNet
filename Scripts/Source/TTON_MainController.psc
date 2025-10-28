@@ -33,7 +33,11 @@ Event OStimStart(string eventName, string strArg, float numArg, Form sender)
         TTON_JData.SetThreadAddNewActors(continuedFromThreadID, 0)
         TTON_JData.SetThreadContinuationFrom(ThreadID, -1)
     else
-        TTON_Events.RegisterSexStartEvent(ThreadID)
+        Actor[] actors = OThread.GetActors(ThreadID)
+        string sceneId = OThread.GetScene(ThreadID)
+        string sceneDesc = TTON_Utils.GetSceneDescription(sceneId, actors)
+        TTON_Utils.RequestSexComment(TTON_Utils.GetActorsNamesComaSeparated(actors)+" have begun a new intimate encounter while "+sceneDesc, actors, ignoreCooldown = true)
+        ; TTON_Events.RegisterSexStartEvent(ThreadID)
     endif
 EndEvent
 
@@ -45,8 +49,9 @@ Event OStimSceneChange(string eventName, string strArg, float numArg, Form sende
       return
     endif
 
-    TTON_Events.RegisterSexChangeEvent(ThreadID)
+    ; TTON_Events.RegisterSexChangeEvent(ThreadID)
     Actor[] actors = OThread.GetActors(ThreadID)
+    string sceneDesc = TTON_Utils.GetSceneDescription(sceneId, actors)
     TTON_Utils.RequestSexComment(TTON_Utils.GetActorsNamesComaSeparated(actors) + " changed their position to :" + TTON_Utils.GetSceneDescription(sceneId, actors), actors)
 EndEvent
 
@@ -54,6 +59,19 @@ Event OStimOrgasm(string eventName, string strArg, float numArg, Form sender)
     int ThreadID = numArg as int
     Actor orgasmedActor = sender as Actor
     TTON_Events.RegisterSexClimaxEvent(ThreadID, orgasmedActor)
+    string climaxLocations = TTON_Utils.GetShclongOrgasmedLocation(orgasmedActor, ThreadID)
+    Actor[] actors = OThread.GetActors(ThreadID)
+    string msg = ""
+    if(climaxLocations != "")
+        msg += climaxLocations
+    else
+        msg += TTON_Utils.GetActorName(orgasmedActor) + " reached orgasm during sexual activity with " + TTON_Utils.GetActorsNamesComaSeparated(actors, orgasmedActor)
+    endif
+
+    ; string renderParams = "{\"recent_events\":\"{{msg}}\",\"raw\":\"{{msg}}\",\"compact\":\"{{msg}}\",\"verbose\":\"{{msg}}\"}"
+    ; SkyrimNetApi.RegisterEvent(type, "{ \"msg\": \""+msg+"\" }", orgasmedActor, none)
+
+    TTON_Utils.RequestSexComment(msg, speaker = orgasmedActor, ignoreCooldown = true)
 EndEvent
 
 Event OStimEnd(string eventName, string strArg, float numArg, Form sender)
@@ -64,7 +82,10 @@ EndEvent
 
 Event ThreadFinished(int ThreadID)
     if(!TTON_JData.GetThreadAddNewActors(ThreadID))
-        TTON_Events.RegisterSexStopEvent(ThreadID)
+        Form[] actorsForms = TTLL_OstimThreadsCollector.GetActorsForms(ThreadID)
+        Actor[] actors = PapyrusUtil.ActorArray(actorsForms.Length)
+        TTON_Utils.RequestSexComment(TTON_Utils.GetActorsNamesComaSeparated(actors) + " just finished their sexual encounter. Based on the recent context, generate a single in-character, post-sex comment that reflects how the encounter likely went.", actors, none, true, true)
+        ; TTON_Events.RegisterSexStopEvent(ThreadID)
     endif
 
     TTON_JData.SetThreadForced(ThreadId, 0)

@@ -41,7 +41,7 @@ The integration provides NPCs with these capabilities:
 ### 1. `StartNewSex` 🆕
 Initiates a new intimate encounter with selected partners. The AI considers personality, relationships, and available nearby characters.
 
-### 2. `ChangeSexPosition` 🔄
+### 2. `ChangeSexActivity` 🔄
 Allows modification of the current activity during an ongoing encounter when an NPC desires a different position.
 
 ### 3. `InviteToYourSex` ➕
@@ -61,7 +61,7 @@ Ends the current encounter for various reasons including discomfort or changing 
 Simply engage in conversation with NPCs and let the AI interpret your dialogue naturally:
 
 - 💬 *"Would you like to join me somewhere more private?"* might trigger `StartNewSex`
-- 💬 During an encounter, saying *"Let's try something different"* might trigger `ChangeSexPosition`
+- 💬 During an encounter, saying *"Let's try something different"* might trigger `ChangeSexActivity`
 - 💬 *"Perhaps we should invite Lydia to join us"* could trigger `InviteToYourSex`
 
 ## 💡 Tips

@@ -155,14 +155,18 @@ string Function GetSpeakingNpcSexActionInfo(Actor npc, string inOStim = "exclude
             ostimCondition = true
         endif
 
+        if(actorsString != "")
+            actorsString += ","
+        endif
+
         if(ostimCondition && currentActor.IsEnabled())
-            actorsString += TTON_Utils.GetActorName(currentActor) + ","
+            actorsString += TTON_Utils.GetActorName(currentActor)
         endif
         i+=1
     endwhile
 
     string nonSexualActions = "cuddling | hugging | frenchkissing | kissing | kissingcheek | kissinghand | kissingneck | pattinghead"
-    string sexualActions = "analfingering | analfisting | analsex | analtoying | anilingus | blowjob | boobjob | buttjob | cumonbutt | cumonchest | cumonvulva | cunnilingus | deepthroat | facial | femalemasturbation | footjob | grindingobject | grindingpenis | grindingthigh | gropingtesticles | handjob | lickingnipple | lickingpenis | lickingtesticles | lickingvagina | malemasturbation | rimjob | rubbingclitoris | rubbingpenisagainstface | suckingnipple | thighjob | tribbing | vaginalfingering | vaginalfisting | vaginalsex | vaginaltoying"
+    string sexualActions = "analfingering | analfisting | analsex | analtoying | anilingus | blowjob | boobjob | buttjob | cunnilingus | deepthroat | femalemasturbation | footjob | grindingobject | grindingpenis | grindingthigh | gropingtesticles | handjob | lickingnipple | lickingpenis | lickingtesticles | lickingvagina | malemasturbation | rimjob | rubbingclitoris | rubbingpenisagainstface | suckingnipple | thighjob | tribbing | vaginalfingering | vaginalfisting | vaginalsex | vaginaltoying"
     string availableActions
 
     if(nonSexual)

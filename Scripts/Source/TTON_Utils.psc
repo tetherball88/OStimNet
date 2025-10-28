@@ -70,11 +70,11 @@ EndFunction
 ; @param actions CSV string of action types or scene actions to search for
 ; @param useRandom Whether to fall back to a random scene if no matching scene is found
 ; @returns Scene ID if found, empty string if no suitable scene
-string function getSceneByActions(actor[] actors, string actions, string furn = "", bool nonSexual = false) global
+string function getSceneByActions(actor[] actors, string actions, string furn = "none", bool nonSexual = false) global
     string newScene
 
     if(!nonSexual)
-        if(furn != "")
+        if(furn != "none")
             if(OFurniture.IsChildOf("bed", furn))
                 ; prioritize scenes without standing actors if bed is used
                 newScene = OLibrary.GetRandomSceneSuperloadCSV(actors, furn, AnyActionType = actions, ActorTagBlacklistForAll ="standing")
@@ -86,7 +86,6 @@ string function getSceneByActions(actor[] actors, string actions, string furn = 
             if(newScene == "")
                 ; try to find by action with furniture
                 newScene = OLibrary.GetRandomSceneSuperloadCSV(actors, furn, AnyActionType = actions)
-
                 ; still no match, try any sexual scene
                 if(newScene == "")
                     newScene = OLibrary.GetRandomSceneSuperloadCSV(actors, furn, ActionWhitelistTypes = "sexual")
@@ -205,10 +204,13 @@ string Function GetActorsNamesComaSeparated(Actor[] actors, Actor exclude = none
     string res = ""
     while(i < actors.Length)
         if(actors[i] != exclude)
-            if(res != "")
-                res += ", "
+            string actorName = TTON_Utils.GetActorName(actors[i])
+            if(actorName != "")
+                if(res != "")
+                    res += ", "
+                endif
+                res += TTON_Utils.GetActorName(actors[i])
             endif
-            res += TTON_Utils.GetActorName(actors[i])
         endif
         i += 1
     endwhile
@@ -237,8 +239,6 @@ string Function GetSceneDescription(string sceneId, Actor[] actors) global
     string template = TTON_JData.GetDescription(baseSceneId)
 
     string description = ""
-
-    TTON_Debug.trace("GetSceneDescription: sceneId=" + sceneId + ", baseSceneId=" + baseSceneId + ", actors=" + actorsStrArr)
 
     if(template)
         description = SkyrimNetApi.ParseString(template, "scenedata", "{\"actors\": "+actorsStrArr+"}")
@@ -311,24 +311,59 @@ String Function GetAvailableSpeedDirections(string SceneId, int currentSpeed) gl
 EndFunction
 
 string Function GetShclongOrgasmedLocation(Actor npc, int ThreadID) global
-    string res = GetActorName(npc) + " ejaculated on/in "
-    bool hadLocations = false
+    string npcName = GetActorName(npc)
+    string res = npcName + " ejaculated "
+
     ; those who can cum inside
+    bool hadLocations = false
     if OActor.HasSchlong(npc)
         string sceneId = OThread.GetScene(ThreadID)
         int actorPosition = GetActorAnimationIndex(npc, OThread.GetActorPosition(ThreadID, npc), sceneId)
-        int[] Actions = OMetadata.FindActionsSuperloadCSVv2(sceneId, ActorPositions = actorPosition, AnyCustomStringListRecord = ";cum")
+        int[] ActionsAsTarget = OMetadata.FindActionsSuperloadCSVv2(sceneId, ParticipantPositionsAny=actorPosition, AnyCustomStringListRecord = ";cum")
+        int[] ActionsAsActor = OMetadata.FindActionsSuperloadCSVv2(sceneId, ParticipantPositionsAny=actorPosition, AnyCustomStringListRecord = "cum")
         int i = 0
 
-        string locations = ""
-
-        While (i < Actions.Length)
-            String[] Slots = OMetadata.GetCustomActionTargetStringList(sceneId, Actions[i], "cum")
-            Actor Target = OThread.GetActor(ThreadID, OMetadata.GetActionTarget(SceneID, Actions[i]))
-            locations += GetActorName(Target) + "'s " + OCSV.ToCSVList(Slots) + ";"
-            hadLocations = true
+        while(i < ActionsAsTarget.Length)
+            int ActionIndex = ActionsAsTarget[i]
+            Actor akTarget = OThread.GetActor(ThreadID, OMetadata.GetActionTarget(sceneId, ActionIndex))
+            BuildCumLocations(sceneId, ActionIndex, akTarget, true, npc)
             i += 1
         EndWhile
+
+        i = 0
+        while(i < ActionsAsActor.Length)
+            int ActionIndex = ActionsAsActor[i]
+            Actor akActor = OThread.GetActor(ThreadID, OMetadata.GetActionActor(sceneId, ActionIndex))
+            BuildCumLocations(sceneId, ActionIndex, akActor, false, npc)
+            i += 1
+        EndWhile
+
+        i = 0
+        Form[] actors = StorageUtil.FormListToArray(npc, "cumOnNpcs")
+        string locations = ""
+        while(i < actors.Length)
+            Actor cumOnActor = actors[i] as Actor
+            String[] SlotsOn = StorageUtil.StringListToArray(cumOnActor, npcName+"_cumOnPlacesOn")
+            String[] SlotsIn = StorageUtil.StringListToArray(cumOnActor, npcName+"_cumOnPlacesIn")
+
+            if(SlotsOn.Length > 0)
+                locations += "on " + GetActorName(cumOnActor) + "'s "
+                hadLocations = true
+                locations += OCSV.ToCSVList(SlotsOn)
+                if(SlotsIn.Length > 0)
+                    locations += " and "
+                endif
+            endif
+            if(SlotsIn.Length > 0)
+                locations += "in " + GetActorName(cumOnActor) + "'s "
+                hadLocations = true
+                locations += OCSV.ToCSVList(SlotsIn)
+            endif
+            locations += "; "
+            i += 1
+            StorageUtil.StringListClear(cumOnActor, npcName+"_cumOnPlacesOn")
+            StorageUtil.StringListClear(cumOnActor, npcName+"_cumOnPlacesIn")
+        endwhile
 
         res += locations
     endif
@@ -337,7 +372,32 @@ string Function GetShclongOrgasmedLocation(Actor npc, int ThreadID) global
         return ""
     endif
 
+    StorageUtil.FormListClear(npc, "cumOnNpcs")
+
     return res
+EndFunction
+
+Function BuildCumLocations(string sceneId, int ActionIndex, Actor cumTarget, bool isTarget, Actor cummingNpc) global
+    string npcName = GetActorName(cummingNpc)
+    String[] Slots
+    if(isTarget)
+        Slots = OMetadata.GetCustomActionTargetStringList(sceneId, ActionIndex, "cum")
+    else
+        Slots = OMetadata.GetCustomActionActorStringList(sceneId, ActionIndex, "cum")
+    endif
+    if(Slots.Length > 0)
+        StorageUtil.FormListAdd(cummingNpc, "cumOnNpcs", cumTarget, false)
+        int j = 0
+        while(j < Slots.Length)
+            string slot = Slots[j]
+            if(slot == "rectum" || slot == "mouth" || slot == "throat" || slot == "vagina")
+                StorageUtil.StringListAdd(cumTarget, npcName+"_cumOnPlacesIn", slot, false)
+            else
+                StorageUtil.StringListAdd(cumTarget, npcName+"_cumOnPlacesOn", slot, false)
+            endif
+            j += 1
+        endwhile
+    endif
 EndFunction
 
 bool Function ShowConfirmMessage(string msg, string type) global
@@ -353,8 +413,7 @@ bool Function ShowConfirmMessage(string msg, string type) global
     return result == "Yes"
 EndFunction
 
-bool Function RequestSexComment(string msg, Actor[] actors = none, Actor speaker = none, bool ignoreCooldown = false) global
-    TTON_Debug.trace("RequestSexComment: ignoreCooldown=" + ignoreCooldown)
+bool Function RequestSexComment(string msg, Actor[] actors = none, Actor speaker = none, bool ignoreCooldown = false, bool continueNarration = true) global
     if(!ignoreCooldown && !TTON_JData.CanMakeLastComment())
         return false
     endif
@@ -374,7 +433,6 @@ bool Function RequestSexComment(string msg, Actor[] actors = none, Actor speaker
             float distance = player.GetDistance(speaker)
             ; Ignore distance check if player has line of sight to the speaker
             bool hasLineOfSight = player.HasLOS(speaker)
-            TTON_Debug.trace("RequestSexComment: Speaker distance from player=" + distance + ", maxDistance=" + maxDistance + ", hasLineOfSight=" + hasLineOfSight)
             if(distance > maxDistance && !hasLineOfSight)
                 return false
             endif
@@ -384,13 +442,20 @@ bool Function RequestSexComment(string msg, Actor[] actors = none, Actor speaker
     TTON_JData.SetLastCommentTime()
     SkyrimNetApi.DirectNarration(msg, speaker)
 
+    if(continueNarration)
+        int chance = Utility.RandomInt(1, 100)
+        if(chance <= TTON_JData.GetMcmContinueNarrationChance())
+            Utility.Wait(2)
+            SkyrimNetApi.TriggerContinueNarration()
+        endif
+    endif
+
     return true
 EndFunction
 
 ; if it's player only scene it will return none
 ; assume that actors are only actors from scene
 actor Function GetWeightedRandomActorToSpeak(actor[] actors) global
-    TTON_Debug.trace("GetWeightedRandomActorToSpeak: actors length=" + actors.length)
     Actor player = TTON_JData.GetPlayer()
     actor[] maleActors = PapyrusUtil.ActorArray(0)
     actor[] femaleActors = PapyrusUtil.ActorArray(0)
@@ -481,4 +546,21 @@ EndFunction
 bool Function IsActorEligibleToJoin(Actor akActor) global
     bool isConsidering = StorageUtil.GetIntValue(akActor, "SexInviteConsidering") == 1
     return !OActor.IsInOStim(akActor) && OThread.GetThreadCount() > 0 && TTON_Utils.IsOStimEligible(akActor) && !isConsidering
+EndFunction
+
+Function Decline(string actionName, Actor initiator, bool playerInvited) global
+    TTON_JData.SetDeclineActionCooldown(initiator, actionName)
+    TTON_Events.RegisterDeclineEvent(actionName, initiator, playerInvited)
+
+    if(actionName == "confirmStopSex")
+        TTON_JData.SetThreadForced(0)
+    endif
+EndFunction
+
+bool Function Ask(string type, Actor initiator, string question, bool playerInvited = false) global
+    bool yes = TTON_Utils.ShowConfirmMessage(question, type)
+    if(!yes)
+        Decline(type, initiator, playerInvited)
+    endif
+    return yes
 EndFunction

@@ -9,7 +9,8 @@ int property oid_EnableStartAffectionateConfirmationModal auto
 int property oid_EnableChangePositionConfirmationModal auto
 int property oid_EnableAddNewActorsConfirmationModal auto
 int property oid_EnableStopSexConfirmationModal auto
-int property oid_AllowPlayerFurnitureSelection auto
+int property oid_UseDefaultOStimSceneStart auto
+int property oid_ContinueNarrationAfterDirect auto
 
 int property oid_SexCommentsFrequency auto
 int property oid_SexCommentsGenderWeight auto
@@ -45,7 +46,7 @@ Function RenderLeftColumn()
     oid_EnableStartSexConfirmationModal = AddToggleOption("Confirm before sex scenes:", TTON_JData.GetConfirmStartSexScenes())
     oid_EnableStartAffectionateConfirmationModal = AddToggleOption("Confirm before affection scenes:", TTON_JData.GetConfirmStartAffectionScenes())
     oid_EnableStopSexConfirmationModal = AddToggleOption("Confirm before stopping scenes:", TTON_JData.GetConfirmStopSexScenes())
-    oid_AllowPlayerFurnitureSelection = AddToggleOption("Allow manual bed selection:", TTON_JData.GetAllowPlayerFurnitureSelection())
+    oid_UseDefaultOStimSceneStart = AddToggleOption("Use default OStim start scene:", TTON_JData.GetUseOStimDefaultStartSelection())
 
     AddHeaderOption("Scene Management")
     oid_EnableChangePositionConfirmationModal = AddToggleOption("Confirm scene position changes:", TTON_JData.GetConfirmChangeScenePosition())
@@ -53,6 +54,10 @@ Function RenderLeftColumn()
 
     float affectionDuration = TTON_JData.GetMcmAffectionDuration() as float
     oid_AffectionSceneDuration = AddSliderOption("Affection scene duration (seconds):", affectionDuration)
+
+    AddHeaderOption("Narration Settings")
+    float continueNarrationChance = TTON_JData.GetMcmContinueNarrationChance() as float
+    oid_ContinueNarrationAfterDirect = AddSliderOption("Continue narration chance (%):", continueNarrationChance)
 EndFunction
 
 Function RenderRightColumn()
@@ -96,8 +101,8 @@ event OnOptionSelect(int option)
         SetToggleOptionValue(oid_EnableAddNewActorsConfirmationModal, TTON_JData.ToggleMcmCheckbox("confirmAddActors", 1))
     elseif(option == oid_EnableStopSexConfirmationModal)
         SetToggleOptionValue(oid_EnableStopSexConfirmationModal, TTON_JData.ToggleMcmCheckbox("confirmStopSex", 1))
-    elseif(option == oid_AllowPlayerFurnitureSelection)
-        SetToggleOptionValue(oid_AllowPlayerFurnitureSelection, TTON_JData.ToggleMcmCheckbox("allowPlayerFurnitureSelection", 0))
+    elseif(option == oid_UseDefaultOStimSceneStart)
+        SetToggleOptionValue(oid_UseDefaultOStimSceneStart, TTON_JData.ToggleMcmCheckbox("useOStimDefaultStartSelection", 0))
     endif
 endevent
 
@@ -119,8 +124,8 @@ event OnOptionHighlight(int option)
         SetInfoText("Ask for permission when NPCs want to join your scene or invite others.")
     elseif(option == oid_EnableStopSexConfirmationModal)
         SetInfoText("Ask for permission when NPCs want to end your scene. Refusing marks the scene as forced.")
-    elseif(option == oid_AllowPlayerFurnitureSelection)
-        SetInfoText("If no furniture selected by LLM, let you manually choose to use bed or not.")
+    elseif(option == oid_UseDefaultOStimSceneStart)
+        SetInfoText("Starts default OStim scene(select furniture, select additional actors, start from idle scene).")
     elseif(option == oid_SexCommentsFrequency)
         SetInfoText("Minimum time between NPC comments during intimate scenes.")
     elseif(option == oid_SexCommentsGenderWeight)
@@ -131,6 +136,8 @@ event OnOptionHighlight(int option)
         SetInfoText("How long affectionate scenes last before automatically ending.")
     elseif(option == oid_DeniesCooldown)
         SetInfoText("How long each NPC waits before asking again after you refuse their request.")
+    elseif(option == oid_ContinueNarrationAfterDirect)
+        SetInfoText("Chance for AI to continue narrating after direct dialogue/actions. 0=Never, 100=Always.")
     endif
 endevent
 
@@ -170,6 +177,12 @@ event OnOptionSliderOpen(int a_option)
         startRange = 0
         endRange = 120
         interval = 1
+    elseif(a_option == oid_ContinueNarrationAfterDirect)
+        startValue = TTON_JData.GetMcmContinueNarrationChance() as float
+        defaultValue = 50.0
+        startRange = 0
+        endRange = 100
+        interval = 5
     endif
 
     SetSliderDialogStartValue(startValue)
@@ -190,6 +203,8 @@ event OnOptionSliderAccept(int a_option, float a_value)
         TTON_JData.SetMcmAffectionDuration(a_value as int)
     elseif(a_option == oid_DeniesCooldown)
         TTON_JData.SetMcmDenyCooldown(a_value as int)
+    elseif(a_option == oid_ContinueNarrationAfterDirect)
+        TTON_JData.SetMcmContinueNarrationChance(a_value as int)
     endif
 endEvent
 
@@ -209,5 +224,8 @@ event OnOptionDefault(int a_option)
     elseif(a_option == oid_DeniesCooldown)
         SetSliderDialogStartValue(20)
         TTON_JData.SetMcmDenyCooldown(20)
+    elseif(a_option == oid_ContinueNarrationAfterDirect)
+        SetSliderDialogStartValue(50)
+        TTON_JData.SetMcmContinueNarrationChance(50)
     endif
 endEvent

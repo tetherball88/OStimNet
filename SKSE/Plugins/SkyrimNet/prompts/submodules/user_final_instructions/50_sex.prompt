@@ -1,6 +1,0 @@
-{% if not isTimePaused and get_global_value("TTON_IsOstimActive") == 1.0 %}
-    {% set sceneData = tton_ostim_npc_sex_scene(npc.UUID) %}
-    {% if sceneData and sceneData.isInThisScene %}
-Respond authentically while staying in character during this {% if sceneData.isSexual %}intimate sexual{% else %}non-sexual{% endif %} scene. You may reference the physical activity, but prioritize emotional reactions, power dynamics, teasing, questions, commands, or observations about the participants' reactions. {% if sceneData.isSexual %}Use explicit language when appropriate, but vary your focus - don't just describe the same body parts and sensations repeatedly{% endif %}. Each response should feel fresh and reactive to the immediate dialogue.
-    {% endif %}
-{% endif %}
