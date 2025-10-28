@@ -1,5 +1,27 @@
 # Changelog
 
+## [v0.3.0.dev] - 2025-10-27
+### Added
+- MCM toggle for manual bed/furniture selection when LLM doesn't specify furniture preference.
+- MCM slider for comment hearing range to control maximum distance for NPC comments (0 = unlimited, respects line of sight).
+
+
+### Changed
+- Action descriptions and parameters now stored in `initialData.json` for easier editing without recompiling scripts.
+- Improved bed/furniture finding logic with better prioritization and distance checks.
+- Scene search algorithm now better handles furniture selection and actor eligibility.
+- Reorganized MCM settings into more logical groupings for better user experience.
+- MCM default values refined: comment cooldown to 20 seconds, comment distance to 2048 units.
+- Sex comment prompts now emphasize emotional reactions and dialogue variety over repetitive physical descriptions.
+- Prompt file naming updated for better ordering (0301_personality, 0601_relations, 0201_ostim_scenes).
+- Lover's Ledger insights now distinguish between "Character Sexual Behavior" and "Intimate Relationships" sections.
+- Updated compatibility for SkyrimNet Beta 7, rc3.
+- Changed "Character Insights from Intimate History" to "Intimate Relationships" prompt section showing detailed lover connections with relationship type, intensity, and recency.
+
+### Fixed
+- Scene selection now properly respects player's manual furniture choices when configured.
+- Comment distance checks now correctly filter NPCs based on configured range and line of sight.
+
 ## [v0.2.1] - 2025-10-12
 ### Changed
 - Temporarily disable the `BodyAnimation` tag when SkyrimNet Cuddle or SexLab integrations are present so encounters are not misclassified until tag handling is corrected.
