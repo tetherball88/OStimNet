@@ -102,6 +102,14 @@ Actor Function GetPlayer() global
     return JDB_solveForm(GetInitialDataKey() + ".player") as Actor
 EndFunction
 
+string Function GetActionDescription(string actionName) global
+    return JDB_solveStr(GetInitialDataKey() + ".actions." + actionName + ".description")
+EndFunction
+
+string Function GetActionParameters(string actionName) global
+    return JDB_solveStr(GetInitialDataKey() + ".actions." + actionName + ".parameters")
+EndFunction
+
 ;/ ==============================
    SECTION: MCM data
 ============================== /;

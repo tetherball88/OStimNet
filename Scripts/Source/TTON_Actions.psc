@@ -44,9 +44,9 @@ EndFunction
 ; @returns True if registration was successful, false otherwise
 Bool Function RegisterActionStartAffection() global
     int res = SkyrimNetApi.RegisterAction("StartAffectionScene", \
-  "{% set speakingNpc = tton_get_speaking_npc_social_action_info(npc.UUID) %}Initiates a gentle, non-sexual intimacy scene with {{speakingNpc.name}} that focuses on cuddling, hugging, or kissing. Use when {{speakingNpc.name}} seeks emotional closeness without any sexual progression. Choose participants only from: {{speakingNpc.nearbyPotentialPartners}}. Select sensual action from: {{speakingNpc.actions}}.", \
+  TTON_JData.GetActionDescription("StartAffectionScene"), \
   "TTON_Actions", "StartAffectionSceneIsEligible", "TTON_Actions", "StartAffectionSceneAction", "", "PAPYRUS", 1, \
-  "{\"participant1\": \"Primary partner to share the affectionate moment (required)\", \"interaction\": \"Select one interaction from provided list\"}", \
+  TTON_JData.GetActionParameters("StartAffectionScene"), \
   "", GetTags())
 
     return res == 1
@@ -94,9 +94,9 @@ EndFunction
 ; @returns True if registration was successful, false otherwise
 Bool Function RegisterActionStartSex() global
     int res = SkyrimNetApi.RegisterAction("StartNewSex", \
-  "{% set speakingNpc = tton_get_speaking_npc_sex_action_info(npc.UUID) %}Initiates a sexual encounter with the {{speakingNpc.name}}. Use ONLY for starting new scenes (for joining use JoinOngoingSex action). Consider {{speakingNpc.name}}'s personality and relationship status. Partners are optional - scene can start with just {{speakingNpc.name}} alone. If selecting partners, choose only from: {{speakingNpc.nearbyPotentialPartners}}. Select particular action/position from: {{speakingNpc.actions}}. List of available furniture: {{speakingNpc.furniture}}", \
+  TTON_JData.GetActionDescription("StartNewSex"), \
   "TTON_Actions", "StartSexActionIsElgigible", "TTON_Actions", "StartSexAction", "", "PAPYRUS", 1, \
-  "{\"participant1\": \"Primary partner to engage in sexual activities with the speaking NPC (required)\", \"participant2\": \"Optional second partner for the sexual encounter\", \"participant3\": \"Optional third partner for the sexual encounter\", \"participant4\": \"Optional fourth partner for the sexual encounter\", \"type\": \"Specific sexual activity type.\", \"furniture\": \"Furniture or location for the sexual activity. Choose from the available furniture list or specify none\"}", \
+  TTON_JData.GetActionParameters("StartNewSex"), \
   "", GetTags())
 
   return res == 1
@@ -144,9 +144,9 @@ EndFunction
 ; @returns True if registration was successful, false otherwise
 bool Function RegisterActionChangeSexPosition() global
     return SkyrimNetApi.RegisterAction("ChangeSexPosition", \
-  "{% set speakingNpc = tton_get_speaking_npc_sex_action_info(npc.UUID) %}Changes the sexual activity during an ongoing encounter. Use when {{speakingNpc.name}} desires a different position or activity. Select particular action/position from: {{speakingNpc.actions}}", \
+  TTON_JData.GetActionDescription("ChangeSexPosition"), \
   "TTON_Actions", "ChangeSexPositionIsElgigible", "TTON_Actions", "ChangeSexPositionAction", "", "PAPYRUS", 1, \
-  "{\"type\": \"The specific sexual activity to change to.\"}") == 1
+  TTON_JData.GetActionParameters("ChangeSexPosition")) == 1
 EndFunction
 
 ; Checks if an actor is eligible to change their current sexual position
@@ -183,9 +183,9 @@ EndFunction
 ; @returns True if registration was successful, false otherwise
 bool Function RegisterActionSexInvite() global
     return SkyrimNetApi.RegisterAction("InviteToYourSex", \
-  "{% set speakingNpc = tton_get_speaking_npc_sex_action_info(npc.UUID) %}{{speakingNpc.name}} invites others to join ongoing sexual encounter. Use only for adding new participants to an existing {{speakingNpc.name}}'s encounter. Consider relationship dynamics and potential interest of invitees. Select invitees only: : {{speakingNpc.nearbyPotentialPartners}}", \
+  TTON_JData.GetActionDescription("InviteToYourSex"), \
   "TTON_Actions", "SexInviteIsElgigible", "TTON_Actions", "SexInviteAction", "", "PAPYRUS", 1, \
-  "{\"target1\": \"First person to invite to the ongoing sexual scene (required)\", \"target2\": \"Second person to invite to the ongoing sexual scene (optional)\", \"target3\": \"Third person to invite to the ongoing sexual scene (optional)\"}") == 1
+  TTON_JData.GetActionParameters("InviteToYourSex")) == 1
 EndFunction
 
 ; Checks if an actor is eligible to invite others to their sexual encounter
@@ -258,9 +258,9 @@ EndFunction
 ; @returns True if registration was successful, false otherwise
 bool Function RegisterActionSexJoin() global
     return SkyrimNetApi.RegisterAction("JoinOngoingSex", \
-  "{% set speakingNpc = tton_get_speaking_npc_sex_join_action_info(npc.UUID) %}{{speakingNpc.name}} joins an ongoing sexual encounter they are currently observing. Consider {{speakingNpc.name}}'s relationship with participants, their current mood, and whether their participation would be welcome. Select target only from: {{speakingNpc.nearbyPotentialPartners}}", \
+  TTON_JData.GetActionDescription("JoinOngoingSex"), \
   "TTON_Actions", "SexJoinIsElgigible", "TTON_Actions", "SexJoinAction", "", "PAPYRUS", 1, \
-  "{\"target\": \"Specific participant already in the sexual encounter to focus interaction with - choose based on relationship and current activities (required)\"}") == 1
+  TTON_JData.GetActionParameters("JoinOngoingSex")) == 1
 EndFunction
 
 ; Checks if an actor is eligible to join an ongoing sexual encounter
@@ -306,9 +306,9 @@ EndFunction
 ; @returns True if registration was successful, false otherwise
 Bool Function RegisterActionSexChangePace() global
     SkyrimNetApi.RegisterAction("ChangeSexPace", \
-  "{% set speakingNpc = tton_get_speaking_npc_sex_action_info(npc.UUID) %}Changes the rhythm and intensity of the current sexual activity. Use when {{speakingNpc.name}} wants to adjust the pace while maintaining the same position or activity. Consider current stamina, emotional intensity, and natural progression of the encounter.", \
+  TTON_JData.GetActionDescription("ChangeSexPace"), \
   "TTON_Actions", "SexChangePaceIsElgigible", "TTON_Actions", "ChangeSexPaceAction", "", "PAPYRUS", 1, \
-  "{\"speed\": \"Desired speed dynamic: increase | decrease\"}") == 1
+  TTON_JData.GetActionParameters("ChangeSexPace")) == 1
 EndFunction
 
 ; Checks if an actor is eligible to change the pace of their current sexual activity
@@ -349,9 +349,9 @@ EndFunction
 ; @returns True if registration was successful, false otherwise
 bool Function RegisterActionSexStop() global
     return SkyrimNetApi.RegisterAction("StopSex", \
-  "{% set speakingNpc = decnpc(npc.UUID) %}{{speakingNpc.name}} decides to end current sexual encounter that {{speakingNpc.name}} is participating in. Use when {{speakingNpc.name}} wishes to stop for any reason - discomfort, interruption, or changing circumstances.", \
+  TTON_JData.GetActionDescription("StopSex"), \
   "TTON_Actions", "StopSexIsEligible", "TTON_Actions", "StopSexAction", "", "PAPYRUS", 1, \
-  "") == 1
+  TTON_JData.GetActionParameters("StopSex")) == 1
 EndFunction
 
 ; Checks if an actor is eligible to stop their current sexual encounter
