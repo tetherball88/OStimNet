@@ -202,7 +202,7 @@ EndFunction
 int Function GetMcmCommentsDistance() global
     int val = GetMcmInt("sexCommentsDistance")
     if(val == -1)
-        val = 768
+        val = 1152
     endif
 
     return val
@@ -289,23 +289,22 @@ EndFunction
 ============================== /;
 
 Function SetThreadInt(int ThreadID, string propName, int value = 1) global
-    JDB_solveIntSetter(GetNamespaceKey() + ".tmp.threads." + ThreadID + "." + propName, value, true)
-EndFunction
-
-bool Function GetThreadBool(int ThreadID, string propName) global
-    return JDB_solveInt(GetNamespaceKey() + ".tmp.threads." + ThreadID + "." + propName) == 1
+    StorageUtil.SetIntValue(none, "tmp.threads." + ThreadID + "." + propName, value)
 EndFunction
 
 int Function GetThreadInt(int ThreadID, string propName, int DefaultValue = 0) global
-    return JDB_solveInt(GetNamespaceKey() + ".tmp.threads." + ThreadID + "." + propName, DefaultValue)
+    return StorageUtil.GetIntValue(none, "tmp.threads." + ThreadID + "." + propName, DefaultValue)
 EndFunction
 
-Function SetThreadForced(int ThreadID, int value = 1) global
-    SetThreadInt(ThreadID, "forced", value)
+bool Function GetThreadBool(int ThreadID, string propName) global
+    return GetThreadInt(ThreadID, propName) == 1
 EndFunction
 
-bool Function IsThreadForced(int ThreadID) global
-    return GetThreadBool(ThreadID, "forced")
+Function SetThreadFlt(int ThreadID, string propName, float value = 1.0) global
+    StorageUtil.SetFloatValue(none, "tmp.threads." + ThreadID + "." + propName, value)
+EndFunction
+float Function GetThreadFlt(int ThreadID, string propName, float DefaultValue = 0.0) global
+    return StorageUtil.GetFloatValue(none, "tmp.threads." + ThreadID + "." + propName, DefaultValue)
 EndFunction
 
 Function SetThreadAddNewActors(int ThreadID, int value = 1) global
@@ -330,6 +329,18 @@ EndFunction
 
 bool Function GetThreadAffectionOnly(int ThreadID) global
     return GetThreadInt(ThreadID, "affectionOnly") == 1
+EndFunction
+
+Function SetSceneChangeTime(int ThreadID) global
+    SetThreadFlt(ThreadID, "sceneChangeCooldown", Utility.GetCurrentRealTime())
+EndFunction
+
+bool Function CanTrackSceneChange(int ThreadID) global
+    float lastTime = GetThreadFlt(ThreadID, "sceneChangeCooldown", 0.0)
+    float now = Utility.GetCurrentRealTime()
+    float diff = now - lastTime
+
+    return TTON_JData.GetMcmCommentsFrequency() <= diff
 EndFunction
 
 ;/ ==============================

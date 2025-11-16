@@ -1,12 +1,10 @@
-{% if not isTimePaused %}
+{% if not isTimePaused and render_mode == "full" %}
     {% set npcData = tton_get_npc_sexual_data(actorUUID) %}
     {% set npcName = decnpc(actorUUID).name %}
     {% if npcData %}
         {% set totalEncounters = npcData.totalEncounters %}
         {% if totalEncounters > 0 %}
-            {% if render_mode == "full" %}
 {{ "### Character Sexual Behavior" }}
-            {% endif %}
             {% set sameSexRatio = npcData.sameSexEncounter / totalEncounters %}
             {% set soloRatio = npcData.soloSex / totalEncounters %}
             {% set exclusiveRatio = npcData.exclusiveSex / totalEncounters %}

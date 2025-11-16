@@ -14,7 +14,7 @@ int property oid_ContinueNarrationAfterDirect auto
 
 int property oid_SexCommentsFrequency auto
 int property oid_SexCommentsGenderWeight auto
-int property oid_SexCommentsDistance auto
+int property oid_SexHearDistance auto
 
 int property oid_DeniesCooldown auto
 int property oid_AffectionSceneDuration auto
@@ -68,7 +68,7 @@ Function RenderRightColumn()
 
     oid_SexCommentsFrequency = AddSliderOption("Comment cooldown (seconds):", frequency)
     oid_SexCommentsGenderWeight = AddSliderOption("Gender preference (0=Male, 100=Female):", genderWeight)
-    oid_SexCommentsDistance = AddSliderOption("Comment hearing range (units):", distance)
+    oid_SexHearDistance = AddSliderOption("Sex hearing range (units):", distance)
 
     AddHeaderOption("Behavior & Timing")
     float denyCooldown = TTON_JData.GetMcmDenyCooldown() as float
@@ -130,8 +130,8 @@ event OnOptionHighlight(int option)
         SetInfoText("Minimum time between NPC comments during intimate scenes.")
     elseif(option == oid_SexCommentsGenderWeight)
         SetInfoText("Controls which gender is more likely to speak. 50 = equal chance for both genders.")
-    elseif(option == oid_SexCommentsDistance)
-        SetInfoText("Maximum distance for NPCs to make comments. 0 = unlimited. Line of sight overrides distance.")
+    elseif(option == oid_SexHearDistance)
+        SetInfoText("Maximum distance from player to hear if somebody has sex. 0 = unlimited. Line of sight overrides distance.\nUsed for both npc make comments and SkyrimNet record events.\n If player can't hear/see the speaker, no comment or log event is made.")
     elseif(option == oid_AffectionSceneDuration)
         SetInfoText("How long affectionate scenes last before automatically ending.")
     elseif(option == oid_DeniesCooldown)
@@ -159,9 +159,9 @@ event OnOptionSliderOpen(int a_option)
         startRange = 0
         endRange = 100
         interval = 1
-    elseif(a_option == oid_SexCommentsDistance)
+    elseif(a_option == oid_SexHearDistance)
         startValue = TTON_JData.GetMcmCommentsDistance() as float
-        defaultValue = 768.0
+        defaultValue = 1152.0
         startRange = 0
         endRange = 10240
         interval = 64
@@ -197,7 +197,7 @@ event OnOptionSliderAccept(int a_option, float a_value)
         TTON_JData.SetMcmCommentsFrequency(a_value as int)
     elseif(a_option == oid_SexCommentsGenderWeight)
         TTON_JData.SetMcmCommentsGenderWeight(a_value as int)
-    elseif(a_option == oid_SexCommentsDistance)
+    elseif(a_option == oid_SexHearDistance)
         TTON_JData.SetMcmCommentsDistance(a_value as int)
     elseif(a_option == oid_AffectionSceneDuration)
         TTON_JData.SetMcmAffectionDuration(a_value as int)
@@ -215,7 +215,7 @@ event OnOptionDefault(int a_option)
     elseif(a_option == oid_SexCommentsGenderWeight)
         SetSliderDialogStartValue(50)
         TTON_JData.SetMcmCommentsGenderWeight(50)
-    elseif(a_option == oid_SexCommentsDistance)
+    elseif(a_option == oid_SexHearDistance)
         SetSliderDialogStartValue(2048)
         TTON_JData.SetMcmCommentsDistance(2048)
     elseif(a_option == oid_AffectionSceneDuration)

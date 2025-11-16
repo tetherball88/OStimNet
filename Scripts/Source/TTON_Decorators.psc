@@ -25,33 +25,25 @@ EndFunction
 string Function GetOStimOngoingSexScenes(Actor npc) global
     ; todo as of now this method doesn't work, check later releases
     ; int[] threads = OThread.GetAllThreadIDs()
-    int[] threads = new int[6]
-    threads[0] = 0
-    threads[1] = 1
-    threads[2] = 2
-    threads[3] = 3
-    threads[4] = 4
-    threads[5] = 5
+    int[] threads = StorageUtil.IntListToArray(none, "StartedOStimThreads")
     int i = 0
     string res = "{\"scenes\": ["
-    bool first = true
 
     while(i < threads.Length)
         ; this condition isn't needed when OThread.GetAllThreadIDs() is working properly
         if(OThread.IsRunning(threads[i]))
-            if(!first)
-                res += ","
+            string json = TTON_Utils.GetOStimSexSceneJson(npc, threads[i])
+            if(json != "")
+                StorageUtil.StringListAdd(none, "TTON_TmpScenes", json, false)
             endif
-            first = false
-
-            res += TTON_Utils.GetOStimSexSceneJson(npc, threads[i])
-
         endif
 
         i += 1
     endwhile
 
-    res += "]}"
+    res += PapyrusUtil.StringJoin(StorageUtil.StringListToArray(none, "TTON_TmpScenes"), ",") + "]}"
+
+    StorageUtil.ClearAllPrefix("TTON_TmpScenes")
 
     return res
 EndFunction
@@ -61,6 +53,9 @@ EndFunction
 ; @returns JSON string containing details about the NPC's current sex scene
 string Function GetOStimNpcSexScene(Actor npc) global
     int ThreadId = OActor.GetSceneID(npc)
+    if(ThreadID == -1)
+        return ""
+    endif
     return TTON_Utils.GetOStimSexSceneJson(npc, ThreadId)
 EndFunction
 
@@ -76,34 +71,36 @@ string Function GetNpcSexualData(Actor npc) global
         return "{}"
     endif
     float currentTime = Utility.GetCurrentGameTime()
-    int solo = TTLL_Store.GetSoloSexCount(npc)
-    int exclusive = TTLL_Store.GetExclusiveSexCount(npc)
-    int groupCount = TTLL_Store.GetGroupSexCount(npc)
+    int solo = TTLL_Store.GetNpcInt(npc, "solosex")
+    int exclusive = TTLL_Store.GetNpcInt(npc, "exclusivesex")
+    int groupCount = TTLL_Store.GetNpcInt(npc, "groupsex")
     int total = solo + exclusive + groupCount
     string json = "{"
     json += "\"soloSex\":" + solo + ","
     json += "\"exclusiveSex\":" + exclusive + ","
     json += "\"groupSex\":" + groupCount + ","
-    json += "\"sameSexEncounter\":" + TTLL_Store.GetSameSexEncounterCount(npc) + ","
+    json += "\"sameSexEncounter\":" + TTLL_Store.GetNpcInt(npc, "samesexencounter") + ","
     json += "\"totalEncounters\":" + total + ","
 
     json += "\"lovers\": ["
 
-    Actor lover = TTLL_Store.NextLover(npc)
+    Actor[] lovers = TTLL_Store.GetAllLovers(npc)
 
     string arraySeparator = ""
 
-    while(lover)
+    int i = 0
+    while(i < lovers.Length)
+        Actor lover = lovers[i]
         json += arraySeparator + "{"
-        json += "\"name\": \"" + TTLL_Store.GetLoverName(npc, lover) + "\","
-        float diff = currentTime - TTLL_Store.GetLoverLastTime(npc, lover)
+        json += "\"name\": \"" + TTON_Utils.GetActorName(lover) + "\","
+        float diff = currentTime - TTLL_Store.GetLoverFlt(npc, lover, "lasttime")
         json += "\"daysAgo\": " + diff + ","
-        json += "\"exclusiveSex\": " + TTLL_Store.GetLoverExclusiveSexCount(npc, lover) + ","
-        json += "\"groupSex\": " + TTLL_Store.GetLoverGroupSexCount(npc, lover) + ","
+        json += "\"exclusiveSex\": " + TTLL_Store.GetLoverInt(npc, lover, "exclusivesex") + ","
+        json += "\"groupSex\": " + TTLL_Store.GetLoverInt(npc, lover, "groupsex") + ","
         json += "\"score\": " + TTLL_Store.GetLoverScore(npc, lover)
         json += "}"
         arraySeparator = ","
-        lover = TTLL_Store.NextLover(npc, lover)
+        i += 1
     endwhile
 
     json += "]"

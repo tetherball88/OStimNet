@@ -95,15 +95,13 @@ Function StopOStim(Actor initiator) global
     endif
     OThread.Stop(ThreadId)
 
-    bool hadSex = TTLL_OstimThreadsCollector.GetHadSex(ThreadID)
+    bool hadSex = TTLL_ThreadsCollector.GetThreadBool(ThreadID, "hadsex")
 
-    Form[] actorsForms = TTLL_OstimThreadsCollector.GetActorsForms(ThreadID)
-    Actor[] actors = PapyrusUtil.ActorArray(actorsForms.Length)
+    Actor[] actors = TTLL_ThreadsCollector.GetActors(ThreadID)
     int i = 0
     string climaxedActors = ""
     while(i < actors.Length)
-        actors[i] = actorsForms[i] as Actor
-        if(TTLL_OstimThreadsCollector.GetOrgasmed(ThreadID, actors[i]))
+        if(TTLL_ThreadsCollector.GetActorBool(ThreadID, actors[i], "orgasmed"))
             climaxedActors += TTON_Utils.GetActorName(actors[i]) + ","
         endif
 
@@ -120,7 +118,7 @@ Function StopOStim(Actor initiator) global
         msg += "SEXUAL "
     endif
     msg += "ACTIVITY CONCLUDED: Participants "+TTON_Utils.GetActorsNamesComaSeparated(actors)
-    string LastSexualSceneId = TTLL_OstimThreadsCollector.GetLastSexualSceneId(ThreadID)
+    string LastSexualSceneId = TTLL_ThreadsCollector.GetThreadStr(ThreadID, "lastsexualsceneid")
 
     if(hadSex)
         if(climaxedActors != "")

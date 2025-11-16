@@ -1,5 +1,24 @@
 # Changelog
 
+## [v0.5.0.dev] - 2025-11-16
+
+### Breaking Changes
+- Now requires Lover's Ledger v0.1.0.dev or newer.
+
+### Added
+- Advanced visibility system that considers distance, line of sight, and lighting when determining if NPCs can perceive sex scenes.
+- Light-based sight distance modifiers that reduce visibility in darker environments (40% in pitch black, 100% in full light).
+- Interior/exterior environmental sound propagation adjustments (quieter interiors allow 20% longer hearing range, noisier outdoors reduce by 20%).
+- Granular visibility states: "canSeeAndHear", "canHearClose", "canHearFar", and "none" for more realistic NPC awareness.
+
+### Changed
+- MCM option renamed from "Comment hearing range" to "Sex hearing range" with improved description explaining dual purpose for comments and event logging.
+- Default sex hearing range increased from 768 to 1152 units for better balance.
+- Scene descriptions now only generated when NPCs have visual line of sight to the scene, improving performance and realism.
+- Event logging now respects visibility system - if player can't see/hear the scene, no comment or log event is created.
+
+
+
 ## [v0.4.0] - 2025-11-06
 ### Added
 - MCM slider for "Continue narration chance (%)" to control how often AI continues narrating after sex comments.

@@ -7,23 +7,31 @@
             {% if length(scenesData.scenes) > 1 %}
 {{ "#### Scene " }}{{ loop.index }}:
             {% endif %}
-
             {% if scene.isInThisScene %}
-**{{npcName}}** is directly participating in this intimate activity:
+- **{{npcName}}** is directly participating in this intimate activity:
             {% else %}
-**{{npcName}}** is observing this intimate encounter:
+                {% if lower(scene.visibility) == "canhearfar" %}
+- **{{npcName}}** can hear muffled sounds that might be sex.
+                {% else if lower(scene.visibility) == "canhearclose" %}
+- **{{npcName}}** can clearly hear that someone is having sex.
+                {% else if lower(scene.visibility) == "canSeeAndHear" %}
+- **{{npcName}}** is observing closely this intimate encounter:
+                {% endif %}
             {% endif %}
             {% if responseTarget.UUID %}
                 {% set responseTargetName = decnpc(responseTarget.UUID).name %}
                 {% set targetScene = tton_ostim_npc_sex_scene(responseTarget.UUID) %}
-                {% if targetScene and targetScene.sceneId == scene.sceneId %}
-- **{{responseTargetName}}** is {% if targetScene.isInThisScene %}participating in this same scene{% else %}watching this scene{% endif %}
+                {% if targetScene %}
+                    {% if targetScene.sceneId == scene.sceneId %}
+- **{{responseTargetName}}** is participating in this same scene as **{{npcName}}**
+                    {% else %}
+- **{{responseTargetName}}** is participating in a different intimate scene
+                    {% endif %}
                 {% else %}
-- **{{responseTargetName}}** is {% if targetScene.isInThisScene %}participating in a different intimate scene{% else %}not involved in any intimate activity{% endif %}
+- **{{responseTargetName}}** is not involved in any intimate activity
                 {% endif %}
             {% endif %}
 {{ scene.description }}
-
             {% if not loop.is_last %}
 ---
             {% endif %}
