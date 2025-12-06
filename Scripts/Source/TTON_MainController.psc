@@ -8,6 +8,7 @@ EndEvent
 
 Function Maintenance()
     TTON_JData.ImportStaticData()
+    TTON_Storage.ClearOnLoad()
 
     RegisterForModEvent("ostim_thread_start", "OStimStart")
     RegisterForModEvent("ostim_thread_scenechanged", "OStimSceneChange")
@@ -26,6 +27,8 @@ Event OStimStart(string eventName, string strArg, float numArg, Form sender)
     TTON_IsOstimActive.SetValue(1.0)
     int ThreadID = numArg as int
     StorageUtil.IntListAdd(none, "StartedOStimThreads", ThreadID, false)
+
+    TTON_Storage.StartThread(ThreadID)
 
     int continuedFromThreadID = TTON_JData.GetThreadContinuationFrom(ThreadID)
 
@@ -46,6 +49,8 @@ Event OStimSceneChange(string eventName, string strArg, float numArg, Form sende
     int ThreadID = numArg as int
     string sceneId = OThread.GetScene(ThreadID)
 
+    TTON_Storage.SceneChange(ThreadID)
+
     if(OMetadata.IsTransition(sceneId) || OMetadata.HasAnySceneTagCSV(sceneId, "idle,intro"))
       return
     endif
@@ -58,6 +63,7 @@ EndEvent
 
 Event OStimOrgasm(string eventName, string strArg, float numArg, Form sender)
     int ThreadID = numArg as int
+    TTON_Storage.EndThread(ThreadID)
     Actor orgasmedActor = sender as Actor
     TTON_Events.RegisterSexClimaxEvent(ThreadID, orgasmedActor)
     string climaxLocations = TTON_Utils.GetShclongOrgasmedLocation(orgasmedActor, ThreadID)
@@ -90,7 +96,18 @@ Event ThreadFinished(int ThreadID)
     if(!TTON_JData.GetThreadAddNewActors(ThreadID))
         Actor[] actors = TTLL_ThreadsCollector.GetActors(ThreadID)
         TTON_Utils.RequestSexComment(TTON_Utils.GetActorsNamesComaSeparated(actors) + " just finished their sexual encounter. Based on the recent context, generate a single in-character, post-sex comment that reflects how the encounter likely went.", actors, continueNarration = true)
-        ; TTON_Events.RegisterSexStopEvent(ThreadID)
+        int i = 0
+        while(i < actors.Length)
+            TTON_Storage.UpdateNpcSexualData(actors[i])
+
+            Actor[] lovers = TTLL_Store.GetAllLovers(actors[i])
+            int j = 0
+            while(j < lovers.Length)
+                TTON_Storage.UpdateNpcLoverSexualData(actors[i], lovers[j])
+                j += 1
+            endwhile
+            i += 1
+        endwhile
     endif
 
     TTON_JData.SetThreadAffectionOnly(ThreadId, 0)

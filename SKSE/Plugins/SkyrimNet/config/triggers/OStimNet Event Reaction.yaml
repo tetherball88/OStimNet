@@ -1,0 +1,21 @@
+name: "OStimNet Event Reaction"
+description: "React to OStimNet events"
+
+eventCriteria:
+  eventType: "custom"
+  schemaConditions:
+    - fieldPath: "description"
+      operator: "contains"
+      value: "something"
+      caseSensitive: false
+
+response:
+  type: "direct_narration"
+  content: "empty"
+
+audience: "nearby_npcs"
+
+enabled: true
+probability: 1
+cooldownSeconds: 30
+priority: 1
