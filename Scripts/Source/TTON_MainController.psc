@@ -53,7 +53,7 @@ Event OStimSceneChange(string eventName, string strArg, float numArg, Form sende
     ; TTON_Events.RegisterSexChangeEvent(ThreadID)
     Actor[] actors = OThread.GetActors(ThreadID)
     string sceneDesc = TTON_Utils.GetSceneDescription(sceneId, actors)
-    TTON_Utils.RequestSexComment(TTON_Utils.GetActorsNamesComaSeparated(actors) + " changed their position to: " + TTON_Utils.GetSceneDescription(sceneId, actors), actors, type = "scene_change", continueNarration = true)
+    TTON_Utils.RequestSexComment(TTON_Utils.GetActorsNamesComaSeparated(actors) + " changed their position to: " + sceneDesc, actors, type = "scene_change", continueNarration = true)
 EndEvent
 
 Event OStimOrgasm(string eventName, string strArg, float numArg, Form sender)

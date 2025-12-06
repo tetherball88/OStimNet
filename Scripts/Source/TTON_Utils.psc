@@ -495,7 +495,7 @@ EndFunction
 
 bool Function RequestSexComment(string msg, Actor[] actors = none, Actor speaker = none, string type = "", bool continueNarration = true) global
     if(!speaker)
-        if(actors == none || actors.Length == 0)
+        if(!actors || actors.Length == 0)
             TTON_Debug.warn("RequestSexComment: No actors provided to select a speaker from.")
             return false
         endif

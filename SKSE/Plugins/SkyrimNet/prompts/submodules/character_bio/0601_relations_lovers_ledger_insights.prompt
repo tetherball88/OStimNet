@@ -3,7 +3,7 @@
     {% set npcName = decnpc(actorUUID).name %}
     {% if npcData and npcData.totalEncounters > 0 %}
         {% if isArray(npcData.lovers) and length(npcData.lovers) > 0 %}
-{{ "### Sexual Partners" }}
+            ### Sexual Partners
             {% for loverData in npcData.lovers %}
                 {% if loverData.score > 5 %}
                     {% set loverEncounters = loverData.exclusiveSex + loverData.groupSex %}
@@ -31,8 +31,7 @@
                     {% else %}
                         {% set recency = "over a year ago" %}
                     {% endif %}
-
-- **{{ loverData.name }}** ({{ bond }}): {{ loverEncounters }} encounters ({{ loverData.exclusiveSex }} private, {{ loverData.groupSex }} group), last {% if loverData.daysAgo <= 1 %}{{ recency }}{% else if loverData.daysAgo <= 7 %}{{ recency }} days ago{% else if loverData.daysAgo <= 30 %}{{ recency }} weeks ago{% else if loverData.daysAgo <= 365 %}{{ recency }} months ago{% else %}{{ recency }}{% endif %}
+                    - **{{ loverData.name }}** ({{ bond }}): {{ loverEncounters }} encounters ({{ loverData.exclusiveSex }} private, {{ loverData.groupSex }} group), last {% if loverData.daysAgo <= 1 %}{{ recency }}{% else if loverData.daysAgo <= 7 %}{{ recency }} days ago{% else if loverData.daysAgo <= 30 %}{{ recency }} weeks ago{% else if loverData.daysAgo <= 365 %}{{ recency }} months ago{% else %}{{ recency }}{% endif %}
                 {% endif %}
             {% endfor %}
         {% endif %}
