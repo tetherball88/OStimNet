@@ -327,28 +327,6 @@ string Function GetVisibility(Actor npc, Actor target) global
     endif
 EndFunction
 
-; Generates a JSON representation of an OStim scene
-; @param npc The NPC requesting the scene information
-; @param ThreadId The ID of the thread to get information about
-; @returns JSON object containing scene details, participants, and description
-string Function GetOStimSexSceneJson(Actor npc, int ThreadId) global
-    string sceneId = OThread.GetScene(ThreadID)
-    ; without Swapped suffix
-    string baseSceneId =  GetBaseSceneId(sceneId)
-    bool isInThisScene = OThread.GetActorPosition(ThreadId, npc) != -1
-    Actor[] actors = OThread.GetActors(ThreadId)
-
-    string description = ""
-    string isSexual = TTLL_ThreadsCollector.GetThreadBool(ThreadId, "hadsex")
-
-    string visibility = GetVisibility(npc, actors[0])
-
-    if(visibility == "canSeeAndHear")
-        description = GetSceneDescription(sceneId, actors)
-    endif
-
-    return "{\"isInThisScene\": "+isInThisScene+", \"sceneId\": \""+sceneId+"\",  \"description\": \""+description+"\", \"isSexual\": "+isSexual+", \"visibility\": \""+visibility+"\" }"
-EndFunction
 
 Faction Function GetSexLabAnimatingFaction() global
     Faction SexLabAnimatingFaction = none

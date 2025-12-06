@@ -1,16 +1,17 @@
-{% if not isTimePaused and render_mode == "full" %}
-    {% set npcData = tton_get_npc_sexual_data(actorUUID) %}
+{% if render_mode == "full" %}
+    {% set soloSex = papyrus_util("GetIntValue", actorUUID, "TTONDec_SexualData_SoloSex") %}
+    {% set exclusiveSex = papyrus_util("GetIntValue", actorUUID, "TTONDec_SexualData_ExclusiveSex") %}
+    {% set groupSex = papyrus_util("GetIntValue", actorUUID, "TTONDec_SexualData_GroupSex") %}
+    {% set sameSexEncounter = papyrus_util("GetIntValue", actorUUID, "TTONDec_SexualData_SameSexEncounter") %}
+    {% set totalEncounters = exclusiveSex + groupSex + soloSex %}
     {% set npcName = decnpc(actorUUID).name %}
-    {% if npcData %}
-        {% set totalEncounters = npcData.totalEncounters %}
-        {% if totalEncounters > 0 %}
-            ### Character Sexual Behavior
-            {% set sameSexRatio = npcData.sameSexEncounter / totalEncounters %}
-            {% set soloRatio = npcData.soloSex / totalEncounters %}
-            {% set exclusiveRatio = npcData.exclusiveSex / totalEncounters %}
-            {% set groupRatio = npcData.groupSex / totalEncounters %}
-            **Sexual orientation:** {% if sameSexRatio > 0.8 %}primarily same-sex{% else if sameSexRatio > 0.4 %}bisexual{% else if sameSexRatio > 0.1 %}mostly opposite-sex with some same-sex experience{% else %}exclusively opposite-sex{% endif %}
-            **Sexual preference:** {% if soloRatio > 0.5 %}frequently solo{% endif %}{% if exclusiveRatio > 0.7 %}prefers one-on-one encounters{% else if groupRatio > 0.5 %}comfortable with group settings{% else %}mix of private and group encounters{% endif %}
-        {% endif %}
+    {% if totalEncounters > 0 %}
+        ### Character Sexual Behavior
+        {% set sameSexRatio = sameSexEncounter / totalEncounters %}
+        {% set soloRatio = soloSex / totalEncounters %}
+        {% set exclusiveRatio = exclusiveSex / totalEncounters %}
+        {% set groupRatio = groupSex / totalEncounters %}
+        **Sexual orientation:** {% if sameSexRatio > 0.8 %}primarily same-sex{% else if sameSexRatio > 0.4 %}bisexual{% else if sameSexRatio > 0.1 %}mostly opposite-sex with some same-sex experience{% else %}exclusively opposite-sex{% endif %}
+        **Sexual preference:** {% if soloRatio > 0.5 %}frequently solo{% endif %}{% if exclusiveRatio > 0.7 %}prefers one-on-one encounters{% else if groupRatio > 0.5 %}comfortable with group settings{% else %}mix of private and group encounters{% endif %}
     {% endif %}
 {% endif %}
