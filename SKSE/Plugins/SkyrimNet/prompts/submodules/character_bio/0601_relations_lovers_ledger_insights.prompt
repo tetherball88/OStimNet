@@ -1,37 +1,17 @@
-{% if not isTimePaused and (render_mode == "full" or render_mode == "thoughts" or render_mode == "transform") %}
-    {% set npcData = tton_get_npc_sexual_data(actorUUID) %}
-    {% set npcName = decnpc(actorUUID).name %}
-    {% if npcData and npcData.totalEncounters > 0 %}
-        {% if isArray(npcData.lovers) and length(npcData.lovers) > 0 %}
+{% if render_mode == "full" or render_mode == "thoughts" or render_mode == "transform" %}
+    {% set lovers = papyrus_util("GetFormList", actorUUID, "TTONDec_SexualData_Lovers") %}
+    {% if length(lovers) > 0 %}
+        {% if isArray(lovers) and length(lovers) > 0 %}
             ### Sexual Partners
-            {% for loverData in npcData.lovers %}
-                {% if loverData.score > 5 %}
-                    {% set loverEncounters = loverData.exclusiveSex + loverData.groupSex %}
-                    {% set bond = "" %}
-                    {% set recency = "" %}
-
-                    {% if loverData.score > 40 %}
-                        {% set bond = "deep bond" %}
-                    {% else if loverData.score > 20 %}
-                        {% set bond = "strong connection" %}
-                    {% else if loverData.score > 10 %}
-                        {% set bond = "established relationship" %}
-                    {% else %}
-                        {% set bond = "casual connection" %}
-                    {% endif %}
-
-                    {% if loverData.daysAgo <= 1 %}
-                        {% set recency = "yesterday or today" %}
-                    {% else if loverData.daysAgo <= 7 %}
-                        {% set recency = round(loverData.daysAgo, 0) %}
-                    {% else if loverData.daysAgo <= 30 %}
-                        {% set recency = round(loverData.daysAgo / 7, 0) %}
-                    {% else if loverData.daysAgo <= 365 %}
-                        {% set recency = round(loverData.daysAgo / 30, 0) %}
-                    {% else %}
-                        {% set recency = "over a year ago" %}
-                    {% endif %}
-                    - **{{ loverData.name }}** ({{ bond }}): {{ loverEncounters }} encounters ({{ loverData.exclusiveSex }} private, {{ loverData.groupSex }} group), last {% if loverData.daysAgo <= 1 %}{{ recency }}{% else if loverData.daysAgo <= 7 %}{{ recency }} days ago{% else if loverData.daysAgo <= 30 %}{{ recency }} weeks ago{% else if loverData.daysAgo <= 365 %}{{ recency }} months ago{% else %}{{ recency }}{% endif %}
+            {% for loverFormIdNum in lovers %}
+                {% set loverFormId = to_string(loverFormIdNum) %}
+                {% set loverRecency = papyrus_util("GetStringValue", actorUUID, "TTONDec_Lover_" + loverFormId + "_recency") %}
+                {% set loverExclusiveSex = papyrus_util("GetIntValue", actorUUID, "TTONDec_Lover_" + loverFormId + "_Exclusive") %}
+                {% set loverGroupSex = papyrus_util("GetIntValue", actorUUID, "TTONDec_Lover_" + loverFormId + "_Group") %}
+                {% set loverTotal = loverExclusiveSex + loverGroupSex %}
+                {% set loverBond = papyrus_util("GetStringValue", actorUUID, "TTONDec_Lover_" + loverFormId + "_Bond") %}
+                {% if loverBond != "weak" %}
+                    - **{{ decnpc(formid_to_uuid(loverFormId)).name }}** ({{ loverBond }}): {{ loverTotal }} encounters ({{ loverExclusiveSex }} private, {{ loverGroupSex }} group), last {{ loverRecency }}
                 {% endif %}
             {% endfor %}
         {% endif %}
