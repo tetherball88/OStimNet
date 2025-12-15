@@ -48,7 +48,7 @@ EndFunction
 ; Placeholder eligibility check for the affection scene action.
 ; Implementation should ensure actors are free from ongoing OStim threads and mutually willing.
 Bool Function StartAffectionSceneIsEligible(Actor akActor, string contextJson, string paramsJson) global
-    return !OActor.IsInOStim(akActor) && TTON_Utils.IsOStimEligible(akActor) && TTON_JData.CanUseActionAfterDecline(akActor, "StartAffectionScene")
+    return !TTON_Utils.IsSexLabInCharge() && !TTON_Utils.IsActorBusyWithScenes(akActor) && TTON_Utils.IsOStimEligible(akActor) && TTON_JData.CanUseActionAfterDecline(akActor, "StartAffectionScene")
 EndFunction
 
 ; Placeholder handler for initiating the affection scene.
@@ -57,14 +57,19 @@ Function StartAffectionSceneExecute(Actor akActor, string contextJson, string pa
     string activity = SkyrimNetApi.GetJsonString(paramsJson, "activity", "kissing")
     Actor participant1 = TTON_Utils.GetEligibleActorFromParam(paramsJson, "participant1")
 
+    if(TTON_Utils.IsSexLabInCharge())
+        TTON_Debug.warn("OStimNet is disabled for player scenes while SkyrimNet_SexLab has control.")
+        return
+    endif
+
     if(!participant1)
         TTON_Debug.warn(TTON_Utils.GetActorName(akActor) + " wanted to start affection scene but failed to get participant1.")
         return
     endif
 
     ; check if any of potential participants are already in other ostim threads
-    if(OActor.IsInOStim(akActor) || OActor.IsInOStim(participant1))
-        TTON_Debug.warn("Can't start new OStim scene one or more of potential participants is already a part of ongoing OStim thread.")
+    if(TTON_Utils.IsActorBusyWithScenes(akActor) || TTON_Utils.IsActorBusyWithScenes(participant1))
+        TTON_Debug.warn("Can't start new OStim scene one or more of potential participants is already a part of ongoing OStim/Sexlab thread.")
         return
     endif
 
@@ -83,7 +88,7 @@ EndFunction
 ; @param paramsJson The parameters data in JSON format
 ; @returns True if the actor is eligible to start a new sexual encounter
 Bool Function StartSexActionIsElgigible(Actor akActor, string contextJson, string paramsJson) global
-    return !OActor.IsInOStim(akActor) && TTON_Utils.IsOStimEligible(akActor) && TTON_JData.CanUseActionAfterDecline(akActor, "StartSexAction")
+    return !TTON_Utils.IsSexLabInCharge() && !TTON_Utils.IsActorBusyWithScenes(akActor) && TTON_Utils.IsOStimEligible(akActor) && TTON_JData.CanUseActionAfterDecline(akActor, "StartSexAction")
 EndFunction
 
 ; Starts a new sexual encounter with specified participants
@@ -98,9 +103,14 @@ Function StartSexActionExecute(Actor akActor, string contextJson, string paramsJ
     Actor participant3 = TTON_Utils.GetEligibleActorFromParam(paramsJson, "participant3")
     Actor participant4 = TTON_Utils.GetEligibleActorFromParam(paramsJson, "participant4")
 
+    if(TTON_Utils.IsSexLabInCharge())
+        TTON_Debug.warn("OStimNet is disabled while SkyrimNet_SexLab has control of player scenes.")
+        return
+    endif
+
     ; check if any of potential participants are already in other ostim threads
-    if(OActor.IsInOStim(akActor) || OActor.IsInOStim(participant1) || OActor.IsInOStim(participant2) || OActor.IsInOStim(participant3) || OActor.IsInOStim(participant4))
-        TTON_Debug.warn("Can't start new OStim scene one or more of potential participants is already a part of ongoing OStim thread.")
+    if(TTON_Utils.IsActorBusyWithScenes(akActor) || TTON_Utils.IsActorBusyWithScenes(participant1) || TTON_Utils.IsActorBusyWithScenes(participant2) || TTON_Utils.IsActorBusyWithScenes(participant3) || TTON_Utils.IsActorBusyWithScenes(participant4))
+        TTON_Debug.warn("Can't start new OStim scene one or more of potential participants is already a part of ongoing OStim/Sexlab thread.")
         return
     endif
 

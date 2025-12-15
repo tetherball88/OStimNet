@@ -15,17 +15,32 @@ int property oid_ContinueNarrationAfterDirect auto
 int property oid_SexCommentsFrequency auto
 int property oid_SexCommentsGenderWeight auto
 int property oid_SexHearDistance auto
+int property oid_PauseSceneTracking auto
+int property oid_PauseSceneTrackingHotkey auto
 
 int property oid_DeniesCooldown auto
 int property oid_AffectionSceneDuration auto
 
 string selectedPage
 
+Function RegisterPauseSceneTrackingHotkey()
+    UnregisterForAllKeys()
+    int keyCode = TTON_JData.GetPauseSceneTrackingHotkey()
+    if(keyCode > 0)
+        RegisterForKey(keyCode)
+    endif
+EndFunction
+
 Event OnConfigInit()
     ModName = "OStimNet"
     Pages = new string[1]
 
     Pages[0] = "Settings"
+    RegisterPauseSceneTrackingHotkey()
+EndEvent
+
+Event OnConfigOpen()
+    RegisterPauseSceneTrackingHotkey()
 EndEvent
 
 Event OnPageReset(string page)
@@ -42,6 +57,10 @@ Function RenderPage()
 EndFunction
 
 Function RenderLeftColumn()
+    if(Game.GetModByName("SkyrimNet_Sexlab.esp") != 255)
+        AddHeaderOption("NOTE: SkyrimNet_Sexlab detected.")
+        AddHeaderOption("Its framework setting controls which mod starts scenes.")
+    endif
     AddHeaderOption("Player Consent & Control")
     oid_EnableStartSexConfirmationModal = AddToggleOption("Confirm before sex scenes:", TTON_JData.GetConfirmStartSexScenes())
     oid_EnableStartAffectionateConfirmationModal = AddToggleOption("Confirm before affection scenes:", TTON_JData.GetConfirmStartAffectionScenes())
@@ -62,6 +81,8 @@ EndFunction
 
 Function RenderRightColumn()
     AddHeaderOption("Immersion & Feedback")
+    oid_PauseSceneTracking = AddToggleOption("Pause scene tracking:", TTON_JData.GetPauseSceneTracking())
+    oid_PauseSceneTrackingHotkey = AddKeyMapOption("Pause scene tracking hotkey:", TTON_JData.GetPauseSceneTrackingHotkey())
     float frequency = TTON_JData.GetMcmCommentsFrequency() as float
     float genderWeight = TTON_JData.GetMcmCommentsGenderWeight() as float
     float distance = TTON_JData.GetMcmCommentsDistance() as float
@@ -103,8 +124,42 @@ event OnOptionSelect(int option)
         SetToggleOptionValue(oid_EnableStopSexConfirmationModal, TTON_JData.ToggleMcmCheckbox("confirmStopSex", 1))
     elseif(option == oid_UseDefaultOStimSceneStart)
         SetToggleOptionValue(oid_UseDefaultOStimSceneStart, TTON_JData.ToggleMcmCheckbox("useOStimDefaultStartSelection", 0))
+    elseif(option == oid_PauseSceneTracking)
+        SetToggleOptionValue(oid_PauseSceneTracking, TTON_JData.ToggleMcmCheckbox("pauseSceneTracking", 0))
     endif
 endevent
+
+event OnOptionKeyMapChange(int option, int keyCode, string conflictControl, string conflictName)
+    if(option == oid_PauseSceneTrackingHotkey)
+        int finalKeyCode = keyCode
+        if(keyCode == 0)
+            finalKeyCode = -1
+        endif
+        TTON_JData.SetPauseSceneTrackingHotkey(finalKeyCode)
+        SetKeyMapOptionValue(option, finalKeyCode)
+        RegisterPauseSceneTrackingHotkey()
+    endif
+endevent
+
+Event OnKeyDown(int keyCode)
+    if UI.IsTextInputEnabled()
+        return
+    endif
+    int configuredKey = TTON_JData.GetPauseSceneTrackingHotkey()
+    if(keyCode != configuredKey || keyCode <= 0)
+        return
+    endif
+
+    bool isPaused = TTON_JData.ToggleMcmCheckbox("pauseSceneTracking", 0)
+    if(oid_PauseSceneTracking > 0)
+        SetToggleOptionValue(oid_PauseSceneTracking, isPaused)
+    endif
+    if(isPaused)
+        Debug.Notification("OStimNet scene tracking paused.")
+    else
+        Debug.Notification("OStimNet scene tracking resumed.")
+    endif
+EndEvent
 
 ; Highlight
 event OnOptionHighlight(int option)
@@ -138,6 +193,10 @@ event OnOptionHighlight(int option)
         SetInfoText("How long each NPC waits before asking again after you refuse their request.")
     elseif(option == oid_ContinueNarrationAfterDirect)
         SetInfoText("Chance for AI to continue narrating after direct dialogue/actions. 0=Never, 100=Always.")
+    elseif(option == oid_PauseSceneTracking)
+        SetInfoText("Suspend scene tracking and narration events until re-enabled. Good for testing scenes without AI comments or event recording, or allowing your own narration.")
+    elseif(option == oid_PauseSceneTrackingHotkey)
+        SetInfoText("Keybinding to quickly toggle scene tracking pause/resume.")
     endif
 endevent
 
@@ -190,7 +249,6 @@ event OnOptionSliderOpen(int a_option)
     SetSliderDialogRange(startRange, endRange)
     SetSliderDialogInterval(interval)
 endEvent
-
 event OnOptionSliderAccept(int a_option, float a_value)
     SetSliderOptionValue(a_option, a_value)
     if(a_option == oid_SexCommentsFrequency)
@@ -227,5 +285,9 @@ event OnOptionDefault(int a_option)
     elseif(a_option == oid_ContinueNarrationAfterDirect)
         SetSliderDialogStartValue(50)
         TTON_JData.SetMcmContinueNarrationChance(50)
+    elseif(a_option == oid_PauseSceneTrackingHotkey)
+        TTON_JData.SetPauseSceneTrackingHotkey(-1)
+        SetKeyMapOptionValue(oid_PauseSceneTrackingHotkey, -1)
+        RegisterPauseSceneTrackingHotkey()
     endif
 endEvent
