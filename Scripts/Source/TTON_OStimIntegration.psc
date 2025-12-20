@@ -47,10 +47,12 @@ int function StartOstim(actor[] actors, string actions = "", string furn = "", b
     string newScene
 
     if(!nonSexual)
+        TTON_Debug.warn("StartOstim: Starting sexual scene with actors: " + actors + ", actions: " + actions + ", furniture: " + furn)
         ; Check if player furniture selection is enabled
         bool ostimDefaultStart = TTON_JData.GetUseOStimDefaultStartSelection()
 
         if(ostimDefaultStart)
+            TTON_Debug.warn("StartOstim: Using OStim default start selection for furniture." + actors)
             return OThread.QuickStart(actors)
         endif
 
@@ -60,19 +62,21 @@ int function StartOstim(actor[] actors, string actions = "", string furn = "", b
         if(furnObject)
             OThreadBuilder.SetFurniture(builderId, furnObject)
             newScene = TTON_Utils.getSceneByActions(actors, actions, furn)
+            TTON_Debug.warn("StartOstim: Found furniture of type " + furn + " for actors: " + actors + ". Using scene: " + newScene)
         else
             ; Mark scene to not use furniture if none found and player selection is disabled
             OThreadBuilder.NoFurniture(builderId)
             newScene = TTON_Utils.getSceneByActions(actors, actions)
+            TTON_Debug.warn("StartOstim: No furniture found of type " + furn + " for actors: " + actors + ". Using scene: " + newScene)
         endif
     else
+        TTON_Debug.warn("StartOstim: Starting non-sexual scene with actors: " + actors + ", actions: " + actions)
         newScene = TTON_Utils.getSceneByActions(actors, actions, nonSexual = true)
         OThreadBuilder.NoFurniture(builderId)
         OThreadBuilder.SetDuration(builderId, TTON_JData.GetMcmAffectionDuration() as float)
         OThreadBuilder.NoAutoMode(builderId)
         OThreadBuilder.NoPlayerControl(builderId)
     endif
-
 
     OThreadBuilder.SetStartingAnimation(builderID, newScene)
     int newThreadID = OThreadBuilder.Start(builderID)
