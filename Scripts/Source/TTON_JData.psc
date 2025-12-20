@@ -169,6 +169,14 @@ int Function GetMcmInt(string propName) global
     return JDB_solveInt(GetNamespaceKey() + ".mcm." + propName, -1)
 EndFunction
 
+Function SetPauseSceneTrackingHotkey(int value) global
+    SetMcmInt("pauseSceneTrackingHotkey", value)
+EndFunction
+
+int Function GetPauseSceneTrackingHotkey() global
+    return GetMcmInt("pauseSceneTrackingHotkey")
+EndFunction
+
 Function SetMcmCommentsFrequency(int value) global
     SetMcmInt("sexCommentsFrequency", value)
 EndFunction
@@ -258,6 +266,10 @@ EndFunction
 
 bool Function GetConfirmAddNewActors() global
     return GetMcmCheckbox("confirmAddActors", 1)
+EndFunction
+
+bool Function GetPauseSceneTracking() global
+    return GetMcmCheckbox("pauseSceneTracking", 0)
 EndFunction
 
 Function SetMcmContinueNarrationChance(int value) global

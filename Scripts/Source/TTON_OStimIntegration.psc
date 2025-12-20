@@ -5,6 +5,10 @@ scriptname TTON_OStimIntegration
 ; @param actions Optional scene actions or actions to filter by
 ; @returns Thread ID of the new scene, or -1 if failed
 int function StartOstim(actor[] actors, string actions = "", string furn = "", bool continuation = false, Actor initiator = none, bool nonSexual = false, string type = "") global
+    if(TTON_Utils.IsSexLabInCharge())
+        TTON_Debug.warn("StartOstim aborted because SkyrimNet_SexLab is handling player scenes.")
+        return -1
+    endif
     Actor player = TTON_JData.GetPlayer()
     actors = OActorUtil.Sort(actors, OActorUtil.EmptyArray())
     bool someActorsBusy = false
@@ -14,7 +18,7 @@ int function StartOstim(actor[] actors, string actions = "", string furn = "", b
         if(actors[i] == player)
             hasPlayer = true
         endif
-        if(OActor.IsInOStim(actors[i]))
+        if(TTON_Utils.IsActorBusyWithScenes(actors[i]))
             someActorsBusy = true
         endif
         i += 1

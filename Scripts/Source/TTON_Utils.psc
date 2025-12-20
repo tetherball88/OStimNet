@@ -350,6 +350,57 @@ string Function GetOStimSexSceneJson(Actor npc, int ThreadId) global
     return "{\"isInThisScene\": "+isInThisScene+", \"sceneId\": \""+sceneId+"\",  \"description\": \""+description+"\", \"isSexual\": "+isSexual+", \"visibility\": \""+visibility+"\" }"
 EndFunction
 
+Faction Function GetSexLabAnimatingFaction() global
+    Faction SexLabAnimatingFaction = none
+    if(Game.GetModByName("SexLab.esm") != 255)
+        SexLabAnimatingFaction = Game.GetFormFromFile(0x0000E50F, "SexLab.esm") as Faction
+    endif
+
+    return SexLabAnimatingFaction
+EndFunction
+
+bool Function IsInSexLab(Actor npc) global
+    if(!npc)
+        return false
+    endif
+
+    Faction slFaction = GetSexLabAnimatingFaction()
+    if(slFaction == none)
+        return false
+    endif
+
+    return npc.IsInFaction(slFaction)
+EndFunction
+
+bool Function IsActorBusyWithScenes(Actor npc) global
+    return OActor.IsInOStim(npc) || IsInSexLab(npc)
+EndFunction
+
+GlobalVariable Function GetSexLabOStimPlayerGlobal() global
+    if(Game.GetModByName("SkyrimNet_Sexlab.esp") == 255)
+        return none
+    endif
+
+    return Game.GetFormFromFile(0x001FC803, "SkyrimNet_Sexlab.esp") as GlobalVariable
+EndFunction
+
+int Function GetSexLabOStimPlayerMode() global
+    GlobalVariable SexLabOStimPlayer = GetSexLabOStimPlayerGlobal()
+    if(SexLabOStimPlayer == none)
+        return -1
+    endif
+
+    int flag = SexLabOStimPlayer.GetValueInt()
+    if(flag < 0)
+        return -1
+    endif
+
+    return flag
+EndFunction
+
+bool Function IsSexLabInCharge() global
+    return GetSexLabOStimPlayerMode() == 0
+EndFunction
 
 ; Checks if an actor is eligible for OStim scenes
 ; @param npc The actor to check for eligibility
@@ -494,6 +545,11 @@ bool Function ShowConfirmMessage(string msg, string type) global
 EndFunction
 
 bool Function RequestSexComment(string msg, Actor[] actors = none, Actor speaker = none, string type = "", bool continueNarration = true) global
+    if(TTON_JData.GetPauseSceneTracking())
+        TTON_Debug.info("Scene tracking is paused.")
+        return false
+    endif
+
     if(!speaker)
         if(actors == none || actors.Length == 0)
             TTON_Debug.warn("RequestSexComment: No actors provided to select a speaker from.")
@@ -643,7 +699,7 @@ EndFunction
 
 bool Function IsActorEligibleToJoin(Actor akActor) global
     bool isConsidering = StorageUtil.GetIntValue(akActor, "SexInviteConsidering") == 1
-    return !OActor.IsInOStim(akActor) && OThread.GetThreadCount() > 0 && TTON_Utils.IsOStimEligible(akActor) && !isConsidering
+    return !OActor.IsInOStim(akActor) && !IsInSexLab(akActor) && OThread.GetThreadCount() > 0 && TTON_Utils.IsOStimEligible(akActor) && !isConsidering
 EndFunction
 
 Function Decline(string actionName, Actor initiator, bool playerInvited) global
