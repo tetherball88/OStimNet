@@ -415,6 +415,10 @@ EndFunction
 ; @returns The actor if eligible, none otherwise
 Actor Function GetEligibleActorFromParam(string paramsJson, string paramName) global
     Actor npc = SkyrimNetApi.GetJsonActor(paramsJson, paramName, none)
+    if(!npc)
+        TTON_Debug.warn("TTON_Utils.GetEligibleActorFromParam: No actor found in param "+paramName+": "+paramsJson)
+        return none
+    endif
     if(!IsOStimEligible(npc))
         return none
     endif
@@ -551,8 +555,8 @@ bool Function RequestSexComment(string msg, Actor[] actors = none, Actor speaker
     endif
 
     if(!speaker)
-        if(actors == none || actors.Length == 0)
-            TTON_Debug.warn("RequestSexComment: No actors provided to select a speaker from.")
+        if(!actors || actors.Length == 0)
+            TTON_Debug.warn("RequestSexComment: No actors provided to select a speaker from. " + msg)
             return false
         endif
         speaker = GetWeightedRandomActorToSpeak(actors)

@@ -2,20 +2,20 @@
     {% set npcName = decnpc(npc.UUID).name %}
     {% set scenesData = tton_ostim_ongoing_scenes(npc.UUID) %}
     {% if isArray(scenesData.scenes) and length(scenesData.scenes) > 0 %}
-{{ "### Intimate Scenes Context"}}
+        ### Intimate Scenes Context
         {% for scene in scenesData.scenes %}
             {% if length(scenesData.scenes) > 1 %}
-{{ "#### Scene " }}{{ loop.index }}:
+                #### Scene {{ loop.index }}:
             {% endif %}
             {% if scene.isInThisScene %}
-- **{{npcName}}** is directly participating in this intimate activity:
+                - **{{npcName}}** is directly participating in this intimate activity:
             {% else %}
                 {% if lower(scene.visibility) == "canhearfar" %}
-- **{{npcName}}** can hear muffled sounds that might be sex.
+                    - **{{npcName}}** can hear muffled sounds that might be sex.
                 {% else if lower(scene.visibility) == "canhearclose" %}
-- **{{npcName}}** can clearly hear that someone is having sex.
+                    - **{{npcName}}** can clearly hear that someone is having sex.
                 {% else if lower(scene.visibility) == "canSeeAndHear" %}
-- **{{npcName}}** is observing closely this intimate encounter:
+                    - **{{npcName}}** is observing closely this intimate encounter:
                 {% endif %}
             {% endif %}
             {% if responseTarget.UUID %}
@@ -23,22 +23,21 @@
                 {% set targetScene = tton_ostim_npc_sex_scene(responseTarget.UUID) %}
                 {% if targetScene %}
                     {% if targetScene.sceneId == scene.sceneId %}
-- **{{responseTargetName}}** is participating in this same scene as **{{npcName}}**
+                        - **{{responseTargetName}}** is participating in this same scene as **{{npcName}}**
                     {% else %}
-- **{{responseTargetName}}** is participating in a different intimate scene
+                        - **{{responseTargetName}}** is participating in a different intimate scene
                     {% endif %}
                 {% else %}
-- **{{responseTargetName}}** is not involved in any intimate activity
+                    - **{{responseTargetName}}** is not involved in any intimate activity
                 {% endif %}
             {% endif %}
-{{ scene.description }}
+            {{ scene.description }}
             {% if not loop.is_last %}
----
+                ---
             {% endif %}
         {% endfor %}
-
         {% if length(scenesData.scenes) > 1 %}
-Note: Multiple intimate scenes are occurring simultaneously. The dialogue should acknowledge this complex situation appropriately.
+            Note: Multiple intimate scenes are occurring simultaneously. The dialogue should acknowledge this complex situation appropriately.
         {% endif %}
     {% endif %}
 {% endif %}
