@@ -1,0 +1,23 @@
+name: "tton_sex_climax"
+description: "NPC's reaction when climaxed"
+
+eventCriteria:
+  eventType: "tton_event"
+  schemaConditions:
+    - fieldPath: "type"
+      operator: "equals"
+      value: "climax"
+    - fieldPath: "skipTrigger"
+      operator: "equals"
+      value: false
+
+response:
+  type: "direct_narration"
+  content: "{{ originator }} makes a comment about climax. If they climax - focus on {{ originator }}. If somebody else cum on/in them make a comment about it. If somebody else cum but not on them make a comment about that situation."
+
+audience: "nearby_npcs"
+
+enabled: true
+probability: 1
+cooldownSeconds: 30
+priority: 10

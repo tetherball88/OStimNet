@@ -7,3 +7,4 @@ skyrimse.ppj
 script*.js
 StartNewSex.yaml
 .editorconfig
+.claude/settings.local.json

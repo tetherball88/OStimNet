@@ -5,8 +5,11 @@ Function StartThread(int ThreadID) global
     Actor[] actors = OThread.GetActors(ThreadID)
     int i = 0
     while(i < actors.Length)
-        StorageUtil.FormListAdd(none, "TTONDec_Thread" + ThreadID + "_Actors", actors[i], false)
-        StorageUtil.SetIntValue(actors[i], "TTONDec_ThreadParticipant", ThreadID)
+        Actor current = actors[i]
+        StorageUtil.FormListAdd(none, "TTONDec_Thread" + ThreadID + "_Actors", current, false)
+        StorageUtil.StringListAdd(none, "TTONDec_Thread" + ThreadID + "_ActorsNames", TTON_Utils.GetActorName(current), false)
+        StorageUtil.SetIntValue(current, "TTONDec_ThreadParticipant", ThreadID)
+
         i += 1
     endwhile
 EndFunction
@@ -82,4 +85,11 @@ Function UpdateNpcLoverSexualData(Actor npc, Actor lover) global
     int group = TTLL_Store.GetLoverInt(npc, lover, "groupsex")
     StorageUtil.SetIntValue(npc, "TTONDec_Lover_" + lover.GetFormID() + "_Exclusive", exclusive)
     StorageUtil.SetIntValue(npc, "TTONDec_Lover_" + lover.GetFormID() + "_Group", group)
+EndFunction
+
+Form[] Function GetActors(int ThreadID) global
+    return StorageUtil.FormListToArray(none, "TTONDec_Thread" + ThreadID + "_Actors")
+EndFunction
+string Function GetActorsNames(int ThreadID) global
+    return PapyrusUtil.StringJoin(StorageUtil.StringListToArray(none, "TTONDec_Thread" + ThreadID + "_ActorsNames"), ", ")
 EndFunction

@@ -2,146 +2,135 @@ scriptname TTON_Events
 
 Function RegisterEvents() global
     ; tmp disabled events they don't make sense currently with direct narration logging additional data instead of events
-    ; RegisterEventSchemaSexStart()
-    ; RegisterEventSchemaSexSceneChange()
-    ; RegisterEventSchemaSexStop()
-    ; RegisterEventSchemaSexClimax()
+    RegisterEventSchema()
 EndFunction
 
-; Function RegisterEventSchemaSexStart() global
-;     string type = "tton_sex_start"
-;     string name = "Sex Start"
-;     string description = "Happens when OStim sex scene started"
-;     string jsonParams = "[{\"name\": \"msg\", \"type\": 0, \"required\": true, \"description\": \"Event message to send.\"}]"
-;     string renderParams = "{\"recent_events\":\"{{msg}}\",\"raw\":\"{{msg}}\",\"compact\":\"{{msg}}\",\"verbose\":\"{{msg}}\"}"
-;     SkyrimnetApi.RegisterEventSchema(type, name, description, jsonParams, renderParams, false, 0)
-; EndFunction
+Function RegisterEventSchema() global
+    string name = "OStimNet Event"
+    string description = "Happens on different occasions, OStim start/end/scene change and others"
+    string jsonParams = "[" \
+        + "{\"name\": \"type\", \"type\": 0, \"required\": true, \"description\": \"Type of OStimNet event.\"}," \
+        + "{\"name\": \"declinedAction\", \"type\": 0, \"required\": false, \"description\": \"If player declined what kind of declanation it was.\"}," \
+        + "{\"name\": \"msg\", \"type\": 0, \"required\": true, \"description\": \"Event message to send.\"}," \
+        + "{\"name\": \"skipTrigger\", \"type\": 2, \"required\": false, \"description\": \"If trigger should be skipped.\"}," \
+        + "{\"name\": \"threadID\", \"type\": 1, \"required\": true, \"description\": \"OStim Thread ID.\"}" \
+        +"]"
+    string renderParams = "{\"recent_events\":\"{{msg}}\",\"raw\":\"{{msg}}\",\"compact\":\"{{msg}}\",\"verbose\":\"{{msg}}\"}"
+    SkyrimnetApi.RegisterEventSchema("tton_event", name, description, jsonParams, renderParams, false, 0)
+EndFunction
 
-; Function RegisterEventSchemaSexStop() global
-;     string type = "tton_sex_stop"
-;     string name = "Sex Stop"
-;     string description = "Happens when OStim finishes"
-;     string jsonParams = "[{\"name\": \"msg\", \"type\": 0, \"required\": true, \"description\": \"Message to be sent with event.\"}]"
-;     string renderParams = "{\"recent_events\":\"{{msg}}\",\"raw\":\"{{msg}}\",\"compact\":\"{{msg}}\",\"verbose\":\"{{msg}}\"}"
-;     SkyrimnetApi.RegisterEventSchema(type, name, description, jsonParams, renderParams, false, 0)
-; EndFunction
+Function RegisterSexStartEvent(int ThreadID) global
+    Actor[] actors = OThread.GetActors(ThreadID)
+    Actor weightedActor = TTON_Utils.GetWeightedRandomActorToSpeak(actors)
 
-; Function RegisterEventSchemaSexClimax() global
-;     string type = "tton_sex_climax"
-;     string name = "Sex Climax"
-;     string description = "Happens when one of OStim actors reach climax"
-;     string jsonParams = "[{\"name\": \"msg\", \"type\": 0, \"required\": true, \"description\": \"Message to be sent with event.\"}]"
-;     string renderParams = "{\"recent_events\":\"{{msg}}\",\"raw\":\"{{msg}}\",\"compact\":\"{{msg}}\",\"verbose\":\"{{msg}}\"}"
-;     SkyrimnetApi.RegisterEventSchema(type, name, description, jsonParams, renderParams, false, 0)
-; EndFunction
+    TTON_Debug.debug("RegisterSexStartEvent:"+ weightedActor.GetDisplayName())
 
-; Function RegisterEventSchemaSexSceneChange() global
-;     string type = "tton_sex_change_long"
-;     string name = "Sex Scene Change"
-;     string description = "Happens when OStim sex scene changed"
-;     string jsonParams = "[{\"name\": \"msg\", \"type\": 0, \"required\": true, \"description\": \"Message to be sent with event.\"}]"
-;     string renderParams = "{\"recent_events\":\"{{msg}}\",\"raw\":\"{{msg}}\",\"compact\":\"{{msg}}\",\"verbose\":\"{{msg}}\"}"
-;     SkyrimnetApi.RegisterEventSchema(type, name, description, jsonParams, renderParams, true, 30)
-; EndFunction
+    string sceneId = OThread.GetScene(ThreadID)
+    string sceneDesc = TTON_Utils.GetSceneDescription(sceneId, actors)
+    string actorsNames = TTON_Storage.GetActorsNames(ThreadID)
+    string msg = actorsNames+" have begun a new intimate encounter while "+sceneDesc
+    bool skipTrigger = TTON_JData.GetMuteSetting()
 
-; Function RegisterSexStartEvent(int ThreadID) global
-;     string type = "tton_sex_start"
-;     Actor[] actors = OThread.GetActors(ThreadID)
-;     string sceneId = OThread.GetScene(ThreadID)
-;     string sceneDesc = TTON_Utils.GetSceneDescription(sceneId, actors)
-;     string msg = "SEXUAL ACTIVITY INITIATED: "+TTON_Utils.GetActorsNamesComaSeparated(actors)+" have begun a new intimate encounter while "+sceneDesc
-;     string jsonData = "{\"msg\": \""+msg+"\"}"
-;     SkyrimNetApi.RegisterEvent(type, jsonData, actors[0], none)
-; EndFunction
+    string jsonData = BuildJson("sex_start", msg, ThreadID, skipTrigger)
+    SkyrimNetApi.RegisterEvent("tton_event", jsonData, weightedActor, none)
+    ; StorageUtil.SetIntValue(none, "TTON_Thread"+ThreadID+"_SkipSceneChangeTrigger", 1)
+EndFunction
 
-; Function RegisterSexChangeEvent(int ThreadID) global
-;     string id = JString.generateUUID()
-;     string type = "tton_sex_change_long"
-;     string description = "Happens when OStim sex scene changed"
-;     Actor[] actors = OThread.GetActors(ThreadID)
-;     string sceneId = OThread.GetScene(ThreadID)
-;     string sceneDesc = TTON_Utils.GetSceneDescription(sceneId, actors)
-;     string msg = "SEXUAL POSITION CHANGED: Participants "+TTON_Utils.GetActorsNamesComaSeparated(actors)+" changed position to: "+sceneDesc
-;     ; SkyrimNetApi.RegisterEvent(type, "{\"msg\": \""+msg+"\"}", actors[0], none)
-;     ; SkyrimNetApi.RegisterShortLivedEvent(id, type, description, msg, 60 * 1000, actors[0], none)
+Function RegisterSexChangeEvent(int ThreadID) global
+    Actor[] actors = OThread.GetActors(ThreadID)
+    Actor weightedActor = TTON_Utils.GetWeightedRandomActorToSpeak(actors)
 
-; EndFunction
+    string sceneId = OThread.GetScene(ThreadID)
+    string sceneDesc = TTON_Utils.GetSceneDescription(sceneId, actors)
+    string actorsNames = TTON_Storage.GetActorsNames(ThreadID)
+    string msg = "Participants "+actorsNames+" changed position to: "+sceneDesc
 
-Function RegisterSexClimaxEvent(int ThreadID, Actor orgasmedActor) global
-    ; string type = "tton_sex_climax"
-    ; string description = "Happens when one of OStim actors reach climax"
-    ; string climaxLocations = TTON_Utils.GetShclongOrgasmedLocation(orgasmedActor, ThreadID)
-    ; Actor[] actors = OThread.GetActors(ThreadID)
-    ; string msg = "CLIMAX OCCURRED: "
-    ; if(climaxLocations != "")
-    ;     msg += climaxLocations
-    ; else
-    ;     msg += TTON_Utils.GetActorName(orgasmedActor) + " reached orgasm during sexual activity with " + TTON_Utils.GetActorsNamesComaSeparated(actors, orgasmedActor)
-    ; endif
+    bool skipTriggerOnce = StorageUtil.GetIntValue(none, "TTON_Thread"+ThreadID+"_SkipSceneChangeTrigger", 0) == 1
+    bool skipTrigger = skipTriggerOnce || TTON_JData.GetMuteSetting()
+    string jsonData = BuildJson("sex_change", msg, ThreadID, skipTrigger)
 
-    ; string renderParams = "{\"recent_events\":\"{{msg}}\",\"raw\":\"{{msg}}\",\"compact\":\"{{msg}}\",\"verbose\":\"{{msg}}\"}"
-    ; SkyrimNetApi.RegisterEvent(type, "{ \"msg\": \""+msg+"\" }", orgasmedActor, none)
+    if(skipTriggerOnce)
+        StorageUtil.SetIntValue(none, "TTON_Thread"+ThreadID+"_SkipSceneChangeTrigger", 0)
+    endif
 
-    ; bool requestedComment = TTON_Utils.RequestSexComment(msg, speaker = orgasmedActor, ignoreCooldown = true)
+    SkyrimNetApi.RegisterEvent("tton_event", jsonData, weightedActor, none)
+EndFunction
+
+Function RegisterSexClimaxEvent(int ThreadID, Form[] orgasmedActors) global
+    string msg = ""
+
+    if(orgasmedActors.Length > 1)
+        msg = "Multiple participants reached climax: "
+    endif
+
+    int i = 0
+    while(i < orgasmedActors.Length)
+        if(i != 0)
+            msg += "; "
+        endif
+        Actor orgasmedActor = orgasmedActors[i] as Actor
+        string climaxLocations = TTON_Utils.GetShclongOrgasmedLocation(orgasmedActor, ThreadID)
+        if(climaxLocations != "")
+            msg += climaxLocations
+        else
+            msg += TTON_Utils.GetActorName(orgasmedActor) + " reached orgasm."
+        endif
+        i += 1
+    endwhile
+
+    Actor speakingActor = TTON_Utils.GetWeightedRandomActorToSpeak(actorForms = orgasmedActors)
+
+    bool skipTrigger = TTON_JData.GetMuteSetting()
+    string jsonData = BuildJson("climax", msg, ThreadID, skipTrigger)
+    SkyrimNetApi.RegisterEvent("tton_event", jsonData, speakingActor, none)
+    StorageUtil.SetIntValue(none, "TTON_Thread"+ThreadID+"_SkipSceneChangeTrigger", 1)
 EndFunction
 
 Function RegisterSexStopEvent(int ThreadID) global
-    ; bool hadSex = TTLL_OstimThreadsCollector.GetHadSex(ThreadID)
+    bool hadSex = TTLL_ThreadsCollector.GetThreadBool(ThreadID, "hadsex")
 
-    ; Form[] actorsForms = TTLL_OstimThreadsCollector.GetActorsForms(ThreadID)
-    ; Actor[] actors = PapyrusUtil.ActorArray(actorsForms.Length)
-    ; int i = 0
-    ; string climaxedActors = ""
-    ; while(i < actors.Length)
-    ;     actors[i] = actorsForms[i] as Actor
-    ;     if(TTLL_OstimThreadsCollector.GetOrgasmed(ThreadID, actors[i]))
-    ;         climaxedActors += TTON_Utils.GetActorName(actors[i]) + ","
-    ;     endif
+    Actor[] actors = TTLL_ThreadsCollector.GetActors(ThreadID)
+    Actor weightedActor = TTON_Utils.GetWeightedRandomActorToSpeak(actors)
+    int i = 0
+    string climaxedActors = ""
+    while(i < actors.Length)
+        if(TTLL_ThreadsCollector.GetActorBool(ThreadID, actors[i], "orgasmed"))
+            climaxedActors += TTON_Utils.GetActorName(actors[i]) + ","
+        endif
 
-    ;     i += 1
-    ; endwhile
+        i += 1
+    endwhile
+    climaxedActors += ""
+    string msg = "Participants "+TTON_Utils.GetActorsNamesComaSeparated(actors) + " finished their "
+    if(hadSex)
+        msg += "sexual encounter"
+    else
+        msg += "affectionate encounter"
+    endif
+    string LastSexualSceneId = TTLL_ThreadsCollector.GetThreadStr(ThreadID, "lastsexualsceneid")
 
-    ; climaxedActors += ""
+    if(hadSex)
+        if(climaxedActors != "")
+            msg += ", with " + climaxedActors + " having reached orgasm."
+        else
+            msg += "."
+        endif
+    else
+        if(LastSexualSceneId)
+            msg +=  TTON_Utils.GetSceneDescription(LastSexualSceneId, actors)
+        endif
+        msg += " without sexual activities."
+    endif
 
-    ; string msg = ""
-
-    ; if(hadSex)
-    ;     msg += "INTIMATE "
-    ; else
-    ;     msg += "SEXUAL "
-    ; endif
-    ; msg += "ACTIVITY CONCLUDED: Participants "+TTON_Utils.GetActorsNamesComaSeparated(actors)
-    ; string LastSexualSceneId = TTLL_OstimThreadsCollector.GetLastSexualSceneId(ThreadID)
-
-    ; if(hadSex)
-    ;     if(climaxedActors != "")
-    ;         msg += ", with " + climaxedActors + " having reached orgasm."
-    ;     else
-    ;         msg += "."
-    ;     endif
-    ; else
-    ;     if(LastSexualSceneId)
-    ;         msg +=  TTON_Utils.GetSceneDescription(LastSexualSceneId, actors)
-    ;     endif
-    ;     msg += " without sexual activities."
-    ; endif
-
-    ; string last5Scenes = TTON_Utils.Get5LastScenesInThread(ThreadID)
-    ; if(last5Scenes != "")
-    ;     msg += " During encounter participant engaged in such scenes: \\n- "
-    ;     msg += TTON_Utils.Get5LastScenesInThread(ThreadID)
-    ; endif
-
-    ; string type = "tton_sex_stop"
-    ; string jsonData = "{\"msg\": \""+msg+"\"}"
-    ; ; SkyrimNetApi.RegisterEvent(type, jsonData, actors[0], none)
-    ; TTON_Utils.RequestSexComment(msg, actors, none, true)
+    bool skipTrigger = TTON_JData.GetMuteSetting()
+    string jsonData = BuildJson("sex_stop", msg, ThreadID, skipTrigger)
+    SkyrimNetApi.RegisterEvent("tton_event", jsonData, weightedActor, none)
 EndFunction
 
 Function RegisterDeclineEvent(string actionName, Actor initiator, bool isPlayerInvited = false) global
     Actor player = TTON_JData.GetPlayer()
     string id = JString.generateUUID()
-    string type = "tton_" + actionName + "_declined"
+    string type = actionName + "_declined"
     string description = "Happens when npc wants to stop OStim sex scene but Player declined"
     string initiatorName = TTON_Utils.GetActorName(initiator)
     string playerName = TTON_Utils.GetActorName(player)
@@ -165,6 +154,28 @@ Function RegisterDeclineEvent(string actionName, Actor initiator, bool isPlayerI
     elseif(actionName == "StartSexAction")
         msg = initiatorName+" wanted to start a new sexual encounter with "+playerName+", but "+playerName+" declined the proposal."
     endif
-    SkyrimNetApi.RegisterShortLivedEvent(id, type, description, msg, 120 * 1000, player, initiator)
+    bool skipTrigger = TTON_JData.GetMuteSetting()
+    string jsonData = BuildJson("action_decline", msg, 0, skipTrigger, actionName)
+    SkyrimNetApi.RegisterEvent("tton_event", jsonData, player, initiator)
 EndFunction
 
+string Function BuildJson(string type, string msg, int ThreadID, bool skipTrigger, string declinedAction = "") global
+    string jsonData = "{"
+    jsonData += "\"type\": \""+type+"\""
+    jsonData += ",\"msg\": \""+msg+"\""
+    jsonData += ",\"threadID\": "+ThreadID
+    jsonData += ",\"skipTrigger\": "
+
+    if(skipTrigger)
+        jsonData += "true"
+    else
+        jsonData += "false"
+    endif
+
+    if(declinedAction != "")
+        jsonData += ", \"declinedAction\": \""+declinedAction+"\""
+    endif
+
+    jsonData += "}"
+    return jsonData
+EndFunction

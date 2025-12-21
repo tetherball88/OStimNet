@@ -251,82 +251,6 @@ string Function GetSceneDescription(string sceneId, Actor[] actors) global
     return description
 EndFunction
 
-float Function GetLightFactor(Actor target) global
-    float lightLevel = target.GetLightLevel() ; 0 - 150
-    if lightLevel < 0.0
-        lightLevel = 0.0
-    elseif lightLevel > 100.0
-        lightLevel = 100.0
-    endif
-
-    ; Normalize to 0..1
-    float lightNorm = lightLevel / 100.0
-
-    ; Light factor: in pitch black = 0.4x sight, in full light = 1.0x sight
-    return 0.4 + (0.6 * lightNorm)
-EndFunction
-
-string Function GetVisibility(Actor npc, Actor target) global
-    float distance = npc.GetDistance(target)
-    bool isInLos = npc.HasLOS(target)
-    float hearingDistance = TTON_JData.GetMcmCommentsDistance() ; max distance to hear comments
-    if(hearingDistance == 0)
-        return "canSeeAndHear"
-    endif
-    float maxHear = hearingDistance
-    float maxSight = hearingDistance * 0.7 ; npc can hear further than see
-    maxSight *= GetLightFactor(target)
-
-    bool isInterior = npc.GetParentCell().IsInterior()
-
-    if(isInterior)
-        maxHear *= 1.2 ; interiors are usually quieter
-    else
-        maxHear *= 0.8 ; outdoors are usually noisier
-    endif
-
-    if distance > maxHear
-        return "none"
-    endif
-
-    float sightClose = maxSight * 0.35 ; close sight range
-    float sightMid = maxSight * 0.80 ; mid sight range
-    float hearClose = maxHear * 0.60 ; close hear range
-    float hearFar = maxHear ; far hear range
-
-    if distance <= maxSight
-        if distance <= sightClose
-            ; very close: always see + hear
-            return "canSeeAndHear"
-        elseif distance <= sightMid
-            ; mid-range: LOS decides if we see
-            if isInLos
-                return "canSeeAndHear"
-            else
-                return "canHearClose"
-            endif
-       else
-            ; edge of sight detail range
-            if isInLos
-                return "canSeeAndHear"
-            else
-                ; rely purely on hearing band
-                if distance <= hearClose
-                    return "canHearClose"
-                else
-                    return "canHearFar"
-                endif
-            endif
-        endif
-    endif
-
-    if distance <= hearClose
-        return "canHearClose"
-    else
-        return "canHearFar"
-    endif
-EndFunction
-
 
 Faction Function GetSexLabAnimatingFaction() global
     Faction SexLabAnimatingFaction = none
@@ -526,59 +450,9 @@ bool Function ShowConfirmMessage(string msg, string type) global
     return result == "Yes"
 EndFunction
 
-bool Function RequestSexComment(string msg, Actor[] actors = none, Actor speaker = none, string type = "", bool continueNarration = true) global
-    if(TTON_JData.GetPauseSceneTracking())
-        TTON_Debug.info("Scene tracking is paused.")
-        return false
-    endif
-
-    if(!speaker)
-        if(!actors || actors.Length == 0)
-            TTON_Debug.warn("RequestSexComment: No actors provided to select a speaker from. " + msg)
-            return false
-        endif
-        speaker = GetWeightedRandomActorToSpeak(actors)
-    endif
-
-    ; Check distance from player if distance limit is set
-    string visibility = GetVisibility(TTON_JData.GetPlayer(), speaker)
-    if(visibility == "none")
-        ; since player can't see or hear the speaker, no comment or log event of OStim scene
-        TTON_Debug.info("RequestSexComment: Player cannot hear or see the speaker.")
-        return false
-    endif
-
-    Actor player = TTON_JData.GetPlayer()
-    bool cooldownFree = TTON_JData.CanMakeLastComment()
-    bool canMakeComment = cooldownFree && speaker
-
-    int ThreadID = OActor.GetSceneId(speaker)
-
-    TTON_Debug.info("RequestSexComment: canMakeComment=" + canMakeComment + ", visibility=" + visibility)
-
-    if(canMakeComment)
-        TTON_JData.SetLastCommentTime()
-        SkyrimNetApi.DirectNarration(msg, speaker)
-        if(continueNarration)
-            int chance = Utility.RandomInt(1, 100)
-            if(chance <= TTON_JData.GetMcmContinueNarrationChance())
-                Utility.Wait(2)
-                SkyrimNetApi.TriggerContinueNarration()
-            endif
-        endif
-    elseif(visibility == "canSeeAndHear")
-        if(type == "scene_change" && !TTON_JData.CanTrackSceneChange(ThreadID))
-            return false
-        endif
-        TTON_JData.SetSceneChangeTime(ThreadID)
-        SkyrimNetApi.RegisterEvent("tton_event", msg, speaker, none)
-    endif
-    return false
-EndFunction
-
 ; if it's player only scene it will return none
 ; assume that actors are only actors from scene
-actor Function GetWeightedRandomActorToSpeak(actor[] actors, form[] actorForms = none) global
+actor Function GetWeightedRandomActorToSpeak(actor[] actors = none, form[] actorForms = none) global
     Actor player = TTON_JData.GetPlayer()
     actor[] maleActors = PapyrusUtil.ActorArray(0)
     actor[] femaleActors = PapyrusUtil.ActorArray(0)
@@ -587,12 +461,16 @@ actor Function GetWeightedRandomActorToSpeak(actor[] actors, form[] actorForms =
         return none
     endif
 
-    int ArrLength
+    int ArrLength = 0
 
     if(actors && actors.Length > 0)
         ArrLength = actors.Length
     elseif(actorForms && actorForms.Length > 0)
         ArrLength = actorForms.Length
+    endif
+
+    if(ArrLength == 0)
+        return none
     endif
 
     int count = 0
@@ -633,6 +511,8 @@ actor Function GetWeightedRandomActorToSpeak(actor[] actors, form[] actorForms =
 
     ; pick weighted type of npc who will talk
     bool isFemale = Utility.RandomInt(1, 100) <= TTON_JData.GetMcmCommentsGenderWeight()
+
+    TTON_Debug.debug("GetWeightedRandomActorToSpeak:"+TTON_JData.GetMcmCommentsGenderWeight())
 
     if(isFemale && femaleActors.Length > 0)
         return getRandomActor(femaleActors)

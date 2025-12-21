@@ -1,0 +1,25 @@
+name: "tton_sex_stop"
+description: "Reaction when OStim Ended"
+
+eventCriteria:
+  eventType: "tton_event"
+  schemaConditions:
+    - fieldPath: "type"
+      operator: "equals"
+      value: "sex_stop"
+    - fieldPath: "skipTrigger"
+      operator: "equals"
+      value: false
+
+response:
+  type: "diary_entry"
+  content: "{{ event_json.msg }}"
+  targetScope: "all_nearby_actors"
+  nearbyRadius: 1100
+
+audience: "nearby_npcs"
+
+enabled: true
+probability: 1
+cooldownSeconds: 0
+priority: 1

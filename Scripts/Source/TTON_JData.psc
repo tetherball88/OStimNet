@@ -169,13 +169,22 @@ int Function GetMcmInt(string propName) global
     return JDB_solveInt(GetNamespaceKey() + ".mcm." + propName, -1)
 EndFunction
 
-Function SetPauseSceneTrackingHotkey(int value) global
-    SetMcmInt("pauseSceneTrackingHotkey", value)
+Function SetMuteHotkey(int value) global
+    SetMcmInt("muteHotkey", value)
 EndFunction
 
-int Function GetPauseSceneTrackingHotkey() global
-    return GetMcmInt("pauseSceneTrackingHotkey")
+int Function GetMuteHotkey() global
+    return GetMcmInt("muteHotkey")
 EndFunction
+
+bool Function GetMuteSetting() global
+    return GetMcmCheckbox("muteSetting", 0)
+EndFunction
+
+bool Function ToggleMuteSetting() global
+    return ToggleMcmCheckbox("muteSetting", 0)
+EndFunction
+
 
 Function SetMcmCommentsFrequency(int value) global
     SetMcmInt("sexCommentsFrequency", value)
@@ -198,19 +207,6 @@ int Function GetMcmCommentsGenderWeight() global
     int val = GetMcmInt("sexCommentsGenderWeight")
     if(val == -1)
         val = 50
-    endif
-
-    return val
-EndFunction
-
-Function SetMcmCommentsDistance(int value) global
-    SetMcmInt("sexCommentsDistance", value)
-EndFunction
-
-int Function GetMcmCommentsDistance() global
-    int val = GetMcmInt("sexCommentsDistance")
-    if(val == -1)
-        val = 1152
     endif
 
     return val
@@ -268,22 +264,6 @@ bool Function GetConfirmAddNewActors() global
     return GetMcmCheckbox("confirmAddActors", 1)
 EndFunction
 
-bool Function GetPauseSceneTracking() global
-    return GetMcmCheckbox("pauseSceneTracking", 0)
-EndFunction
-
-Function SetMcmContinueNarrationChance(int value) global
-    SetMcmInt("continueNarrationChance", value)
-EndFunction
-
-int Function GetMcmContinueNarrationChance() global
-    int val = GetMcmInt("continueNarrationChance")
-    if(val == -1)
-        val = 50
-    endif
-
-    return val
-EndFunction
 
 ;/ ==============================
    SECTION: Temporary data which cleans on each load
@@ -343,48 +323,10 @@ bool Function GetThreadAffectionOnly(int ThreadID) global
     return GetThreadInt(ThreadID, "affectionOnly") == 1
 EndFunction
 
-Function SetSceneChangeTime(int ThreadID) global
-    SetThreadFlt(ThreadID, "sceneChangeCooldown", Utility.GetCurrentRealTime())
-EndFunction
-
-bool Function CanTrackSceneChange(int ThreadID) global
-    float lastTime = GetThreadFlt(ThreadID, "sceneChangeCooldown", 0.0)
-    float now = Utility.GetCurrentRealTime()
-    float diff = now - lastTime
-
-    return TTON_JData.GetMcmCommentsFrequency() <= diff
-EndFunction
 
 ;/ ==============================
    SECTION: Sex comments
 ============================== /;
-
-Function SetTimer(string propertyName) global
-    JDB_solveFltSetter(GetNamespaceKey() + ".tmp" + propertyName, Utility.GetCurrentRealTime(), true)
-EndFunction
-
-float Function GetTimer(string propertyName) global
-    return JDB_solveFlt(GetNamespaceKey() + ".tmp" + propertyName)
-EndFunction
-
-bool Function HasCooldownPassed(string propertyName, float cooldown) global
-    float now = Utility.GetCurrentRealTime()
-    float diff = now - GetTimer(propertyName)
-
-    return cooldown <= diff
-EndFunction
-
-Function SetLastCommentTime() global
-    SetTimer(".sexComment")
-EndFunction
-
-float Function GetLastCommentTime() global
-    return GetTimer(".sexComment")
-EndFunction
-
-bool Function CanMakeLastComment() global
-    return HasCooldownPassed(".sexComment", TTON_JData.GetMcmCommentsFrequency())
-EndFunction
 
 Function SetDeclineActionCooldown(Actor akActor, string actionName) global
     StorageUtil.SetFloatValue(akActor, "deny." + actionName, Utility.GetCurrentRealTime())
