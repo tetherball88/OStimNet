@@ -102,52 +102,6 @@ Function StopOStim(Actor initiator) global
         endif
     endif
     OThread.Stop(ThreadId)
-
-    bool hadSex = TTLL_ThreadsCollector.GetThreadBool(ThreadID, "hadsex")
-
-    Actor[] actors = TTLL_ThreadsCollector.GetActors(ThreadID)
-    int i = 0
-    string climaxedActors = ""
-    while(i < actors.Length)
-        if(TTLL_ThreadsCollector.GetActorBool(ThreadID, actors[i], "orgasmed"))
-            climaxedActors += TTON_Utils.GetActorName(actors[i]) + ","
-        endif
-
-        i += 1
-    endwhile
-
-    climaxedActors += ""
-
-    string msg = ""
-
-    if(hadSex)
-        msg += "INTIMATE "
-    else
-        msg += "SEXUAL "
-    endif
-    msg += "ACTIVITY CONCLUDED: Participants "+TTON_Utils.GetActorsNamesComaSeparated(actors)
-    string LastSexualSceneId = TTLL_ThreadsCollector.GetThreadStr(ThreadID, "lastsexualsceneid")
-
-    if(hadSex)
-        if(climaxedActors != "")
-            msg += ", with " + climaxedActors + " having reached orgasm."
-        else
-            msg += "."
-        endif
-    else
-        if(LastSexualSceneId)
-            msg +=  TTON_Utils.GetSceneDescription(LastSexualSceneId, actors)
-        endif
-        msg += " without sexual activities."
-    endif
-
-    ; string last5Scenes = TTON_Utils.Get5LastScenesInThread(ThreadID)
-    ; if(last5Scenes != "")
-    ;     msg += " During encounter participant engaged in such scenes: \\n- "
-    ;     msg += TTON_Utils.Get5LastScenesInThread(ThreadID)
-    ; endif
-
-    ; TTON_Utils.RequestSexComment(msg, actors, none, true)
 EndFunction
 
 ; Changes the animation scene of an ongoing OStim scene

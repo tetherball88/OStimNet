@@ -10,37 +10,28 @@ int property oid_EnableChangePositionConfirmationModal auto
 int property oid_EnableAddNewActorsConfirmationModal auto
 int property oid_EnableStopSexConfirmationModal auto
 int property oid_UseDefaultOStimSceneStart auto
-int property oid_ContinueNarrationAfterDirect auto
 
-int property oid_SexCommentsFrequency auto
 int property oid_SexCommentsGenderWeight auto
-int property oid_SexHearDistance auto
-int property oid_PauseSceneTracking auto
-int property oid_PauseSceneTrackingHotkey auto
 
 int property oid_DeniesCooldown auto
 int property oid_AffectionSceneDuration auto
 
+int property oid_Mute auto
+int property oid_MuteHotkey auto
+
 string selectedPage
 
-Function RegisterPauseSceneTrackingHotkey()
-    UnregisterForAllKeys()
-    int keyCode = TTON_JData.GetPauseSceneTrackingHotkey()
-    if(keyCode > 0)
-        RegisterForKey(keyCode)
-    endif
-EndFunction
 
 Event OnConfigInit()
     ModName = "OStimNet"
     Pages = new string[1]
 
     Pages[0] = "Settings"
-    RegisterPauseSceneTrackingHotkey()
+    RegisterMuteHotkey()
 EndEvent
 
 Event OnConfigOpen()
-    RegisterPauseSceneTrackingHotkey()
+    RegisterMuteHotkey()
 EndEvent
 
 Event OnPageReset(string page)
@@ -73,23 +64,16 @@ Function RenderLeftColumn()
 
     float affectionDuration = TTON_JData.GetMcmAffectionDuration() as float
     oid_AffectionSceneDuration = AddSliderOption("Affection scene duration (seconds):", affectionDuration)
-
-    AddHeaderOption("Narration Settings")
-    float continueNarrationChance = TTON_JData.GetMcmContinueNarrationChance() as float
-    oid_ContinueNarrationAfterDirect = AddSliderOption("Continue narration chance (%):", continueNarrationChance)
 EndFunction
 
 Function RenderRightColumn()
     AddHeaderOption("Immersion & Feedback")
-    oid_PauseSceneTracking = AddToggleOption("Pause scene tracking:", TTON_JData.GetPauseSceneTracking())
-    oid_PauseSceneTrackingHotkey = AddKeyMapOption("Pause scene tracking hotkey:", TTON_JData.GetPauseSceneTrackingHotkey())
     float frequency = TTON_JData.GetMcmCommentsFrequency() as float
     float genderWeight = TTON_JData.GetMcmCommentsGenderWeight() as float
-    float distance = TTON_JData.GetMcmCommentsDistance() as float
 
-    oid_SexCommentsFrequency = AddSliderOption("Comment cooldown (seconds):", frequency)
     oid_SexCommentsGenderWeight = AddSliderOption("Gender preference (0=Male, 100=Female):", genderWeight)
-    oid_SexHearDistance = AddSliderOption("Sex hearing range (units):", distance)
+    oid_Mute = AddToggleOption("Mute(events are still logged):", TTON_JData.GetMuteSetting())
+    oid_MuteHotkey = AddKeyMapOption("Hotkey for mute:", TTON_JData.GetMuteHotkey())
 
     AddHeaderOption("Behavior & Timing")
     float denyCooldown = TTON_JData.GetMcmDenyCooldown() as float
@@ -124,42 +108,10 @@ event OnOptionSelect(int option)
         SetToggleOptionValue(oid_EnableStopSexConfirmationModal, TTON_JData.ToggleMcmCheckbox("confirmStopSex", 1))
     elseif(option == oid_UseDefaultOStimSceneStart)
         SetToggleOptionValue(oid_UseDefaultOStimSceneStart, TTON_JData.ToggleMcmCheckbox("useOStimDefaultStartSelection", 0))
-    elseif(option == oid_PauseSceneTracking)
-        SetToggleOptionValue(oid_PauseSceneTracking, TTON_JData.ToggleMcmCheckbox("pauseSceneTracking", 0))
+    elseif(option == oid_Mute)
+        SetToggleOptionValue(oid_Mute, TTON_JData.ToggleMuteSetting())
     endif
 endevent
-
-event OnOptionKeyMapChange(int option, int keyCode, string conflictControl, string conflictName)
-    if(option == oid_PauseSceneTrackingHotkey)
-        int finalKeyCode = keyCode
-        if(keyCode == 0)
-            finalKeyCode = -1
-        endif
-        TTON_JData.SetPauseSceneTrackingHotkey(finalKeyCode)
-        SetKeyMapOptionValue(option, finalKeyCode)
-        RegisterPauseSceneTrackingHotkey()
-    endif
-endevent
-
-Event OnKeyDown(int keyCode)
-    if UI.IsTextInputEnabled()
-        return
-    endif
-    int configuredKey = TTON_JData.GetPauseSceneTrackingHotkey()
-    if(keyCode != configuredKey || keyCode <= 0)
-        return
-    endif
-
-    bool isPaused = TTON_JData.ToggleMcmCheckbox("pauseSceneTracking", 0)
-    if(oid_PauseSceneTracking > 0)
-        SetToggleOptionValue(oid_PauseSceneTracking, isPaused)
-    endif
-    if(isPaused)
-        Debug.Notification("OStimNet scene tracking paused.")
-    else
-        Debug.Notification("OStimNet scene tracking resumed.")
-    endif
-EndEvent
 
 ; Highlight
 event OnOptionHighlight(int option)
@@ -181,22 +133,16 @@ event OnOptionHighlight(int option)
         SetInfoText("Ask for permission when NPCs want to end your scene. Refusing marks the scene as forced.")
     elseif(option == oid_UseDefaultOStimSceneStart)
         SetInfoText("Starts default OStim scene(select furniture, select additional actors, start from idle scene).")
-    elseif(option == oid_SexCommentsFrequency)
-        SetInfoText("Minimum time between NPC comments during intimate scenes.")
     elseif(option == oid_SexCommentsGenderWeight)
         SetInfoText("Controls which gender is more likely to speak. 50 = equal chance for both genders.")
-    elseif(option == oid_SexHearDistance)
-        SetInfoText("Maximum distance from player to hear if somebody has sex. 0 = unlimited. Line of sight overrides distance.\nUsed for both npc make comments and SkyrimNet record events.\n If player can't hear/see the speaker, no comment or log event is made.")
     elseif(option == oid_AffectionSceneDuration)
         SetInfoText("How long affectionate scenes last before automatically ending.")
     elseif(option == oid_DeniesCooldown)
         SetInfoText("How long each NPC waits before asking again after you refuse their request.")
-    elseif(option == oid_ContinueNarrationAfterDirect)
-        SetInfoText("Chance for AI to continue narrating after direct dialogue/actions. 0=Never, 100=Always.")
-    elseif(option == oid_PauseSceneTracking)
-        SetInfoText("Suspend scene tracking and narration events until re-enabled. Good for testing scenes without AI comments or event recording, or allowing your own narration.")
-    elseif(option == oid_PauseSceneTrackingHotkey)
-        SetInfoText("Keybinding to quickly toggle scene tracking pause/resume.")
+    elseif(option == oid_Mute)
+        SetInfoText("Mutes npcs and doesn't allow them to auto-speak on OStim events like scene change/start/end/climax. Good for allowing your own narration or searching/navigating.")
+    elseif(option == oid_MuteHotkey)
+        SetInfoText("Toggle Mute in-game without entering MCM.")
     endif
 endevent
 
@@ -206,24 +152,12 @@ event OnOptionSliderOpen(int a_option)
     float startRange
     float endRange
     float interval
-    if(a_option == oid_SexCommentsFrequency)
-        startValue = TTON_JData.GetMcmCommentsFrequency() as float
-        defaultValue = 20.0
-        startRange = 0
-        endRange = 400
-        interval = 5
-    elseif(a_option == oid_SexCommentsGenderWeight)
+    if(a_option == oid_SexCommentsGenderWeight)
         startValue = TTON_JData.GetMcmCommentsGenderWeight() as float
         defaultValue = 50.0
         startRange = 0
         endRange = 100
         interval = 1
-    elseif(a_option == oid_SexHearDistance)
-        startValue = TTON_JData.GetMcmCommentsDistance() as float
-        defaultValue = 1152.0
-        startRange = 0
-        endRange = 10240
-        interval = 64
     elseif(a_option == oid_AffectionSceneDuration)
         startValue = TTON_JData.GetMcmAffectionDuration() as float
         defaultValue = 20.0
@@ -236,12 +170,6 @@ event OnOptionSliderOpen(int a_option)
         startRange = 0
         endRange = 120
         interval = 1
-    elseif(a_option == oid_ContinueNarrationAfterDirect)
-        startValue = TTON_JData.GetMcmContinueNarrationChance() as float
-        defaultValue = 50.0
-        startRange = 0
-        endRange = 100
-        interval = 5
     endif
 
     SetSliderDialogStartValue(startValue)
@@ -251,43 +179,68 @@ event OnOptionSliderOpen(int a_option)
 endEvent
 event OnOptionSliderAccept(int a_option, float a_value)
     SetSliderOptionValue(a_option, a_value)
-    if(a_option == oid_SexCommentsFrequency)
-        TTON_JData.SetMcmCommentsFrequency(a_value as int)
-    elseif(a_option == oid_SexCommentsGenderWeight)
+    if(a_option == oid_SexCommentsGenderWeight)
         TTON_JData.SetMcmCommentsGenderWeight(a_value as int)
-    elseif(a_option == oid_SexHearDistance)
-        TTON_JData.SetMcmCommentsDistance(a_value as int)
     elseif(a_option == oid_AffectionSceneDuration)
         TTON_JData.SetMcmAffectionDuration(a_value as int)
     elseif(a_option == oid_DeniesCooldown)
         TTON_JData.SetMcmDenyCooldown(a_value as int)
-    elseif(a_option == oid_ContinueNarrationAfterDirect)
-        TTON_JData.SetMcmContinueNarrationChance(a_value as int)
     endif
 endEvent
 
 event OnOptionDefault(int a_option)
-	if(a_option == oid_SexCommentsFrequency)
-        SetSliderDialogStartValue(20)
-        TTON_JData.SetMcmCommentsFrequency(20)
-    elseif(a_option == oid_SexCommentsGenderWeight)
+	if(a_option == oid_SexCommentsGenderWeight)
         SetSliderDialogStartValue(50)
         TTON_JData.SetMcmCommentsGenderWeight(50)
-    elseif(a_option == oid_SexHearDistance)
-        SetSliderDialogStartValue(2048)
-        TTON_JData.SetMcmCommentsDistance(2048)
     elseif(a_option == oid_AffectionSceneDuration)
         SetSliderDialogStartValue(30)
         TTON_JData.SetMcmAffectionDuration(30)
     elseif(a_option == oid_DeniesCooldown)
         SetSliderDialogStartValue(20)
         TTON_JData.SetMcmDenyCooldown(20)
-    elseif(a_option == oid_ContinueNarrationAfterDirect)
-        SetSliderDialogStartValue(50)
-        TTON_JData.SetMcmContinueNarrationChance(50)
-    elseif(a_option == oid_PauseSceneTrackingHotkey)
-        TTON_JData.SetPauseSceneTrackingHotkey(-1)
-        SetKeyMapOptionValue(oid_PauseSceneTrackingHotkey, -1)
-        RegisterPauseSceneTrackingHotkey()
+    elseif(a_option == oid_MuteHotkey)
+        TTON_JData.SetMuteHotkey(-1)
+        SetKeyMapOptionValue(oid_MuteHotkey, -1)
+        RegisterMuteHotkey()
     endif
 endEvent
+
+Function RegisterMuteHotkey()
+    UnregisterForAllKeys()
+    int keyCode = TTON_JData.GetMuteHotkey()
+    if(keyCode > 0)
+        RegisterForKey(keyCode)
+    endif
+EndFunction
+
+event OnOptionKeyMapChange(int option, int keyCode, string conflictControl, string conflictName)
+    if(option == oid_MuteHotkey)
+        int finalKeyCode = keyCode
+        if(keyCode == 0)
+            finalKeyCode = -1
+        endif
+        TTON_JData.SetMuteHotkey(finalKeyCode)
+        SetKeyMapOptionValue(option, finalKeyCode)
+        RegisterMuteHotkey()
+    endif
+endevent
+
+Event OnKeyDown(int keyCode)
+    if UI.IsTextInputEnabled()
+        return
+    endif
+    int configuredKey = TTON_JData.GetMuteHotkey()
+    if(keyCode != configuredKey || keyCode <= 0)
+        return
+    endif
+
+    bool isPaused = TTON_JData.ToggleMuteSetting()
+    if(oid_Mute > 0)
+        SetToggleOptionValue(oid_Mute, isPaused)
+    endif
+    if(isPaused)
+        Debug.Notification("OStimNet NPCs are muted.")
+    else
+        Debug.Notification("OStimNet NPCs are talking.")
+    endif
+EndEvent

@@ -1,0 +1,23 @@
+name: "tton_sex_change"
+description: "Reaction when scene in OStim was changed"
+
+eventCriteria:
+  eventType: "tton_event"
+  schemaConditions:
+    - fieldPath: "type"
+      operator: "equals"
+      value: "sex_change"
+    - fieldPath: "skipTrigger"
+      operator: "equals"
+      value: false
+
+response:
+  type: "direct_narration"
+  content: "{{ originator }} makes a comment about current position."
+
+audience: "nearby_npcs"
+
+enabled: true
+probability: 1
+cooldownSeconds: 30
+priority: 1

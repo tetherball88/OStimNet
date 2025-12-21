@@ -2,6 +2,7 @@ Scriptname TTON_MainController extends Quest
 
 GlobalVariable Property TTON_IsOstimActive  Auto
 
+
 Event OnInit()
     Maintenance()
 EndEvent
@@ -9,6 +10,7 @@ EndEvent
 Function Maintenance()
     TTON_JData.ImportStaticData()
     TTON_Storage.ClearOnLoad()
+    TTON_Events.RegisterEventSchema()
 
     RegisterForModEvent("ostim_thread_start", "OStimStart")
     RegisterForModEvent("ostim_thread_scenechanged", "OStimSceneChange")
@@ -26,7 +28,6 @@ EndFunction
 Event OStimStart(string eventName, string strArg, float numArg, Form sender)
     TTON_IsOstimActive.SetValue(1.0)
     int ThreadID = numArg as int
-    StorageUtil.IntListAdd(none, "StartedOStimThreads", ThreadID, false)
 
     TTON_Storage.StartThread(ThreadID)
 
@@ -37,11 +38,7 @@ Event OStimStart(string eventName, string strArg, float numArg, Form sender)
         TTON_JData.SetThreadAddNewActors(continuedFromThreadID, 0)
         TTON_JData.SetThreadContinuationFrom(ThreadID, -1)
     else
-        Actor[] actors = OThread.GetActors(ThreadID)
-        string sceneId = OThread.GetScene(ThreadID)
-        string sceneDesc = TTON_Utils.GetSceneDescription(sceneId, actors)
-        TTON_Utils.RequestSexComment(TTON_Utils.GetActorsNamesComaSeparated(actors)+" have begun a new intimate encounter while "+sceneDesc, actors)
-        ; TTON_Events.RegisterSexStartEvent(ThreadID)
+        TTON_Events.RegisterSexStartEvent(ThreadID)
     endif
 EndEvent
 
@@ -55,55 +52,53 @@ Event OStimSceneChange(string eventName, string strArg, float numArg, Form sende
       return
     endif
 
-    ; TTON_Events.RegisterSexChangeEvent(ThreadID)
-    Actor[] actors = OThread.GetActors(ThreadID)
-    string sceneDesc = TTON_Utils.GetSceneDescription(sceneId, actors)
-    TTON_Utils.RequestSexComment(TTON_Utils.GetActorsNamesComaSeparated(actors) + " changed their position to: " + sceneDesc, actors, type = "scene_change", continueNarration = true)
+    StorageUtil.IntListAdd(none, "TTONSceneChange_Threads", ThreadID, false)
+    SceneChangeDebounced()
 EndEvent
 
 Event OStimOrgasm(string eventName, string strArg, float numArg, Form sender)
     int ThreadID = numArg as int
-    TTON_Storage.EndThread(ThreadID)
     Actor orgasmedActor = sender as Actor
-    TTON_Events.RegisterSexClimaxEvent(ThreadID, orgasmedActor)
-    string climaxLocations = TTON_Utils.GetShclongOrgasmedLocation(orgasmedActor, ThreadID)
-    Actor[] actors = OThread.GetActors(ThreadID)
-    string msg = ""
-    if(climaxLocations != "")
-        msg += climaxLocations
-    else
-        msg += TTON_Utils.GetActorName(orgasmedActor) + " reached orgasm during sexual activity with " + TTON_Utils.GetActorsNamesComaSeparated(actors, orgasmedActor)
-    endif
-
-    ; string renderParams = "{\"recent_events\":\"{{msg}}\",\"raw\":\"{{msg}}\",\"compact\":\"{{msg}}\",\"verbose\":\"{{msg}}\"}"
-    ; SkyrimNetApi.RegisterEvent(type, "{ \"msg\": \""+msg+"\" }", orgasmedActor, none)
-
-    StorageUtil.IntListAdd(none, "RecentlyOrgasmedThreads", ThreadID)
-    StorageUtil.FormListAdd(none, "RecentlyOrgasmedActorsFromThrad"+ThreadID, orgasmedActor)
-    StorageUtil.SetStringValue(orgasmedActor, "OrgasmedMsg", msg)
-
-    TTON_Utils.RequestSexComment(msg, speaker = orgasmedActor)
+    StorageUtil.IntListAdd(none, "TTONClimax_ClimaxedThreads", ThreadID, false)
+    StorageUtil.FormListAdd(none, "TTONClimax_Thread" + ThreadID + "_ClimaxedActors", orgasmedActor, false)
+    ClimaxDebounced()
 EndEvent
 
 Event OStimEnd(string eventName, string strArg, float numArg, Form sender)
-    StorageUtil.IntListRemove(none, "StartedOStimThreads", numArg as int)
+    int ThreadID = numArg as int
     if(OThread.GetThreadCount() == 0)
         TTON_IsOstimActive.SetValue(0.0)
     endif
+    TTON_Events.RegisterSexStopEvent(ThreadID)
+    Actor player = TTON_JData.GetPlayer()
+
+    ; TODO Uncomment when public version of SkyrimNet will have this function
+    ; Utility.Wait(0.2)
+    ; Form[] actors = TTON_Storage.GetActors(ThreadID)
+    ; int i = 0
+    ; while(i < actors.Length)
+    ;     Actor current = actors[i] as Actor
+    ;     if(current != player)
+    ;         SkyrimNetApi.ReinforcePackages(actors[i] as Actor)
+    ;     endif
+    ;     i += 1
+    ; endwhile
+
+    TTON_Storage.EndThread(ThreadID)
 EndEvent
 
 Event ThreadFinished(int ThreadID)
     if(!TTON_JData.GetThreadAddNewActors(ThreadID))
         Actor[] actors = TTLL_ThreadsCollector.GetActors(ThreadID)
-        TTON_Utils.RequestSexComment(TTON_Utils.GetActorsNamesComaSeparated(actors) + " just finished their sexual encounter. Based on the recent context, generate a single in-character, post-sex comment that reflects how the encounter likely went.", actors, continueNarration = true)
         int i = 0
         while(i < actors.Length)
-            TTON_Storage.UpdateNpcSexualData(actors[i])
+            Actor current = actors[i]
+            TTON_Storage.UpdateNpcSexualData(current)
 
-            Actor[] lovers = TTLL_Store.GetAllLovers(actors[i])
+            Actor[] lovers = TTLL_Store.GetAllLovers(current)
             int j = 0
             while(j < lovers.Length)
-                TTON_Storage.UpdateNpcLoverSexualData(actors[i], lovers[j])
+                TTON_Storage.UpdateNpcLoverSexualData(current, lovers[j])
                 j += 1
             endwhile
             i += 1
@@ -111,4 +106,83 @@ Event ThreadFinished(int ThreadID)
     endif
 
     TTON_JData.SetThreadAffectionOnly(ThreadId, 0)
+
 EndEvent
+
+Float Property SceneChangeDebounceSeconds = 2.0 Auto
+Float Property ClimaxDebounceSeconds = 1.0 Auto
+
+Float _climaxLast = 0.0
+Bool  _climaxArmed = False
+
+Float _sceneChangeLast = 0.0
+Bool  _sceneChangeArmed = False
+
+Function ClimaxDebounced()
+    _climaxLast = Utility.GetCurrentRealTime()
+
+    if(!_climaxArmed && !_sceneChangeArmed)
+        RegisterForSingleUpdate(1.0)
+    endif
+    if !_climaxArmed
+        _climaxArmed = True
+    endif
+EndFunction
+
+Function SceneChangeDebounced()
+    _sceneChangeLast = Utility.GetCurrentRealTime()
+
+    if(!_climaxArmed && !_sceneChangeArmed)
+        RegisterForSingleUpdate(1.0)
+    endif
+    if !_sceneChangeArmed
+        _sceneChangeArmed = True
+    endif
+EndFunction
+
+Event OnUpdate()
+    Float now = Utility.GetCurrentRealTime()
+    Float climaxElapsed = now - _climaxLast
+    Float sceneChangedElapsed = now - _sceneChangeLast
+
+    if _climaxArmed && climaxElapsed >= ClimaxDebounceSeconds
+        _climaxArmed = False
+        FireEventForMultipleClimaxes()
+    endif
+
+    if _sceneChangeArmed && sceneChangedElapsed >= SceneChangeDebounceSeconds
+        _sceneChangeArmed = False
+        FireEventForSceneChange()
+    endif
+
+    if(_sceneChangeArmed || _climaxArmed)
+        RegisterForSingleUpdate(1.0)
+    endif
+EndEvent
+
+Function FireEventForMultipleClimaxes()
+    int i = 0
+    int[] climaxedThreads = StorageUtil.IntListToArray(none, "TTONClimax_ClimaxedThreads")
+    while(i < climaxedThreads.Length)
+        int ThreadID = climaxedThreads[i]
+        Form[] climaxedActors = StorageUtil.FormListToArray(none, "TTONClimax_Thread" + ThreadID + "_ClimaxedActors")
+        TTON_Events.RegisterSexClimaxEvent(ThreadID, climaxedActors)
+        i += 1
+    endwhile
+
+    Utility.Wait(1)
+    StorageUtil.ClearAllPrefix("TTONClimax_")
+EndFunction
+
+Function FireEventForSceneChange()
+    int i = 0
+    int[] climaxedThreads = StorageUtil.IntListToArray(none, "TTONSceneChange_Threads")
+    while(i < climaxedThreads.Length)
+        int ThreadID = climaxedThreads[i]
+        TTON_Events.RegisterSexChangeEvent(ThreadID)
+        i += 1
+    endwhile
+
+    Utility.Wait(1)
+    StorageUtil.ClearAllPrefix("TTONSceneChange_")
+EndFunction

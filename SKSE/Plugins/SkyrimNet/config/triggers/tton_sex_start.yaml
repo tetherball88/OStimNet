@@ -1,0 +1,23 @@
+name: "tton_sex_start"
+description: "Reaction when OStim started"
+
+eventCriteria:
+  eventType: "tton_event"
+  schemaConditions:
+    - fieldPath: "type"
+      operator: "equals"
+      value: "sex_start"
+    - fieldPath: "skipTrigger"
+      operator: "equals"
+      value: false
+
+response:
+  type: "direct_narration"
+  content: "{{ originator }} makes comment on current scene they are in."
+
+audience: "originator"
+
+enabled: true
+probability: 1
+cooldownSeconds: 30
+priority: 2
