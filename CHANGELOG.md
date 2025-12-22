@@ -1,5 +1,52 @@
 # Changelog
 
+## [v0.6.0]
+
+### Added
+- SkyrimNet trigger system integration with 5 YAML trigger files for server-side configuration
+  - `tton_sex_start.yaml` - NPC reactions when scenes begin
+  - `tton_sex_change.yaml` - Position change commentary
+  - `tton_sex_climax.yaml` - Orgasm reactions with high priority
+  - `tton_sex_stop.yaml` - Scene end diary entries
+  - `tton_action_decline.yaml` - Player refusal evaluations
+- New `TTON_Storage.psc` script for caching decorator data with `TTONDec_` prefixed storage keys
+- Direct PapyrusUtil access in Jinja2 templates via `papyrus_util()` helper function
+- Pre-computed lover relationship data with human-readable recency strings ("3 days ago", etc.)
+- Weighted speaker selection for events (orgasming NPC now comments on their own climax)
+- Multi-climax support for group scenes
+- Debug logging for OStim scene starts in `TTON_Actions.psc`
+- MCM mute setting with hotkey support - silences trigger reactions while still logging events
+
+### Changed
+- Unified multiple event schemas into single `tton_event` schema with `type` field
+- Migrated prompt templates to storage-based decorator system:
+  - `0301_personality_lovers_ledger_insights.prompt` - Direct storage reads, removed `isTimePaused` check
+  - `0601_relations_lovers_ledger_insights.prompt` - Form list iteration instead of JSON parsing
+  - `0201_ostim_scenes.prompt` - Thread-based storage, simplified participant checking
+  - `0500_sex.prompt` - Storage-based thread tracking
+- Removed JSON-building decorators from `TTON_Decorators.psc` (~150 lines eliminated)
+- Simplified `TTON_Utils.psc` by removing decorator helpers (~162 lines reduced)
+- Refactored `TTON_JData.psc` for storage layer compatibility
+- Expanded `TTON_MainController.psc` to orchestrate storage updates and event registration (~153 lines added)
+- Updated `TTON_OStimIntegration.psc` to call storage layer on scene lifecycle
+- Restructured `TTON_MCM.psc` - removed old comment cooldown/distance settings, reorganized layout
+- Event registration now respects mute setting via `GetMuteSetting()`
+- All events carry `threadID` field for storage correlation
+
+### Removed
+- MCM options for sex comment cooldown and hearing range (now controlled by trigger system)
+- MCM option for "Continue narration chance" (removed from v0.6.0)
+
+### Fixed
+- SexLab compatibility - pausing scene tracking during SexLab scenes (PR #2)
+
+### Performance
+- Decorator calls reduced from O(n) JSON building to O(1) storage reads
+- Template rendering no longer performs expensive calculations
+- Event filtering handled by SkyrimNet trigger system instead of Papyrus
+
+---
+
 ## [v0.5.0.dev] - 2025-11-16
 
 ### Breaking Changes

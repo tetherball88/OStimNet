@@ -24,7 +24,7 @@ This integration mod creates a powerful bridge between **SkyrimNet** AI framewor
 
 ## 🔧 How It Works
 
-The mod enhances SkyrimNet's capabilities in two key ways:
+The mod enhances SkyrimNet's capabilities in three key ways:
 
 1. **Action Registration**: Several specialized actions are registered with SkyrimNet, allowing the AI to control OStim functionality through natural dialogue. When you chat with NPCs, the AI analyzes the conversation and can trigger appropriate intimate scenes or modifications.
 
@@ -33,6 +33,13 @@ The mod enhances SkyrimNet's capabilities in two key ways:
    - NPCs are made aware of nearby intimate encounters, allowing for realistic reactions
    - The mod alters conversation context when NPCs are involved in intimate encounters
    - SkyrimNet prompts are enhanced with scene-relevant information without making NPCs artificially forward
+   - Pre-computed sexual behavior statistics and lover insights cached for performance
+
+3. **Event-Driven Triggers**: The mod leverages SkyrimNet's trigger system for dynamic NPC reactions:
+   - NPCs comment when scenes start, positions change, or climax occurs
+   - Configurable YAML triggers allow server-side customization without script changes
+   - Intelligent speaker selection ensures reactions come from the most relevant NPC
+   - Diary entries automatically generated when scenes end
 
 ## 🎬 Available Actions
 
@@ -70,11 +77,37 @@ Simply engage in conversation with NPCs and let the AI interpret your dialogue n
 - Conversations in appropriate locations (inns, homes) may yield more positive responses
 - The integration respects character boundaries established in their AI personality
 
+## 🔧 Advanced Configuration
+
+### Trigger System (v0.6.0+)
+Server administrators can customize NPC reaction behavior by editing YAML files in `SKSE/Plugins/SkyrimNet/config/triggers/`:
+
+- **tton_sex_start.yaml** - Controls how NPCs react when they begin intimate scenes
+- **tton_sex_change.yaml** - Manages position change commentary
+- **tton_sex_climax.yaml** - High-priority orgasm reactions
+- **tton_sex_stop.yaml** - Scene ending diary generation
+- **tton_action_decline.yaml** - Player refusal evaluation
+
+Each trigger supports:
+- Cooldown timers (`cooldownSeconds`)
+- Probability settings (`probability`: 0.0-1.0)
+- Priority levels (`priority`: higher = more important)
+- Custom AI prompts (`response.content`)
+
+### For Template Authors
+Templates can access cached data directly via PapyrusUtil:
+```jinja
+{% set threadID = papyrus_util("GetIntValue", npc.UUID, "TTONDec_ThreadParticipant", -1) %}
+{% set lovers = papyrus_util("GetFormList", actorUUID, "TTONDec_SexualData_Lovers") %}
+```
+
+See [FEATURES.md](FEATURES.md) for complete documentation.
+
 ## 🚀 Future Development
 
-- Make OStim running threads finder more dynamic when OStim bug is fixed(right now it looks only at thread ids 0, 1, 2, 3, 4)
-- More dynamic registering events(when I figure out how they work)
+- Make OStim running threads finder more dynamic when OStim bug is fixed
 - Trigger dynamic profile update after scene as significant event
+- Additional trigger types for more granular reactions
 
 ## ⚠️ Note
 
