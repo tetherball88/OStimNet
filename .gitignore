@@ -8,3 +8,4 @@ script*.js
 StartNewSex.yaml
 .editorconfig
 .claude/settings.local.json
+tag-push.bat

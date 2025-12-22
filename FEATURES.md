@@ -12,9 +12,24 @@ An advanced mod that integrates AI-powered functionality with OStim to create dy
 - 🎮 **Immersive Gameplay**: Seamless integration that respects character personalities and relationships
 - 👀 **Environmental Awareness**: NPCs react and respond to nearby intimate encounters
 - 🔄 **Multi-Scene Support**: Handle multiple simultaneous scenes across the game world
+- 🎯 **Event-Driven Triggers**: SkyrimNet trigger system enables configurable NPC reactions to intimate events
+- ⚡ **Performance Optimized**: Storage-based caching system for fast template rendering
 
-## 🚀 Features Added in v0.1.0+
+## 🚀 Recent Major Features
 
+### v0.6.0 - Trigger System Architecture
+- 🎯 **SkyrimNet Trigger Integration**: YAML-based trigger configurations for NPC reactions
+  - Sex start, position change, climax, scene end, and action decline triggers
+  - Server-side configurability without script recompilation
+  - Intelligent speaker selection (e.g., orgasming NPC comments on their own climax)
+  - Event-specific cooldowns, priorities, and probabilities
+- 💾 **Storage Layer Architecture**: Pre-computed decorator data for performance
+- 📋 **Unified Event Schema**: Single `tton_event` schema with type field for all OStim events
+- 🎨 **Template Modernization**: Direct PapyrusUtil access in Jinja2 templates
+  - Eliminated complex JSON-building decorators
+  - Flexible data access for template authors
+
+### v0.1.0+ - Core Systems
 - 🪑 **Environmental Interaction**: Start sex action now considers nearby furniture options
 - ✅ **Player Confirmations**: Added confirmation messages for key OStim actions:
   - 🏁 Starting intimate encounters
@@ -22,24 +37,60 @@ An advanced mod that integrates AI-powered functionality with OStim to create dy
   - 👋 Inviting or joining other NPCs
   - 🛑 Ending encounters
 - ⚙️ **Customizable Notifications**: Toggle which confirmation messages you want to see through MCM
-- 💬 **AI Commentary System** (`RequestSexComment`):
-  - 🎯 Triggers the AI to generate contextual direct narrations during intimate encounters
-  - ⏱️ Activates during scene changes, climax events, after encounters, or when declining certain actions
-  - 🎲 Randomly selects one participant as the "speaker" for variety in perspectives
-  - ⚖️ Includes configurable gender weighting to control which participants are selected
 - 👥 **Improved Multi-Actor Handling**: Better management when inviting or joining NPCs to ongoing scenes
 - ⏳ **Reaction Cooldowns**: Adjustable timers prevent NPCs from repeatedly requesting the same action
 
-## ⚙️ Configuration (MCM Settings)
+## ⚙️ Configuration
 
+### MCM Settings (In-Game)
 - 📱 **Confirmation Messages**: Enable/disable various confirmation dialogs: `Enable start sex confirmation modal`/`Enable change scene confirmation modal`/`Add another actors confirmation modal`/`Enable stop sex confirmation modal`
-- ⏰ **RequestSexComment Cooldown**: Adjust timing between AI narration requests (recommended ~40 seconds depending on your LLM and audio generation setup): `Cooldown between triggering sex comments`
 - 👫 **Gender Preference for Comments**: Set probability weights for which gender is selected for commentary: `Which gender has more chances to start comment`
 - 🔒 **Action Denial Cooldown**: Prevent repeated requests from NPCs after player declines an action: `Action cooldown after player's deny`. It works per npc, if npc1 one wanted to perform some OStimNet action but was denied by player - npc1 won't be able to use this action for next X seconds. Meanwhile if npc2 will try same action it will be available for them.
 
+### Trigger Configuration (Server-Side YAML)
+Located in `SKSE/Plugins/SkyrimNet/config/triggers/`, you can customize:
+- ⏰ **Cooldown Timers**: Adjust `cooldownSeconds` to control reaction frequency
+- 🎲 **Trigger Probability**: Set `probability` (0.0-1.0) for how often reactions fire
+- 📊 **Priority Levels**: Modify `priority` to control trigger execution order (higher = more important)
+- 🎯 **Event Filtering**: Edit `schemaConditions` to fine-tune when triggers activate
+- 📝 **Response Templates**: Customize AI prompts in the `response.content` field
+
+Available trigger files:
+- `tton_sex_start.yaml` - Reactions when scenes begin
+- `tton_sex_change.yaml` - Comments on position changes
+- `tton_sex_climax.yaml` - High-priority orgasm reactions
+- `tton_sex_stop.yaml` - Scene end diary entries
+- `tton_action_decline.yaml` - Player refusal evaluations
+
 ## 📝 Usage Notes
 
-- ⚠️ Setting RequestSexComment cooldown too low (or to 0) will create a large queue of narration requests
-- 🔄 When inviting/joining NPCs, the system now treats it as same encounter thread rather than generating separate stop/start events
-- 🚫 The mod now tracks when players deny an NPC's request to stop an encounter as event
+- 🔄 When inviting/joining NPCs, the system treats it as the same encounter thread rather than generating separate stop/start events
+- 🚫 The mod tracks when players deny an NPC's request to stop an encounter as an event
 - 🔁 Too low deny cooldown setting can lead to NPCs spamming the same action again and again (if they are stubborn enough)
+- 🎯 Trigger system respects mute settings - events still fire but won't generate AI reactions when muted
+- 💾 Sexual behavior data is cached for performance - updates occur during scene lifecycle events
+- 🔧 Server admins can tune trigger behavior without waiting for mod updates
+
+## 🛠️ For Modders & Template Authors
+
+### Direct PapyrusUtil Access
+Templates can now directly read cached storage data:
+```jinja
+{% set soloSex = papyrus_util("GetIntValue", actorUUID, "TTONDec_SexualData_SoloSex") %}
+{% set lovers = papyrus_util("GetFormList", actorUUID, "TTONDec_SexualData_Lovers") %}
+{% set threadID = papyrus_util("GetIntValue", npc.UUID, "TTONDec_ThreadParticipant", -1) %}
+```
+
+### Storage Key Prefixes
+- `TTONDec_ActiveOStimThreads` - List of active thread IDs
+- `TTONDec_Thread{ID}_*` - Thread-specific data (actors, description, sexual status)
+- `TTONDec_SexualData_*` - Cached NPC sexual behavior statistics
+- `TTONDec_Lover_{FormID}_*` - Pre-computed lover relationship data
+
+### Event Schema
+All OStim events use the `tton_event` schema with fields:
+- `type` - Event type (sex_start, sex_change, climax, sex_stop, action_decline)
+- `msg` - Human-readable event description
+- `threadID` - OStim thread identifier
+- `skipTrigger` - Boolean to bypass trigger processing
+- `declinedAction` - (Optional) Specific action that was declined
