@@ -7,6 +7,7 @@ eventCriteria:
     - fieldPath: "type"
       operator: "equals"
       value: "action_decline"
+      caseSensitive: false
     - fieldPath: "skipTrigger"
       operator: "equals"
       value: false

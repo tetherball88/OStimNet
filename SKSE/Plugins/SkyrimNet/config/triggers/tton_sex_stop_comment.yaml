@@ -1,4 +1,4 @@
-name: "tton_sex_stop"
+name: "tton_sex_stop_comment"
 description: "Reaction when OStim Ended"
 
 eventCriteria:
@@ -7,19 +7,18 @@ eventCriteria:
     - fieldPath: "type"
       operator: "equals"
       value: "sex_stop"
+      caseSensitive: false
     - fieldPath: "skipTrigger"
       operator: "equals"
       value: false
 
 response:
-  type: "diary_entry"
-  content: "{{ event_json.msg }}"
-  targetScope: "all_nearby_actors"
-  nearbyRadius: 1100
+  type: "direct_narration"
+  content: "{{ originator }} makes comment on finished encounter."
 
 audience: "nearby_npcs"
 
-enabled: true
+enabled: false
 probability: 1
-cooldownSeconds: 0
-priority: 1
+cooldownSeconds: 30
+priority: 2

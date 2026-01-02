@@ -1,24 +1,26 @@
-name: "tton_sex_start"
-description: "Reaction when OStim started"
+name: "tton_sex_stop_diary"
+description: "Reaction when OStim Ended"
 
 eventCriteria:
   eventType: "tton_event"
   schemaConditions:
     - fieldPath: "type"
       operator: "equals"
-      value: "sex_start"
+      value: "sex_stop"
       caseSensitive: false
     - fieldPath: "skipTrigger"
       operator: "equals"
       value: false
 
 response:
-  type: "direct_narration"
-  content: "{{ originator }} makes comment on current scene they are in."
+  type: "diary_entry"
+  content: "{{ event_json.msg }}"
+  targetScope: "all_nearby_actors"
+  nearbyRadius: 1100
 
 audience: "nearby_npcs"
 
-enabled: true
+enabled: false
 probability: 1
-cooldownSeconds: 30
-priority: 2
+cooldownSeconds: 0
+priority: 1
