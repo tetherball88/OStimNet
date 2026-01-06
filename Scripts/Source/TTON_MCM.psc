@@ -10,6 +10,7 @@ int property oid_EnableChangePositionConfirmationModal auto
 int property oid_EnableAddNewActorsConfirmationModal auto
 int property oid_EnableStopSexConfirmationModal auto
 int property oid_UseDefaultOStimSceneStart auto
+int property oid_PrioritizePlayerThreadComments auto
 
 int property oid_SexCommentsGenderWeight auto
 
@@ -74,6 +75,7 @@ Function RenderRightColumn()
     oid_SexCommentsGenderWeight = AddSliderOption("Gender preference (0=Male, 100=Female):", genderWeight)
     oid_Mute = AddToggleOption("Mute(events are still logged):", TTON_JData.GetMuteSetting())
     oid_MuteHotkey = AddKeyMapOption("Hotkey for mute:", TTON_JData.GetMuteHotkey())
+    oid_PrioritizePlayerThreadComments = AddToggleOption("Prioritize player scenes for comments:", TTON_JData.GetPrioritizePlayerThreadComments())
 
     AddHeaderOption("Behavior & Timing")
     float denyCooldown = TTON_JData.GetMcmDenyCooldown() as float
@@ -110,6 +112,8 @@ event OnOptionSelect(int option)
         SetToggleOptionValue(oid_UseDefaultOStimSceneStart, TTON_JData.ToggleMcmCheckbox("useOStimDefaultStartSelection", 0))
     elseif(option == oid_Mute)
         SetToggleOptionValue(oid_Mute, TTON_JData.ToggleMuteSetting())
+    elseif(option == oid_PrioritizePlayerThreadComments)
+        SetToggleOptionValue(oid_PrioritizePlayerThreadComments, TTON_JData.ToggleMcmCheckbox("prioritizePlayerThreadComments", 1))
     endif
 endevent
 
@@ -143,6 +147,8 @@ event OnOptionHighlight(int option)
         SetInfoText("Mutes npcs and doesn't allow them to auto-speak on OStim events like scene change/start/end/climax. Good for allowing your own narration or searching/navigating.")
     elseif(option == oid_MuteHotkey)
         SetInfoText("Toggle Mute in-game without entering MCM.")
+    elseif(option == oid_PrioritizePlayerThreadComments)
+        SetInfoText("Prioritize comments from the player's thread in scenes and mute NPCs from other threads..")
     endif
 endevent
 

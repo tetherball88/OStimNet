@@ -576,3 +576,8 @@ bool Function Ask(string type, Actor initiator, string question, bool playerInvi
     endif
     return yes
 EndFunction
+
+bool Function ShouldPrioritizePlayerThreadComments(int ThreadID) global
+    bool playerThreadIsActive = OThread.IsRunning(0)
+    return TTON_JData.GetPrioritizePlayerThreadComments() && playerThreadIsActive && ThreadID != 0
+EndFunction

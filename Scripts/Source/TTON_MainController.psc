@@ -106,7 +106,6 @@ Event ThreadFinished(int ThreadID)
     endif
 
     TTON_JData.SetThreadAffectionOnly(ThreadId, 0)
-
 EndEvent
 
 Float Property SceneChangeDebounceSeconds = 2.0 Auto

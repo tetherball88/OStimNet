@@ -177,6 +177,7 @@ int Function GetMuteHotkey() global
     return GetMcmInt("muteHotkey")
 EndFunction
 
+
 bool Function GetMuteSetting() global
     return GetMcmCheckbox("muteSetting", 0)
 EndFunction
@@ -254,6 +255,10 @@ EndFunction
 
 bool Function GetConfirmStopSexScenes() global
     return GetMcmCheckbox("confirmStopSex", 1)
+EndFunction
+
+bool Function GetPrioritizePlayerThreadComments() global
+    return GetMcmCheckbox("prioritizePlayerThreadComments", 1)
 EndFunction
 
 bool Function GetConfirmChangeScenePosition() global
