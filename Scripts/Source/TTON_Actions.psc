@@ -114,8 +114,39 @@ Function StartSexActionExecute(Actor akActor, string contextJson, string paramsJ
         return
     endif
 
-    TTON_Debug.warn(TTON_Utils.GetActorName(akActor) + " is starting new OStim scene with activity: " + actions + ", furniture: " + furn + ", participants: " + TTON_Utils.GetActorName(participant1) + ", " + TTON_Utils.GetActorName(participant2) + ", " + TTON_Utils.GetActorName(participant3) + ", " + TTON_Utils.GetActorName(participant4))
+    if(akActor == participant1)
+        participant1 = none
+    elseif(akActor == participant2)
+        participant2 = none
+    elseif(akActor == participant3)
+        participant3 = none
+    elseif(akActor == participant4)
+        participant4 = none
+    endif
+    if(participant1)
+        if(participant1 == participant2)
+            participant2 = none
+        elseif(participant1 == participant3)
+            participant3 = none
+        elseif(participant1 == participant4)
+            participant4 = none
+        endif
+    endif
+    if(participant2)
+        if(participant2 == participant3)
+            participant3 = none
+        elseif(participant2 == participant4)
+            participant4 = none
+        endif
+    endif
+    if(participant3)
+        if(participant3 == participant4)
+            participant4 = none
+        endif
+    endif
+
     Actor[] actors = OActorUtil.ToArray(akActor, participant1, participant2, participant3, participant4)
+
     TTON_Debug.warn("Starting OStim scene with actors: " + actors)
     TTON_OStimIntegration.StartOstim(actors, actions, furn, initiator = akActor)
 EndFunction
