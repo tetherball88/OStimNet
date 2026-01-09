@@ -120,15 +120,13 @@ endfunction
 ; Checks if there are any available scenes for the given actor combination
 ; @param actors Array of actors to check scenes for
 ; @returns True if at least one suitable scene exists
-string Function UserHasScenesForActors(Actor[] actors, string furn = "") global
+bool Function UserHasScenesForActors(Actor[] actors, string furn = "") global
     string sceneId = OLibrary.GetRandomSceneSuperloadCSV(actors, furn, AnyActionType = "sexual") != ""
     if(sceneId == "")
-        return "no-furn"
-    else
-        return "furn"
+        return false
     endif
 
-    return "none"
+    return true
 EndFunction
 
 ; return changed animation position based on actor's ostim tags or original position

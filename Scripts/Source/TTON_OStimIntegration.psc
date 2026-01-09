@@ -204,6 +204,7 @@ Function ClearConsideringActors(Actor[] actors) global
         if(StorageUtil.GetIntValue(actors[i], "SexInviteConsidering") == 1)
             StorageUtil.UnsetIntValue(actors[i], "SexInviteConsidering")
         endif
+        i += 1
     endwhile
 EndFunction
 
