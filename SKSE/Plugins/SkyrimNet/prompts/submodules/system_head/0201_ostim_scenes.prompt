@@ -1,44 +1,46 @@
-{% set activeOstimThreads = papyrus_util("GetIntList", null, "TTONDec_ActiveOStimThreads")%}
-{% if length(activeOstimThreads) > 0 %}
-    {% set npcData = decnpc(npc.UUID) %}
-    {% set npcName = npcData.name %}
-    ### Intimate Scenes Context
-    {% for threadID in activeOstimThreads %}
-        {% set sceneDescription = papyrus_util("GetStringValue", null, "TTONDec_Thread" + to_string(threadID) + "_SceneDescription") %}
-        {% set actors = papyrus_util("GetFormList", null, "TTONDec_Thread" + to_string(threadID) + "_Actors") %}
-        {% if length(activeOstimThreads) > 1 %}
-            #### Scene {{ loop.index }}:
-        {% endif %}
-        {% if contains(actors, to_string(npcData.formId)) %}
-            {% set npcIsInScene = true %}
-            - **{{npcName}}** is directly participating in this intimate activity:
-        {% else %}
-            {% if lower(scene.visibility) == "canhearfar" %}
-                - **{{npcName}}** can hear muffled sounds that might be sex.
-            {% else if lower(scene.visibility) == "canhearclose" %}
-                - **{{npcName}}** can clearly hear that someone is having sex.
-            {% else if lower(scene.visibility) == "canSeeAndHear" %}
-                - **{{npcName}}** is observing closely this intimate encounter:
+{% if not decnpc(npc.UUID).isVirtual %}
+    {% set activeOstimThreads = papyrus_util("GetIntList", null, "TTONDec_ActiveOStimThreads")%}
+    {% if length(activeOstimThreads) > 0 %}
+        {% set npcData = decnpc(npc.UUID) %}
+        {% set npcName = npcData.name %}
+        ### Intimate Scenes Context
+        {% for threadID in activeOstimThreads %}
+            {% set sceneDescription = papyrus_util("GetStringValue", null, "TTONDec_Thread" + to_string(threadID) + "_SceneDescription") %}
+            {% set actors = papyrus_util("GetFormList", null, "TTONDec_Thread" + to_string(threadID) + "_Actors") %}
+            {% if length(activeOstimThreads) > 1 %}
+                #### Scene {{ loop.index }}:
             {% endif %}
-        {% endif %}
-
-        {% if responseTarget.UUID %}
-            {% set targetNpcData = decnpc(responseTarget.UUID) %}
-            {% set responseTargetName = targetNpcData.name %}
-            {% if contains(actors, to_string(targetNpcData.formId)) %}
-                {% if npcIsInScene %}
-                    - **{{responseTargetName}}** is participating in this same scene as **{{npcName}}**
-                {% else %}
-                    - **{{responseTargetName}}** is involved in this intimate activity.
+            {% if contains(actors, to_string(npcData.formId)) %}
+                {% set npcIsInScene = true %}
+                - **{{npcName}}** is directly participating in this intimate activity:
+            {% else %}
+                {% if lower(scene.visibility) == "canhearfar" %}
+                    - **{{npcName}}** can hear muffled sounds that might be sex.
+                {% else if lower(scene.visibility) == "canhearclose" %}
+                    - **{{npcName}}** can clearly hear that someone is having sex.
+                {% else if lower(scene.visibility) == "canSeeAndHear" %}
+                    - **{{npcName}}** is observing closely this intimate encounter:
                 {% endif %}
             {% endif %}
+
+            {% if responseTarget.UUID %}
+                {% set targetNpcData = decnpc(responseTarget.UUID) %}
+                {% set responseTargetName = targetNpcData.name %}
+                {% if contains(actors, to_string(targetNpcData.formId)) %}
+                    {% if npcIsInScene %}
+                        - **{{responseTargetName}}** is participating in this same scene as **{{npcName}}**
+                    {% else %}
+                        - **{{responseTargetName}}** is involved in this intimate activity.
+                    {% endif %}
+                {% endif %}
+            {% endif %}
+            {{ sceneDescription }}
+            {% if not loop.is_last %}
+                ---
+            {% endif %}
+        {% endfor %}
+        {% if length(activeOstimThreads) > 1 %}
+            Note: Multiple intimate scenes are occurring simultaneously. The dialogue should acknowledge this complex situation appropriately.
         {% endif %}
-        {{ sceneDescription }}
-        {% if not loop.is_last %}
-            ---
-        {% endif %}
-    {% endfor %}
-    {% if length(activeOstimThreads) > 1 %}
-        Note: Multiple intimate scenes are occurring simultaneously. The dialogue should acknowledge this complex situation appropriately.
     {% endif %}
 {% endif %}

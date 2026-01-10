@@ -1,4 +1,4 @@
-{% if render_mode == "full" %}
+{% if render_mode == "full" and not decnpc(actorUUID).isVirtual %}
     {% set soloSex = papyrus_util("GetIntValue", actorUUID, "TTONDec_SexualData_SoloSex") %}
     {% set exclusiveSex = papyrus_util("GetIntValue", actorUUID, "TTONDec_SexualData_ExclusiveSex") %}
     {% set groupSex = papyrus_util("GetIntValue", actorUUID, "TTONDec_SexualData_GroupSex") %}

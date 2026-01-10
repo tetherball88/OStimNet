@@ -1,4 +1,4 @@
-{% if render_mode == "full" or render_mode == "thoughts" or render_mode == "transform" %}
+{% if render_mode == "full" or render_mode == "thoughts" or render_mode == "transform" and not decnpc(actorUUID).isVirtual%}
     {% set lovers = papyrus_util("GetFormList", actorUUID, "TTONDec_SexualData_Lovers") %}
     {% if length(lovers) > 0 %}
         {% if isArray(lovers) and length(lovers) > 0 %}
