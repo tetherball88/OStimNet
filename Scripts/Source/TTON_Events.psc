@@ -16,7 +16,7 @@ Function RegisterEventSchema() global
         + "{\"name\": \"threadID\", \"type\": 1, \"required\": true, \"description\": \"OStim Thread ID.\"}" \
         +"]"
     string renderParams = "{\"recent_events\":\"{{msg}}\",\"raw\":\"{{msg}}\",\"compact\":\"{{msg}}\",\"verbose\":\"{{msg}}\"}"
-    SkyrimnetApi.RegisterEventSchema("tton_event", name, description, jsonParams, renderParams, false, 0)
+    SkyrimnetApi.RegisterEventSchema("tton_event", name, description, jsonParams, renderParams, false, 0, true, false)
 EndFunction
 
 Function RegisterSexStartEvent(int ThreadID) global
