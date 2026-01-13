@@ -1,5 +1,16 @@
 # Changelog
 
+## [v0.7.0]
+
+### Added
+- on OStim end it will attempt to restore SkyrimNet's packages(before if NPC was following via SkyrimNet's package after OStim scene they cleared that package and didn't follow anymore - in this version it should work as expected)
+
+
+### Changed
+- Cleaned almost all decorators:
+    - Moved actions descriptions to separate template files with gathering nearby potential participants via template cpp capabilities
+- Removed Lover's Ledger requirement(moved its prompts to separate integration [Lover's Neural Ledger](https://github.com/tetherball88/Lovers-Neural-Ledger))
+
 ## [v0.6.0]
 
 ### Added

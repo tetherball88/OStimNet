@@ -269,65 +269,15 @@ bool Function GetConfirmAddNewActors() global
     return GetMcmCheckbox("confirmAddActors", 1)
 EndFunction
 
-
 ;/ ==============================
    SECTION: Temporary data which cleans on each load
 ============================== /;
 
 Function ClearTmpData() global
     int JTmp = JMap_object()
-    JMap_setObj(JTmp, "threads", JMap_object())
     JMap_setObj(JTmp, "denies", JFormMap_object())
     JDB_solveObjSetter(GetNamespaceKey() + ".tmp", JTmp, true)
 EndFunction
-
-;/ ==============================
-   SECTION: Threads manager
-============================== /;
-
-Function SetThreadInt(int ThreadID, string propName, int value = 1) global
-    StorageUtil.SetIntValue(none, "tmp.threads." + ThreadID + "." + propName, value)
-EndFunction
-
-int Function GetThreadInt(int ThreadID, string propName, int DefaultValue = 0) global
-    return StorageUtil.GetIntValue(none, "tmp.threads." + ThreadID + "." + propName, DefaultValue)
-EndFunction
-
-bool Function GetThreadBool(int ThreadID, string propName) global
-    return GetThreadInt(ThreadID, propName) == 1
-EndFunction
-
-Function SetThreadFlt(int ThreadID, string propName, float value = 1.0) global
-    StorageUtil.SetFloatValue(none, "tmp.threads." + ThreadID + "." + propName, value)
-EndFunction
-float Function GetThreadFlt(int ThreadID, string propName, float DefaultValue = 0.0) global
-    return StorageUtil.GetFloatValue(none, "tmp.threads." + ThreadID + "." + propName, DefaultValue)
-EndFunction
-
-Function SetThreadAddNewActors(int ThreadID, int value = 1) global
-    SetThreadInt(ThreadID, "addingNewActors", value)
-EndFunction
-
-bool Function GetThreadAddNewActors(int ThreadID) global
-    return GetThreadBool(ThreadID, "addingNewActors")
-EndFunction
-
-Function SetThreadContinuationFrom(int OldThreadID, int NewThreadID) global
-    SetThreadInt(NewThreadID, "continuationFrom", OldThreadID)
-EndFunction
-
-int Function GetThreadContinuationFrom(int ThreadID) global
-    return GetThreadInt(ThreadID, "continuationFrom", -1)
-EndFunction
-
-Function SetThreadAffectionOnly(int ThreadID, int val = 1) global
-    SetThreadInt(ThreadID, "affectionOnly", val)
-EndFunction
-
-bool Function GetThreadAffectionOnly(int ThreadID) global
-    return GetThreadInt(ThreadID, "affectionOnly") == 1
-EndFunction
-
 
 ;/ ==============================
    SECTION: Sex comments

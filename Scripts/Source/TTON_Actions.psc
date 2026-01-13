@@ -48,6 +48,10 @@ EndFunction
 ; Placeholder eligibility check for the affection scene action.
 ; Implementation should ensure actors are free from ongoing OStim threads and mutually willing.
 Bool Function StartAffectionSceneIsEligible(Actor akActor, string contextJson, string paramsJson) global
+    ; MiscUtil.PrintConsole("StartAffectionSceneIsEligible:IsSexLabInCharge:" + TTON_Utils.IsSexLabInCharge())
+    ; MiscUtil.PrintConsole("StartAffectionSceneIsEligible:IsActorBusyWithScenes:" + TTON_Utils.IsActorBusyWithScenes(akActor))
+    ; MiscUtil.PrintConsole("StartAffectionSceneIsEligible:IsOStimEligible:" + TTON_Utils.IsOStimEligible(akActor))
+    ; MiscUtil.PrintConsole("StartAffectionSceneIsEligible:CanUseActionAfterDecline:" + TTON_JData.CanUseActionAfterDecline(akActor, "StartAffectionScene"))
     return !TTON_Utils.IsSexLabInCharge() && !TTON_Utils.IsActorBusyWithScenes(akActor) && TTON_Utils.IsOStimEligible(akActor) && TTON_JData.CanUseActionAfterDecline(akActor, "StartAffectionScene")
 EndFunction
 
@@ -87,7 +91,11 @@ EndFunction
 ; @param contextJson The context data in JSON format
 ; @param paramsJson The parameters data in JSON format
 ; @returns True if the actor is eligible to start a new sexual encounter
-Bool Function StartSexActionIsElgigible(Actor akActor, string contextJson, string paramsJson) global
+Bool Function StartSexActionIsEligible(Actor akActor, string contextJson, string paramsJson) global
+    ; MiscUtil.PrintConsole("StartSexActionIsEligible:IsSexLabInCharge:" + TTON_Utils.IsSexLabInCharge())
+    ; MiscUtil.PrintConsole("StartSexActionIsEligible:IsActorBusyWithScenes:" + TTON_Utils.IsActorBusyWithScenes(akActor))
+    ; MiscUtil.PrintConsole("StartSexActionIsEligible:IsOStimEligible:" + TTON_Utils.IsOStimEligible(akActor))
+    ; MiscUtil.PrintConsole("StartSexActionIsEligible:CanUseActionAfterDecline:" + TTON_JData.CanUseActionAfterDecline(akActor, "StartSexAction"))
     return !TTON_Utils.IsSexLabInCharge() && !TTON_Utils.IsActorBusyWithScenes(akActor) && TTON_Utils.IsOStimEligible(akActor) && TTON_JData.CanUseActionAfterDecline(akActor, "StartSexAction")
 EndFunction
 
@@ -161,9 +169,12 @@ EndFunction
 ; @param contextJson The context data in JSON format
 ; @param paramsJson The parameters data in JSON format
 ; @returns True if the actor is currently in an OStim scene
-Bool Function ChangeSexActivityIsElgigible(Actor akActor, string contextJson, string paramsJson) global
+Bool Function ChangeSexActivityIsEligible(Actor akActor, string contextJson, string paramsJson) global
     int ThreadID = OActor.GetSceneID(akActor)
-    return OActor.IsInOStim(akActor) && !TTON_JData.GetThreadAffectionOnly(ThreadID) && TTON_JData.CanUseActionAfterDecline(akActor, "ChangeSexActivity")
+    ; MiscUtil.PrintConsole("ChangeSexActivityIsEligible:GetThreadAffectionOnly:" + TTON_Storage.GetThreadAffectionOnly(ThreadID))
+    ; MiscUtil.PrintConsole("ChangeSexActivityIsEligible:CanUseActionAfterDecline:" + TTON_JData.CanUseActionAfterDecline(akActor, "ChangeSexActivity"))
+    ; MiscUtil.PrintConsole("ChangeSexActivityIsEligible:IsInOStim:" + OActor.IsInOStim(akActor))
+    return OActor.IsInOStim(akActor) && !TTON_Storage.GetThreadAffectionOnly(ThreadID) && TTON_JData.CanUseActionAfterDecline(akActor, "ChangeSexActivity")
 EndFunction
 
 ; Changes the sexual position or activity in an ongoing encounter
@@ -189,7 +200,10 @@ EndFunction
 ; @returns True if the actor is currently in an OStim scene
 Bool Function InviteToYourSexIsEligible(Actor akActor, string contextJson, string paramsJson) global
     int ThreadID =OActor.GetSceneID(akActor)
-    return OActor.IsInOStim(akActor) && !TTON_JData.GetThreadAffectionOnly(ThreadID) && TTON_JData.CanUseActionAfterDecline(akActor, "InviteToYourSex")
+    ; MiscUtil.PrintConsole("InviteToYourSexIsEligible:GetThreadAffectionOnly:" + TTON_Storage.GetThreadAffectionOnly(ThreadID))
+    ; MiscUtil.PrintConsole("InviteToYourSexIsEligible:CanUseActionAfterDecline:" + TTON_JData.CanUseActionAfterDecline(akActor, "InviteToYourSex"))
+    ; MiscUtil.PrintConsole("InviteToYourSexIsEligible:IsInOStim:" + OActor.IsInOStim(akActor))
+    return OActor.IsInOStim(akActor) && !TTON_Storage.GetThreadAffectionOnly(ThreadID) && TTON_JData.CanUseActionAfterDecline(akActor, "InviteToYourSex")
 EndFunction
 
 ; Handles the invitation of new participants to an ongoing sexual encounter
@@ -251,7 +265,10 @@ EndFunction
 ; @param contextJson The context data in JSON format
 ; @param paramsJson The parameters data in JSON format
 ; @returns True if the actor is not in a scene, there are active scenes, and the actor is eligible
-Bool Function JoinOngoingSexIsElgigible(Actor akActor, string contextJson, string paramsJson) global
+Bool Function JoinOngoingSexIsEligible(Actor akActor, string contextJson, string paramsJson) global
+    ; MiscUtil.PrintConsole("InviteToYourSexIsEligible:IsActorEligibleToJoin:" + TTON_Utils.IsActorEligibleToJoin(akActor))
+    ; MiscUtil.PrintConsole("InviteToYourSexIsEligible:CanUseActionAfterDecline:" + TTON_JData.CanUseActionAfterDecline(akActor, "JoinOngoingSex"))
+    ; MiscUtil.PrintConsole("InviteToYourSexIsEligible:IsInOStim:" + OActor.IsInOStim(akActor))
     return TTON_Utils.IsActorEligibleToJoin(akActor) && TTON_JData.CanUseActionAfterDecline(akActor, "JoinOngoingSex")
 EndFunction
 
@@ -271,7 +288,7 @@ Bool Function JoinOngoingSexActionExecute(Actor akActor, string contextJson, str
     if(StorageUtil.GetIntValue(participant1, "SexInviteConsidering") == 1)
         return false
     endif
-    if(TTON_JData.GetThreadAffectionOnly(ThreadID))
+    if(TTON_Storage.GetThreadAffectionOnly(ThreadID))
         return false
     endif
     StorageUtil.SetIntValue(participant1, "SexInviteConsidering", 1)
@@ -288,12 +305,12 @@ EndFunction
 ; @param contextJson The context data in JSON format
 ; @param paramsJson The parameters data in JSON format
 ; @returns True if the actor is in a scene and the scene has available speed changes
-Bool Function ChangeSexPaceIsElgigible(Actor akActor, string contextJson, string paramsJson) global
+Bool Function ChangeSexPaceIsEligible(Actor akActor, string contextJson, string paramsJson) global
     int ThreadId = OActor.GetSceneID(akActor)
     string SceneId = OThread.GetScene(ThreadId)
     int currentSpeed = OThread.GetSpeed(ThreadId)
     string hasSpeedsToMove = TTON_Utils.GetAvailableSpeedDirections(SceneId, currentSpeed)
-    return OActor.IsInOStim(akActor) && hasSpeedsToMove != "none" && !TTON_JData.GetThreadAffectionOnly(ThreadId) && TTON_JData.CanUseActionAfterDecline(akActor, "ChangeSexPace")
+    return OActor.IsInOStim(akActor) && hasSpeedsToMove != "none" && !TTON_Storage.GetThreadAffectionOnly(ThreadId) && TTON_JData.CanUseActionAfterDecline(akActor, "ChangeSexPace")
 EndFunction
 
 ; Changes the pace of the current sexual activity
@@ -320,9 +337,12 @@ EndFunction
 ; @param contextJson The context data in JSON format
 ; @param paramsJson The parameters data in JSON format
 ; @returns True if the actor is currently in an OStim scene
-bool Function StopSexIsElgigible(Actor akActor, string contextJson, string paramsJson) global
-    int ThreadID =OActor.GetSceneID(akActor)
-    return OActor.IsInOStim(akActor) && !TTON_JData.GetThreadAffectionOnly(ThreadID) && TTON_JData.CanUseActionAfterDecline(akActor, "StopSex")
+bool Function StopSexIsEligible(Actor akActor, string contextJson, string paramsJson) global
+    int ThreadID = OActor.GetSceneID(akActor)
+    ; MiscUtil.PrintConsole("InviteToYourSexIsEligible:GetThreadAffectionOnly:" + TTON_Storage.GetThreadAffectionOnly(ThreadID))
+    ; MiscUtil.PrintConsole("InviteToYourSexIsEligible:CanUseActionAfterDecline:" + TTON_JData.CanUseActionAfterDecline(akActor, "StopSex"))
+    ; MiscUtil.PrintConsole("InviteToYourSexIsEligible:IsInOStim:" + OActor.IsInOStim(akActor))
+    return OActor.IsInOStim(akActor) && !TTON_Storage.GetThreadAffectionOnly(ThreadID) && TTON_JData.CanUseActionAfterDecline(akActor, "StopSex")
 EndFunction
 
 ; Stops the current sexual encounter

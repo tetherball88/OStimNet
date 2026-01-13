@@ -8,6 +8,8 @@ Event OnInit()
 EndEvent
 
 Function Maintenance()
+    ; clear sexual data from Lover's Ledger which is now its own separate integration
+    StorageUtil.ClearAllPrefix("TTONDec_SexualData")
     TTON_JData.ImportStaticData()
     TTON_Storage.ClearOnLoad()
     TTON_Events.RegisterEventSchema()
@@ -17,8 +19,6 @@ Function Maintenance()
     RegisterForModEvent("ostim_thread_speedchanged", "OStimSpeedChange")
     RegisterForModEvent("ostim_actor_orgasm", "OStimOrgasm")
     RegisterForModEvent("ostim_thread_end", "OStimEnd")
-
-    RegisterForModEvent("ttll_thread_data_event", "ThreadFinished")
 
     TTON_Actions.RegisterActions()
     TTON_Events.RegisterEvents()
@@ -31,12 +31,12 @@ Event OStimStart(string eventName, string strArg, float numArg, Form sender)
 
     TTON_Storage.StartThread(ThreadID)
 
-    int continuedFromThreadID = TTON_JData.GetThreadContinuationFrom(ThreadID)
+    int continuedFromThreadID = TTON_Storage.GetThreadContinuationFrom(ThreadID)
 
-    ; if this thread was started as part of adding new actors clean JContainers data related to this and old thread
+    ; if this thread was started as part of adding new actors clean data related to this and old thread
     if(continuedFromThreadID != -1)
-        TTON_JData.SetThreadAddNewActors(continuedFromThreadID, 0)
-        TTON_JData.SetThreadContinuationFrom(ThreadID, -1)
+        TTON_Storage.SetThreadAddNewActors(continuedFromThreadID, 0)
+        TTON_Storage.SetThreadContinuationFrom(ThreadID, -1)
     else
         TTON_Events.RegisterSexStartEvent(ThreadID)
     endif
@@ -64,48 +64,26 @@ Event OStimOrgasm(string eventName, string strArg, float numArg, Form sender)
     ClimaxDebounced()
 EndEvent
 
-Event OStimEnd(string eventName, string strArg, float numArg, Form sender)
+Event OStimEnd(string eventName, string json, float numArg, Form sender)
     int ThreadID = numArg as int
     if(OThread.GetThreadCount() == 0)
         TTON_IsOstimActive.SetValue(0.0)
     endif
-    TTON_Events.RegisterSexStopEvent(ThreadID)
+    Actor[] actors = OJSON.GetActors(json)
+    TTON_Events.RegisterSexStopEvent(ThreadID, actors)
     Actor player = TTON_JData.GetPlayer()
 
-    ; TODO Uncomment when public version of SkyrimNet will have this function
-    ; Utility.Wait(0.2)
-    ; Form[] actors = TTON_Storage.GetActors(ThreadID)
-    ; int i = 0
-    ; while(i < actors.Length)
-    ;     Actor current = actors[i] as Actor
-    ;     if(current != player)
-    ;         SkyrimNetApi.ReinforcePackages(actors[i] as Actor)
-    ;     endif
-    ;     i += 1
-    ; endwhile
+    Utility.Wait(0.2)
+    int i = 0
+    while(i < actors.Length)
+        Actor current = actors[i]
+        if(current != player)
+            SkyrimNetApi.ReinforcePackages(current)
+        endif
+        i += 1
+    endwhile
 
     TTON_Storage.EndThread(ThreadID)
-EndEvent
-
-Event ThreadFinished(int ThreadID)
-    if(!TTON_JData.GetThreadAddNewActors(ThreadID))
-        Actor[] actors = TTLL_ThreadsCollector.GetActors(ThreadID)
-        int i = 0
-        while(i < actors.Length)
-            Actor current = actors[i]
-            TTON_Storage.UpdateNpcSexualData(current)
-
-            Actor[] lovers = TTLL_Store.GetAllLovers(current)
-            int j = 0
-            while(j < lovers.Length)
-                TTON_Storage.UpdateNpcLoverSexualData(current, lovers[j])
-                j += 1
-            endwhile
-            i += 1
-        endwhile
-    endif
-
-    TTON_JData.SetThreadAffectionOnly(ThreadId, 0)
 EndEvent
 
 Float Property SceneChangeDebounceSeconds = 2.0 Auto

@@ -19,8 +19,8 @@ This integration mod creates a powerful bridge between **SkyrimNet** AI framewor
 - [JContainers](https://www.nexusmods.com/skyrimspecialedition/mods/16495) - For handling scene descriptions
 - [PapyrusUtil SE](https://www.nexusmods.com/skyrimspecialedition/mods/13048) - Modders Scripting Utility Functions
 - [powerofthree's Papyrus Extender](https://www.nexusmods.com/skyrimspecialedition/mods/22854) - Scripting utility
-- [Lover's Ledger](https://www.nexusmods.com/skyrimspecialedition/mods/158983) - For enhanced relationship statistics
-- (!!!new from version v0.1.0) [Papyrus MessageBox - SKSE NG](https://www.nexusmods.com/skyrimspecialedition/mods/83578)
+- ⚠️~~[Lover's Ledger](https://www.nexusmods.com/skyrimspecialedition/mods/158983) - For enhanced relationship statistics~~ Not needed since version `v0.7.0` Lover's Ledger prompts moved to separate integration [Lover's Neural Ledger](https://github.com/tetherball88/Lovers-Neural-Ledger)
+- ⚠️ [Papyrus MessageBox - SKSE NG](https://www.nexusmods.com/skyrimspecialedition/mods/83578) new from version `v0.1.0`
 
 ## 🔧 How It Works
 

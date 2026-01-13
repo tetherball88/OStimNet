@@ -546,9 +546,8 @@ Actor[] Function GetAllActorsAfterJoin(int ThreadID, Actor[] newActors) global
     endif
 
     int i = 0
-    int addedActors = 0
     while(i < newActors.Length)
-        if(newActors[i] && PapyrusUtil.CountActor(currentActors, newActors[i]) == 0 && IsActorEligibleToJoin(newActors[i]))
+        if(newActors[i] && PapyrusUtil.CountActor(currentActors, newActors[i]) == 0 && IsActorEligibleToJoin(newActors[i], true))
             currentActors = PapyrusUtil.PushActor(currentActors, newActors[i])
         endif
         i += 1
@@ -557,9 +556,9 @@ Actor[] Function GetAllActorsAfterJoin(int ThreadID, Actor[] newActors) global
     return currentActors
 EndFunction
 
-bool Function IsActorEligibleToJoin(Actor akActor) global
+bool Function IsActorEligibleToJoin(Actor akActor, bool skipConsidering = false) global
     bool isConsidering = StorageUtil.GetIntValue(akActor, "SexInviteConsidering") == 1
-    return !OActor.IsInOStim(akActor) && !IsInSexLab(akActor) && OThread.GetThreadCount() > 0 && TTON_Utils.IsOStimEligible(akActor) && !isConsidering
+    return !OActor.IsInOStim(akActor) && !IsInSexLab(akActor) && OThread.GetThreadCount() > 0 && TTON_Utils.IsOStimEligible(akActor) && (skipConsidering || !isConsidering)
 EndFunction
 
 Function Decline(string actionName, Actor initiator, bool playerInvited) global

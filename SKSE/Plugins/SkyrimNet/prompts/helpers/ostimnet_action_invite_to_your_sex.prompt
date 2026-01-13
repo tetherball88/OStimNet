@@ -1,0 +1,22 @@
+{% set speakingNpc = decnpc(npc.UUID) %}
+
+{% set target = "only-not-in-ostim" %}
+{% set nearbyNPCs = append(get_nearby_npc_list(npc.UUID), player) %}
+{% set ostimPotentialParticipants = [] %}
+{% for participantItem in nearbyNPCs %}
+    {% set participant = decnpc(participantItem.UUID) %}
+    {% if target == "only-in-ostim" %}
+        {% set ostimCondition = is_in_faction(participantItem.UUID, "OStimActorCountFaction") %}
+    {% else if target == "only-not-in-ostim" %}
+        {% set ostimCondition = not is_in_faction(participantItem.UUID, "OStimActorCountFaction") %}
+    {% else %}
+        {% set ostimCondition = true %}
+    {% endif %}
+    {% if not participant.isChild and participantItem.UUID != npc.UUID and ostimCondition and not is_in_faction(participantItem.UUID, "SexLabAnimatingFaction") %}
+        {% set ostimPotentialParticipants = append(ostimPotentialParticipants, participant.name) %}
+    {% endif %}
+{% endfor %}
+{% set ostimPotentialParticipantsString = join(ostimPotentialParticipants, ", ") %}
+
+{% set ostimActions = "analfingering|analfisting|analsex|analtoying|anilingus|blowjob|boobjob|buttjob|cunnilingus|deepthroat|femalemasturbation|footjob|grindingobject|grindingpenis|grindingthigh|gropingtesticles|handjob|lickingnipple|lickingpenis|lickingtesticles|lickingvagina|malemasturbation|rimjob|rubbingclitoris|rubbingpenisagainstface|suckingnipple|thighjob|tribbing|vaginalfingering|vaginalfisting|vaginalsex|vaginaltoying" %}
+{{speakingNpc.name}} invites others to join their ongoing sex scene. Use when YOU invite others to YOUR ongoing sex, NOT for refusals. Partners: {{ostimPotentialParticipantsString}}

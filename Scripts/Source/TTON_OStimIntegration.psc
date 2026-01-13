@@ -82,7 +82,9 @@ int function StartOstim(actor[] actors, string actions = "", string furn = "", b
     int newThreadID = OThreadBuilder.Start(builderID)
 
     if(nonSexual)
-        TTON_JData.SetThreadAffectionOnly(newThreadID, 1)
+        TTON_Storage.SetThreadAffectionOnly(newThreadID, 1)
+    else
+        TTON_Storage.SetThreadAffectionOnly(newThreadID, 0)
     endif
 
     return newThreadID
@@ -93,7 +95,7 @@ endfunction
 ; @returns Thread ID of the new scene, or -1 if failed
 Function StopOStim(Actor initiator) global
     int ThreadId = OActor.GetSceneID(initiator)
-    if(ThreadId == 0 && !TTON_JData.GetThreadAddNewActors(ThreadId))
+    if(ThreadId == 0 && !TTON_Storage.GetThreadAddNewActors(ThreadId))
         string initiatorName = TTON_Utils.GetActorName(initiator)
         bool yes = TTON_Utils.Ask("StopSex", initiator, \
         initiatorName + " wishes to end your sexual encounter. Allow them to withdraw?")
@@ -186,13 +188,13 @@ function AddActorsToActiveThread(int ThreadID, actor[] newActors, string actionN
         endif
     endif
     if(!shouldSkip)
-        TTON_JData.SetThreadAddNewActors(ThreadID)
+        TTON_Storage.SetThreadAddNewActors(ThreadID, 1)
         OThread.Stop(ThreadID)
         while(OThread.isRunning(ThreadID))
             Utility.Wait(0.2)
         endwhile
         int NewThreadID = StartOstim(allActors, "", OThread.GetFurnitureType(ThreadID), continuation = true)
-        TTON_JData.SetThreadContinuationFrom(ThreadID, NewThreadID)
+        TTON_Storage.SetThreadContinuationFrom(ThreadID, NewThreadID)
     endif
 
     ClearConsideringActors(newActors)

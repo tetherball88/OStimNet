@@ -7,25 +7,25 @@
             "isEligible": "StartAffectionSceneIsEligible",
             "execute": "StartAffectionSceneExecute",
             "addTags": 1,
-            "description": "{% set speakingNpc = tton_get_speaking_npc_social_action_info(npc.UUID) %}{{speakingNpc.name}} initiates non-sexual physical affection. Use when NPC explicitly INITIATES physical affection (proposing to cuddle/kiss/hug), NOT for affectionate talk or commentary during/after other scenes, NOT for intercourse (use StartNewSex). Partners: {{speakingNpc.nearbyPotentialPartners}}. Activities: {{speakingNpc.actions}}",
+            "description": "{{render_template(\"helpers/ostimnet_action_start_affectionate_scene\")}}",
             "parameters": "{\"participant1\": \"Affection partner\", \"activity\": \"Activity from list\"}"
         },
         "StartNewSex": {
             "name": "StartNewSex",
             "scriptFileName": "TTON_Actions",
-            "isEligible": "StartSexActionIsElgigible",
+            "isEligible": "StartSexActionIsEligible",
             "execute": "StartSexActionExecute",
             "addTags": 1,
-            "description": "{% set speakingNpc = tton_get_speaking_npc_sex_action_info(npc.UUID) %}{{speakingNpc.name}} initiates NEW sex. Use when explicitly proposing/accepting SEX or intercourse, NOT romantic affection (use StartAffectionScene) or joining existing scenes (use JoinOngoingSex). Partners: {{speakingNpc.nearbyPotentialPartners}}. Activities: {{speakingNpc.actions}}. Furniture: {{speakingNpc.furniture}}",
-            "parameters": "{\"participant1\": \"Primary partner (empty for solo)\", \"participant2\": \"Optional 2nd partner\", \"participant3\": \"Optional 3rd partner\", \"participant4\": \"Optional 4th partner\", \"activity\": \"Activity from list\", \"furniture\": \"Furniture or 'none'\"}"
+            "description": "{{render_template(\"helpers/ostimnet_action_start_new_sex\")}}",
+            "parameters": "{\"participant1\": \"Primary partner (empty for solo)\", \"participant2\": \"Optional 2nd partner\", \"participant3\": \"Optional 3rd partner\", \"participant4\": \"Optional 4th partner\", \"activity\": \"Activity from list\"}"
         },
         "ChangeSexActivity": {
             "name": "ChangeSexActivity",
             "scriptFileName": "TTON_Actions",
-            "isEligible": "ChangeSexActivityIsElgigible",
+            "isEligible": "ChangeSexActivityIsEligible",
             "execute": "ChangeSexActivityActionExecute",
             "addTags": 0,
-            "description": "{% set speakingNpc = tton_get_speaking_npc_sex_action_info(npc.UUID) %}{{speakingNpc.name}} SWITCHES to different sexual activity during ongoing scene. Use when explicitly requesting to START new one. NOT for dirty talk about desires, future intentions, or ongoing activities. Activities: {{speakingNpc.actions}}",
+            "description": "{{render_template(\"helpers/ostimnet_action_change_sex_activity\")}}",
             "parameters": "{\"activity\": \"Activity from list\"}"
         },
         "InviteToYourSex": {
@@ -34,34 +34,34 @@
             "isEligible": "InviteToYourSexIsEligible",
             "execute": "InviteToYourSexExecute",
             "addTags": 0,
-            "description": "{% set speakingNpc = tton_get_speaking_npc_sex_action_info(npc.UUID) %}{{speakingNpc.name}} invites others to join their ongoing sex scene. Use when YOU invite others to YOUR ongoing sex, NOT for refusals. Partners: {{speakingNpc.nearbyPotentialPartners}}",
+            "description": "{{render_template(\"helpers/ostimnet_action_invite_to_your_sex\")}}",
             "parameters": "{\"participant1\": \"First invitee (required)\", \"participant2\": \"Second invitee (optional)\", \"participant3\": \"Third invitee (optional)\"}"
         },
         "JoinOngoingSex": {
             "name": "JoinOngoingSex",
             "scriptFileName": "TTON_Actions",
-            "isEligible": "JoinOngoingSexIsElgigible",
+            "isEligible": "JoinOngoingSexIsEligible",
             "execute": "JoinOngoingSexActionExecute",
             "addTags": 0,
-            "description": "{% set speakingNpc = tton_get_speaking_npc_sex_join_action_info(npc.UUID) %}{{speakingNpc.name}} joins existing sex scene. Use when YOU join OTHERS' ongoing sex, NOT for watching without participation. Available scenes: {{speakingNpc.nearbyPotentialPartners}}",
+            "description": "{{render_template(\"helpers/ostimnet_action_join_ongoing_sex\")}}",
             "parameters": "{\"participant1\": \"Person in scene to interact with\"}"
         },
         "ChangeSexPace": {
             "name": "ChangeSexPace",
             "scriptFileName": "TTON_Actions",
-            "isEligible": "ChangeSexPaceIsElgigible",
+            "isEligible": "ChangeSexPaceIsEligible",
             "execute": "ChangeSexPaceActionExecute",
             "addTags": 0,
-            "description": "{% set speakingNpc = tton_get_speaking_npc_sex_action_info(npc.UUID) %}{{speakingNpc.name}} changes sex pace/intensity. Use when explicitly requesting speed/intensity change, NOT for moans or dirty talk.",
-            "parameters": "{\"speed\": \"increase | decrease\"}"
+            "description": "{{render_template(\"helpers/ostimnet_action_change_sex_pace\")}}",
+            "parameters": "{\"speed\": \"increase|decrease\"}"
         },
         "StopSex": {
             "name": "StopSex",
             "scriptFileName": "TTON_Actions",
-            "isEligible": "StopSexIsElgigible",
+            "isEligible": "StopSexIsEligible",
             "execute": "StopSexActionExecute",
             "addTags": 0,
-            "description": "{% set speakingNpc = decnpc(npc.UUID) %}{{speakingNpc.name}} permanently ends sex scene with no intention to continue. Use when explicitly demanding to stop sex entirely and definitively, NOT for breaks, pace adjustments, position changes, dominance play, or dirty talk.",
+            "description": "{{render_template(\"helpers/ostimnet_action_stop_sex\")}}",
             "parameters": ""
         }
     }

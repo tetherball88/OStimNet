@@ -1,0 +1,25 @@
+{% set speakingNpc = decnpc(npc.UUID) %}
+{% set target = "all" %}
+{% set ostimPotentialParticipants = append([], player.name) %}
+{% if not is_in_faction(player.UUID, "OStimActorCountFaction") and not is_in_faction(player.UUID,"SexLabAnimatingFaction") %}
+    {% set ostimPotentialParticipants = append([], player.name) %}
+{% else %}
+    {% set ostimPotentialParticipants = [] %}
+{% endif %}
+
+{% for participantItem in get_nearby_npc_list(npc.UUID) %}
+    {% set participant = decnpc(participantItem.UUID) %}
+    {% if target == "only-in-ostim" %}
+        {% set ostimCondition = is_in_faction(participantItem.UUID, "OStimActorCountFaction") %}
+    {% else if target == "only-not-in-ostim" %}
+        {% set ostimCondition = not is_in_faction(participantItem.UUID, "OStimActorCountFaction") %}
+    {% else %}
+        {% set ostimCondition = true %}
+    {% endif %}
+    {% if not participant.isChild and participantItem.UUID != npc.UUID and ostimCondition and not is_in_faction(participantItem.UUID, "SexLabAnimatingFaction") %}
+        {% set ostimPotentialParticipants = append(ostimPotentialParticipants, participant.name) %}
+    {% endif %}
+{% endfor %}
+{% set ostimPotentialParticipantsString = join(ostimPotentialParticipants, ", ") %}
+{% set ostimActions = "cuddling|hugging|frenchkissing|kissing|kissingcheek|kissinghand|kissingneck|pattinghead" %}
+{{speakingNpc.name}} initiates non-sexual physical affection. Use when NPC explicitly INITIATES physical affection (proposing to cuddle/kiss/hug), NOT for affectionate talk or commentary during/after other scenes, NOT for intercourse (use StartNewSex). Partners: {{ostimPotentialParticipantsString}}. Activities: {{ostimActions}}

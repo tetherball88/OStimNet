@@ -1,0 +1,3 @@
+{% set speakingNpc = decnpc(npc.UUID) %}
+{% set ostimActions = "analfingering|analfisting|analsex|analtoying|anilingus|blowjob|boobjob|buttjob|cunnilingus|deepthroat|femalemasturbation|footjob|grindingobject|grindingpenis|grindingthigh|gropingtesticles|handjob|lickingnipple|lickingpenis|lickingtesticles|lickingvagina|malemasturbation|rimjob|rubbingclitoris|rubbingpenisagainstface|suckingnipple|thighjob|tribbing|vaginalfingering|vaginalfisting|vaginalsex|vaginaltoying" %}
+{{speakingNpc.name}} SWITCHES to different sexual activity during ongoing scene. Use when explicitly requesting to START new one. NOT for dirty talk about desires, future intentions, or ongoing activities. Activities: {{ostimActions}}

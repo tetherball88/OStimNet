@@ -1,0 +1,22 @@
+{% set speakingNpc = decnpc(npc.UUID) %}
+
+{% set target = "only-not-in-ostim" %}
+{% set nearbyNPCs = append(get_nearby_npc_list(npc.UUID), player) %}
+{% set ostimPotentialParticipants = [] %}
+{% for participantItem in nearbyNPCs %}
+    {% set participant = decnpc(participantItem.UUID) %}
+    {% if target == "only-in-ostim" %}
+        {% set ostimCondition = is_in_faction(participantItem.UUID, "OStimActorCountFaction") %}
+    {% else if target == "only-not-in-ostim" %}
+        {% set ostimCondition = not is_in_faction(participantItem.UUID, "OStimActorCountFaction") %}
+    {% else %}
+        {% set ostimCondition = true %}
+    {% endif %}
+    {% if not participant.isChild and participantItem.UUID != npc.UUID and ostimCondition and not is_in_faction(participantItem.UUID, "SexLabAnimatingFaction") %}
+        {% set ostimPotentialParticipants = append(ostimPotentialParticipants, participant.name) %}
+    {% endif %}
+{% endfor %}
+{% set ostimPotentialParticipantsString = join(ostimPotentialParticipants, ", ") %}
+
+{% set ostimActions = "analfingering|analfisting|analsex|analtoying|anilingus|blowjob|boobjob|buttjob|cunnilingus|deepthroat|femalemasturbation|footjob|grindingobject|grindingpenis|grindingthigh|gropingtesticles|handjob|lickingnipple|lickingpenis|lickingtesticles|lickingvagina|malemasturbation|rimjob|rubbingclitoris|rubbingpenisagainstface|suckingnipple|thighjob|tribbing|vaginalfingering|vaginalfisting|vaginalsex|vaginaltoying" %}
+{{speakingNpc.name}} initiates NEW sex. Use when explicitly proposing/accepting SEX or intercourse, NOT romantic affection (use StartAffectionScene) or joining existing scenes (use JoinOngoingSex). Partners: {{ostimPotentialParticipantsString}}. Activities: {{ostimActions}}. Furniture: {{tton_get_nearby_ostim_furniture(npc.UUID).furniture}}

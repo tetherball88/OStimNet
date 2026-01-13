@@ -7,7 +7,6 @@ An advanced mod that integrates AI-powered functionality with OStim to create dy
 - 🤖 **AI-Powered Interactions**: Experience intimate encounters through natural conversation with NPCs
 - 🎭 **Context-Aware Scenes**: Dynamic scene selection based on relationships and surroundings
 - 🔄 **Intelligent Scene Management**: Smooth transitions and participant management during encounters
-- 📊 **Lover's Ledger Integration**: Enhanced relationship tracking and history
 - 📝 **Detailed Animation Descriptions**: Comprehensive animation metadata for improved AI understanding
 - 🎮 **Immersive Gameplay**: Seamless integration that respects character personalities and relationships
 - 👀 **Environmental Awareness**: NPCs react and respond to nearby intimate encounters
@@ -76,16 +75,12 @@ Available trigger files:
 ### Direct PapyrusUtil Access
 Templates can now directly read cached storage data:
 ```jinja
-{% set soloSex = papyrus_util("GetIntValue", actorUUID, "TTONDec_SexualData_SoloSex") %}
-{% set lovers = papyrus_util("GetFormList", actorUUID, "TTONDec_SexualData_Lovers") %}
 {% set threadID = papyrus_util("GetIntValue", npc.UUID, "TTONDec_ThreadParticipant", -1) %}
 ```
 
 ### Storage Key Prefixes
 - `TTONDec_ActiveOStimThreads` - List of active thread IDs
 - `TTONDec_Thread{ID}_*` - Thread-specific data (actors, description, sexual status)
-- `TTONDec_SexualData_*` - Cached NPC sexual behavior statistics
-- `TTONDec_Lover_{FormID}_*` - Pre-computed lover relationship data
 
 ### Event Schema
 All OStim events use the `tton_event` schema with fields:

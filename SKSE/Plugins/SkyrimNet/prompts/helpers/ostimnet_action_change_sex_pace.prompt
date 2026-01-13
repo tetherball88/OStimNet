@@ -1,0 +1,2 @@
+{% set speakingNpc = decnpc(npc.UUID) %}
+{{speakingNpc.name}} changes sex pace/intensity. Use when explicitly requesting speed/intensity change, NOT for moans or dirty talk.

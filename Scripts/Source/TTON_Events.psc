@@ -47,8 +47,6 @@ Function RegisterSexChangeEvent(int ThreadID) global
     string msg = "Participants "+actorsNames+" changed position to: "+sceneDesc
     bool shouldSkipNonPlayerThreads = TTON_Utils.ShouldPrioritizePlayerThreadComments(ThreadID)
 
-    MiscUtil.PrintConsole("RegisterSexChangeEvent:ThreadID="+ThreadID+" ShouldSkip="+shouldSkipNonPlayerThreads)
-
     bool skipTriggerOnce = StorageUtil.GetIntValue(none, "TTON_Thread"+ThreadID+"_SkipSceneChangeTrigger", 0) == 1
     bool skipTrigger = skipTriggerOnce || TTON_JData.GetMuteSetting() || shouldSkipNonPlayerThreads
     string jsonData = BuildJson("sex_change", msg, ThreadID, skipTrigger)
@@ -91,41 +89,9 @@ Function RegisterSexClimaxEvent(int ThreadID, Form[] orgasmedActors) global
     StorageUtil.SetIntValue(none, "TTON_Thread"+ThreadID+"_SkipSceneChangeTrigger", 1)
 EndFunction
 
-Function RegisterSexStopEvent(int ThreadID) global
-    bool hadSex = TTLL_ThreadsCollector.GetThreadBool(ThreadID, "hadsex")
-
-    Actor[] actors = TTLL_ThreadsCollector.GetActors(ThreadID)
+Function RegisterSexStopEvent(int ThreadID, actor[] actors) global
     Actor weightedActor = TTON_Utils.GetWeightedRandomActorToSpeak(actors)
-    int i = 0
-    string climaxedActors = ""
-    while(i < actors.Length)
-        if(TTLL_ThreadsCollector.GetActorBool(ThreadID, actors[i], "orgasmed"))
-            climaxedActors += TTON_Utils.GetActorName(actors[i]) + ","
-        endif
-
-        i += 1
-    endwhile
-    climaxedActors += ""
-    string msg = "Participants "+TTON_Utils.GetActorsNamesComaSeparated(actors) + " finished their "
-    if(hadSex)
-        msg += "sexual encounter"
-    else
-        msg += "affectionate encounter"
-    endif
-    string LastSexualSceneId = TTLL_ThreadsCollector.GetThreadStr(ThreadID, "lastsexualsceneid")
-
-    if(hadSex)
-        if(climaxedActors != "")
-            msg += ", with " + climaxedActors + " having reached orgasm."
-        else
-            msg += "."
-        endif
-    else
-        if(LastSexualSceneId)
-            msg +=  TTON_Utils.GetSceneDescription(LastSexualSceneId, actors)
-        endif
-        msg += " without sexual activities."
-    endif
+    string msg = "Participants "+TTON_Utils.GetActorsNamesComaSeparated(actors) + " finished their intimate encounter."
 
     bool shouldSkipNonPlayerThreads = TTON_Utils.ShouldPrioritizePlayerThreadComments(ThreadID)
     bool skipTrigger = TTON_JData.GetMuteSetting() || shouldSkipNonPlayerThreads

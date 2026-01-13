@@ -1,0 +1,2 @@
+{% set speakingNpc = decnpc(npc.UUID) %}
+{{speakingNpc.name}} permanently ends sex scene with no intention to continue. Use when explicitly demanding to stop sex entirely and definitively, NOT for breaks, pace adjustments, position changes, dominance play, or dirty talk.
