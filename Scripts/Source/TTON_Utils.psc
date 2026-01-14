@@ -479,19 +479,22 @@ actor Function GetWeightedRandomActorToSpeak(actor[] actors = none, form[] actor
         elseif(actorForms && actorForms.Length > 0)
             currActor = actorForms[count] as Actor
         endif
-        int currSex = GetGender(currActor)
-        bool isMuted = false
+        
+        if(currActor)
+            int currSex = GetGender(currActor)
+            bool isMuted = false
 
-        if(OActor.IsMuted(currActor))
-            isMuted = true
-        endif
-        if(currActor == player || isMuted)
-        ; player doesn't participate in llm talking :)
-        ; some actions in ostim prevents actors from talking, which makes sense
-        elseif(currSex == 0)
-            maleActors = PapyrusUtil.PushActor(maleActors, currActor)
-        else
-            femaleActors = PapyrusUtil.PushActor(femaleActors, currActor)
+            if(OActor.IsMuted(currActor))
+                isMuted = true
+            endif
+            if(currActor == player || isMuted)
+            ; player doesn't participate in llm talking :)
+            ; some actions in ostim prevents actors from talking, which makes sense
+            elseif(currSex == 0)
+                maleActors = PapyrusUtil.PushActor(maleActors, currActor)
+            else
+                femaleActors = PapyrusUtil.PushActor(femaleActors, currActor)
+            endif
         endif
 
         count += 1
