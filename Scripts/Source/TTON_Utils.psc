@@ -450,7 +450,7 @@ EndFunction
 
 ; if it's player only scene it will return none
 ; assume that actors are only actors from scene
-actor Function GetWeightedRandomActorToSpeak(actor[] actors = none, form[] actorForms = none) global
+actor Function GetWeightedRandomActorToSpeak(actor[] actors = none) global
     Actor player = TTON_JData.GetPlayer()
     ; Diagnostic logging
     if !actors
