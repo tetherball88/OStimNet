@@ -142,7 +142,19 @@ Function FireEventForMultipleClimaxes()
     int[] climaxedThreads = StorageUtil.IntListToArray(none, "TTONClimax_ClimaxedThreads")
     while(i < climaxedThreads.Length)
         int ThreadID = climaxedThreads[i]
-        Form[] climaxedActors = StorageUtil.FormListToArray(none, "TTONClimax_Thread" + ThreadID + "_ClimaxedActors")
+        Form[] climaxedActorsForms = StorageUtil.FormListToArray(none, "TTONClimax_Thread" + ThreadID + "_ClimaxedActors")
+        
+        ; Convert Form[] to Actor[]
+        Actor[] climaxedActors = PapyrusUtil.ActorArray(0)
+        int j = 0
+        while j < climaxedActorsForms.Length
+            Actor orgasmedActor = climaxedActorsForms[j] as Actor
+            if orgasmedActor
+                climaxedActors = PapyrusUtil.PushActor(climaxedActors, orgasmedActor)
+            endif
+            j += 1
+        endwhile
+        
         TTON_Events.RegisterSexClimaxEvent(ThreadID, climaxedActors)
         i += 1
     endwhile

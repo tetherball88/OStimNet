@@ -58,9 +58,32 @@ Function RegisterSexChangeEvent(int ThreadID) global
     SkyrimNetApi.RegisterEvent("tton_event", jsonData, weightedActor, none)
 EndFunction
 
-Function RegisterSexClimaxEvent(int ThreadID, Form[] orgasmedActors) global
+Function RegisterSexClimaxEvent(int ThreadID, Actor[] orgasmedActors) global
     string msg = ""
+    
+    ; Diagnostic logging
+    if !orgasmedActors
+        TTON_Debug.warn("RegisterSexClimaxEvent: orgasmedActors is NONE for ThreadID=" + ThreadID)
+    else
+        TTON_Debug.debug("RegisterSexClimaxEvent: orgasmedActors.Length=" + orgasmedActors.Length + " for ThreadID=" + ThreadID)
+        int j = 0
+        while j < orgasmedActors.Length
+            if !orgasmedActors[j]
+                TTON_Debug.warn("RegisterSexClimaxEvent: orgasmedActors[" + j + "] is NONE")
+            else
+                TTON_Debug.debug("RegisterSexClimaxEvent: orgasmedActors[" + j + "]=" + orgasmedActors[j].GetDisplayName())
+            endif
+            j += 1
+        endwhile
+    endif
 
+    if !orgasmedActors
+        return
+    endif
+    
+    if orgasmedActors.Length == 0
+        return
+    endif
     if(orgasmedActors.Length > 1)
         msg = "Multiple participants reached climax: "
     endif
@@ -70,17 +93,25 @@ Function RegisterSexClimaxEvent(int ThreadID, Form[] orgasmedActors) global
         if(i != 0)
             msg += "; "
         endif
-        Actor orgasmedActor = orgasmedActors[i] as Actor
-        string climaxLocations = TTON_Utils.GetShclongOrgasmedLocation(orgasmedActor, ThreadID)
-        if(climaxLocations != "")
-            msg += climaxLocations
-        else
-            msg += TTON_Utils.GetActorName(orgasmedActor) + " reached orgasm."
+        Actor orgasmedActor = orgasmedActors[i]
+        if orgasmedActor
+            string climaxLocations = TTON_Utils.GetShclongOrgasmedLocation(orgasmedActor, ThreadID)
+            if(climaxLocations != "")
+                msg += climaxLocations
+            else
+                msg += TTON_Utils.GetActorName(orgasmedActor) + " reached orgasm."
+            endif
         endif
         i += 1
     endwhile
 
-    Actor speakingActor = TTON_Utils.GetWeightedRandomActorToSpeak(actorForms = orgasmedActors)
+    Actor speakingActor = none
+    if orgasmedActors && orgasmedActors.Length > 0
+        TTON_Debug.debug("RegisterSexClimaxEvent: Calling GetWeightedRandomActorToSpeak with actors, Length=" + orgasmedActors.Length)
+        speakingActor = TTON_Utils.GetWeightedRandomActorToSpeak(orgasmedActors)
+    else
+        TTON_Debug.warn("RegisterSexClimaxEvent: Skipping GetWeightedRandomActorToSpeak - no valid actors")
+    endif
 
     bool shouldSkipNonPlayerThreads = TTON_Utils.ShouldPrioritizePlayerThreadComments(ThreadID)
     bool skipTrigger = TTON_JData.GetMuteSetting() || shouldSkipNonPlayerThreads

@@ -1,7 +1,7 @@
 scriptname TTON_Debug
 
 Function log(string msg) global
-    MiscUtil.PrintConsole(msg)
+    Debug.Trace(msg)
 EndFunction
 
 Function trace(string msg) global

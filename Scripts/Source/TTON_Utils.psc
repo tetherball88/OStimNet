@@ -452,46 +452,51 @@ EndFunction
 ; assume that actors are only actors from scene
 actor Function GetWeightedRandomActorToSpeak(actor[] actors = none, form[] actorForms = none) global
     Actor player = TTON_JData.GetPlayer()
+    ; Diagnostic logging
+    if !actors
+        TTON_Debug.debug("GetWeightedRandomActorToSpeak: actors[] parameter is NONE")
+        return none
+    elseif actors.Length == 0
+        TTON_Debug.debug("GetWeightedRandomActorToSpeak: actors[] parameter is empty, returning NONE")
+        return none
+    elseif actors.Length == 1
+        if !actors[0]
+            TTON_Debug.debug("GetWeightedRandomActorToSpeak: actors[0] is NONE, returning NONE")
+            return none
+        elseif actors[0] == player
+            TTON_Debug.debug("GetWeightedRandomActorToSpeak: actors[] is player solo scene, returning NONE")
+            return none
+        endif
+        TTON_Debug.debug("GetWeightedRandomActorToSpeak: actors[] is 1 actor, returning " + actors[0].GetDisplayName())
+        return actors[0]
+    endif
+
+    TTON_Debug.debug("GetWeightedRandomActorToSpeak: Processing " + actors.Length + " actors")
+    
     actor[] maleActors = PapyrusUtil.ActorArray(0)
     actor[] femaleActors = PapyrusUtil.ActorArray(0)
 
-    if !actors || actors.Length == 0
-        return none
-    endif
-
-    int ArrLength = 0
-
-    if(actors && actors.Length > 0)
-        ArrLength = actors.Length
-    elseif(actorForms && actorForms.Length > 0)
-        ArrLength = actorForms.Length
-    endif
-
-    if(ArrLength == 0)
-        return none
-    endif
-
     int count = 0
-    while count < ArrLength
-        actor currActor
-        if(actors && actors.Length > 0)
-            currActor = actors[count]
-        elseif(actorForms && actorForms.Length > 0)
-            currActor = actorForms[count] as Actor
-        endif
-        int currSex = GetGender(currActor)
-        bool isMuted = false
+    while count < actors.Length
+        actor currActor = actors[count]
+        
+        if(currActor)
+            int currSex = GetGender(currActor)
+            bool isMuted = false
 
-        if(OActor.IsMuted(currActor))
-            isMuted = true
-        endif
-        if(currActor == player || isMuted)
-        ; player doesn't participate in llm talking :)
-        ; some actions in ostim prevents actors from talking, which makes sense
-        elseif(currSex == 0)
-            maleActors = PapyrusUtil.PushActor(maleActors, currActor)
+            if(OActor.IsMuted(currActor))
+                isMuted = true
+            endif
+            if(currActor == player || isMuted)
+            ; player doesn't participate in llm talking :)
+            ; some actions in ostim prevents actors from talking, which makes sense
+            elseif(currSex == 0)
+                maleActors = PapyrusUtil.PushActor(maleActors, currActor)
+            else
+                femaleActors = PapyrusUtil.PushActor(femaleActors, currActor)
+            endif
         else
-            femaleActors = PapyrusUtil.PushActor(femaleActors, currActor)
+            TTON_Debug.warn("GetWeightedRandomActorToSpeak: currActor at index " + count + " is NONE, skipping")
         endif
 
         count += 1
@@ -499,11 +504,13 @@ actor Function GetWeightedRandomActorToSpeak(actor[] actors = none, form[] actor
 
     ; if no female npc, just pick random male. Can be none though if it's player only scene
     if(femaleActors.length == 0 && maleActors.Length > 0)
+        TTON_Debug.debug("GetWeightedRandomActorToSpeak: Returning random male actor")
         return getRandomActor(maleActors)
     endif
 
     ; if no male npc, just pick random female. Can be none though if it's player only scene
     if(maleActors.length == 0 && femaleActors.Length > 0)
+        TTON_Debug.debug("GetWeightedRandomActorToSpeak: Returning random female actor")
         return getRandomActor(femaleActors)
     endif
 
@@ -513,11 +520,14 @@ actor Function GetWeightedRandomActorToSpeak(actor[] actors = none, form[] actor
     TTON_Debug.debug("GetWeightedRandomActorToSpeak:"+TTON_JData.GetMcmCommentsGenderWeight())
 
     if(isFemale && femaleActors.Length > 0)
+        TTON_Debug.debug("GetWeightedRandomActorToSpeak: Returning weighted female actor")
         return getRandomActor(femaleActors)
     elseif(!isFemale && maleActors.Length > 0)
+        TTON_Debug.debug("GetWeightedRandomActorToSpeak: Returning weighted male actor")
         return getRandomActor(maleActors)
     endif
 
+    TTON_Debug.warn("GetWeightedRandomActorToSpeak: No eligible actors found, returning NONE")
     return none
 EndFunction
 
