@@ -160,8 +160,10 @@ Function StartSexActionExecute(Actor akActor, string contextJson, string paramsJ
     endif
 
     Actor[] actors = OActorUtil.ToArray(akActor, participant1, participant2, participant3, participant4)
-
-    TTON_Debug.warn("Starting OStim scene with actors: " + actors)
+    String actorsNames = TTON_Utils.GetActorsNamesComaSeparated(actors)
+    ; This could use OStim native utility:
+    ; String[] actorsNames = OActorUtil.ActorsToNames(actors)
+    TTON_Debug.warn("Starting OStim scene with actors: " + actorsNames)
     TTON_OStimIntegration.StartOstim(actors, actions, furn, initiator = akActor)
 EndFunction
 
