@@ -316,7 +316,7 @@ EndFunction
 Actor Function GetEligibleActorFromParam(string paramsJson, string paramName) global
     Actor npc = SkyrimNetApi.GetJsonActor(paramsJson, paramName, none)
     if(!npc)
-        TTON_Debug.warn("TTON_Utils.GetEligibleActorFromParam: No actor found in param "+paramName+": "+paramsJson)
+        TTON_Debug.debug("TTON_Utils.GetEligibleActorFromParam: No actor found in param "+paramName+": "+paramsJson)
         return none
     endif
     if(!IsOStimEligible(npc))

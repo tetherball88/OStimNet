@@ -19,6 +19,7 @@ int property oid_AffectionSceneDuration auto
 
 int property oid_Mute auto
 int property oid_MuteHotkey auto
+int property oid_DebugLog auto
 
 string selectedPage
 
@@ -65,6 +66,10 @@ Function RenderLeftColumn()
 
     float affectionDuration = TTON_JData.GetMcmAffectionDuration() as float
     oid_AffectionSceneDuration = AddSliderOption("Affection scene duration (seconds):", affectionDuration)
+
+    AddHeaderOption("Debug")
+    oid_DebugLog = AddToggleOption("Debug Log:", TTON_JData.GetDebugLogEnabled())
+
 EndFunction
 
 Function RenderRightColumn()
@@ -114,6 +119,8 @@ event OnOptionSelect(int option)
         SetToggleOptionValue(oid_Mute, TTON_JData.ToggleMuteSetting())
     elseif(option == oid_PrioritizePlayerThreadComments)
         SetToggleOptionValue(oid_PrioritizePlayerThreadComments, TTON_JData.ToggleMcmCheckbox("prioritizePlayerThreadComments", 1))
+    elseif(option == oid_DebugLog)
+        SetToggleOptionValue(oid_DebugLog, TTON_JData.ToggleDebugLog())
     endif
 endevent
 
@@ -149,6 +156,8 @@ event OnOptionHighlight(int option)
         SetInfoText("Toggle Mute in-game without entering MCM.")
     elseif(option == oid_PrioritizePlayerThreadComments)
         SetInfoText("Prioritize comments from the player's thread in scenes and mute NPCs from other threads..")
+    elseif(option == oid_DebugLog)
+        SetInfoText("Toggle papyrus log debug messages.")
     endif
 endevent
 

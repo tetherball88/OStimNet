@@ -269,6 +269,14 @@ bool Function GetConfirmAddNewActors() global
     return GetMcmCheckbox("confirmAddActors", 1)
 EndFunction
 
+bool Function GetDebugLogEnabled() global
+    return GetMcmCheckbox("debugLog", 0)
+EndFunction
+
+bool Function ToggleDebugLog() global
+    return ToggleMcmCheckbox("debugLog", 0)
+EndFunction
+
 ;/ ==============================
    SECTION: Temporary data which cleans on each load
 ============================== /;

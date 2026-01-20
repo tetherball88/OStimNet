@@ -9,7 +9,9 @@ Function trace(string msg) global
 EndFunction
 
 Function debug(string msg) global
-    log("[OStimNet(debug)]: " + msg)
+    if(TTON_JData.GetDebugLogEnabled())
+        log("[OStimNet(debug)]: " + msg)
+    endif
 EndFunction
 
 Function info(string msg) global
