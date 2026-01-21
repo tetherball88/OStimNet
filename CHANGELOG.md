@@ -1,5 +1,22 @@
 # Changelog
 
+## [v0.8.0]
+
+### Added
+- **Spectators System** (Optional, disabled by default) - NPCs can now discover and react to intimate scenes
+  - Two ways to become a spectator: AI-driven (any NPC) or auto-scan (relationship-based)
+  - Auto-scan detects spouses, lovers, and courting partners near active scenes
+  - Spectators follow targets and can comment or flee based on AI decisions
+  - New SkyrimNet actions: `SpectatorOfSex` and `SpectatorOfSexFlee`
+  - New events: `spectator_added` and `spectator_fled`
+- MCM options for spectators:
+  - Enable/disable toggle
+  - Max spectators overall and per thread limits
+  - Comment weight slider (participants vs spectators)
+  - Scan interval configuration
+  - Manual cleanup buttons (clear data, stop scan loop)
+- [Spectators documentation](docs/Spectators.md)
+
 ## [v0.7.0]
 
 ### Added

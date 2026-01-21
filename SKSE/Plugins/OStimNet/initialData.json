@@ -63,6 +63,24 @@
             "addTags": 0,
             "description": "{{render_template(\"helpers/ostimnet_action_stop_sex\")}}",
             "parameters": ""
+        },
+        "SpectatorOfSex": {
+            "name": "SpectatorOfSex",
+            "scriptFileName": "TTON_Actions",
+            "isEligible": "SpectatorOfSexIsEligible",
+            "execute": "SpectatorOfSexActionExecute",
+            "addTags": 0,
+            "description": "{{render_template(\"helpers/ostimnet_action_spectate_sex\")}}",
+            "parameters": "{\"target\": \"Person in sex scene to watch (spectate)\"}"
+        },
+        "SpectatorOfSexFlee": {
+            "name": "SpectatorOfSexFlee",
+            "scriptFileName": "TTON_Actions",
+            "isEligible": "SpectatorOfSexFleeIsEligible",
+            "execute": "SpectatorOfSexFleeActionExecute",
+            "addTags": 0,
+            "description": "{{render_template(\"helpers/ostimnet_action_spectate_sex_flee\")}}",
+            "parameters": ""
         }
     }
 }

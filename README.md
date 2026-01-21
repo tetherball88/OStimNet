@@ -63,6 +63,30 @@ Adjusts the rhythm and intensity of the current activity while maintaining the s
 ### 6. `StopSex` ⏹️
 Ends the current encounter for various reasons including discomfort or changing circumstances.
 
+### 7. `SpectatorOfSex` 👀 (Optional)
+Allows the AI to make any eligible NPC become a spectator of an ongoing scene. The AI decides when this makes narrative sense - a jealous ex, curious bystander, or anyone who would realistically watch.
+
+### 8. `SpectatorOfSexFlee` 🏃 (Optional)
+Allows a spectator to flee from the scene they are watching due to embarrassment, fear, or emotional distress.
+
+## 👀 Spectators System (Optional)
+
+The Spectators system allows NPCs to dynamically discover and react to intimate scenes. This feature is **disabled by default** and can be enabled in MCM.
+
+**[📖 View complete Spectators documentation](docs/Spectators.md)**
+
+### How NPCs Become Spectators
+
+1. **AI-Driven**: The LLM can decide any eligible NPC should watch a scene (no relationship required)
+2. **Auto-Scan**: Background scan finds NPCs with romantic ties (spouse, lover, courting) to scene participants
+
+### Key Features
+
+- Spectators follow and watch their target using AI packages
+- Can comment on scenes or flee based on AI decisions
+- Configurable limits (max spectators overall and per thread)
+- Adjustable comment weight between participants and spectators
+
 ## 📚 Usage Examples
 
 Simply engage in conversation with NPCs and let the AI interpret your dialogue naturally:

@@ -1,0 +1,3 @@
+{% set speakingNpc = decnpc(npc.UUID) %}
+
+{{speakingNpc.name}} stops spectating and LEAVES the sex scene. Use when NPC decides to stop watching and move away/flee from ongoing sex they were observing. Reasons: discomfort, arousal overwhelming, moral objection.

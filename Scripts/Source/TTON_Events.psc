@@ -39,7 +39,7 @@ EndFunction
 
 Function RegisterSexChangeEvent(int ThreadID) global
     Actor[] actors = OThread.GetActors(ThreadID)
-    Actor weightedActor = TTON_Utils.GetWeightedRandomActorToSpeak(actors)
+    Actor weightedActor = TTON_Utils.GetWeightedRandomActorToSpeak(actors, ThreadID = ThreadID)
 
     string sceneId = OThread.GetScene(ThreadID)
     string sceneDesc = TTON_Utils.GetSceneDescription(sceneId, actors)
@@ -80,7 +80,7 @@ Function RegisterSexClimaxEvent(int ThreadID, Form[] orgasmedActors) global
         i += 1
     endwhile
 
-    Actor speakingActor = TTON_Utils.GetWeightedRandomActorToSpeak(actorForms = orgasmedActors)
+    Actor speakingActor = TTON_Utils.GetWeightedRandomActorToSpeak(actorForms = orgasmedActors, ThreadID = ThreadID)
 
     bool shouldSkipNonPlayerThreads = TTON_Utils.ShouldPrioritizePlayerThreadComments(ThreadID)
     bool skipTrigger = TTON_JData.GetMuteSetting() || shouldSkipNonPlayerThreads
@@ -89,8 +89,40 @@ Function RegisterSexClimaxEvent(int ThreadID, Form[] orgasmedActors) global
     StorageUtil.SetIntValue(none, "TTON_Thread"+ThreadID+"_SkipSceneChangeTrigger", 1)
 EndFunction
 
+Function RegisterSpectatorAddedEvent(Actor spectator, int ThreadID) global
+    string actorsNames = TTON_Storage.GetActorsNames(ThreadID)
+    string spectatorName = TTON_Utils.GetActorName(spectator)
+    string msg = spectatorName + " decided to watch " + actorsNames + " having intimate encounter."
+    bool shouldSkipNonPlayerThreads = TTON_Utils.ShouldPrioritizePlayerThreadComments(ThreadID)
+
+    bool skipTriggerOnce = StorageUtil.GetIntValue(none, "TTON_Thread"+ThreadID+"_SkipSceneChangeTrigger", 0) == 1
+    bool skipTrigger = skipTriggerOnce || TTON_JData.GetMuteSetting() || shouldSkipNonPlayerThreads
+    string jsonData = BuildJson("spectator_added", msg, ThreadID, skipTrigger)
+
+    SkyrimNetApi.RegisterEvent("tton_event", jsonData, spectator, none)
+EndFunction
+
+Function RegisterSpectatorFledEvent(Actor spectator, int ThreadID) global
+    string actorsNames = TTON_Storage.GetActorsNames(ThreadID)
+    string spectatorName = TTON_Utils.GetActorName(spectator)
+    string msg
+    if(ThreadID == -1)
+        msg = spectatorName + " was watching an intimate encounter but fled the scene."
+    else
+        msg = spectatorName + " was watching " + actorsNames + " having intimate encounter but fled the scene."
+    endif
+
+    bool shouldSkipNonPlayerThreads = TTON_Utils.ShouldPrioritizePlayerThreadComments(ThreadID)
+
+    bool skipTriggerOnce = StorageUtil.GetIntValue(none, "TTON_Thread"+ThreadID+"_SkipSceneChangeTrigger", 0) == 1
+    bool skipTrigger = skipTriggerOnce || TTON_JData.GetMuteSetting() || shouldSkipNonPlayerThreads
+    string jsonData = BuildJson("spectator_fled", msg, ThreadID, skipTrigger)
+
+    SkyrimNetApi.RegisterEvent("tton_event", jsonData, spectator, none)
+EndFunction
+
 Function RegisterSexStopEvent(int ThreadID, actor[] actors) global
-    Actor weightedActor = TTON_Utils.GetWeightedRandomActorToSpeak(actors)
+    Actor weightedActor = TTON_Utils.GetWeightedRandomActorToSpeak(actors, ThreadID = ThreadID)
     string msg = "Participants "+TTON_Utils.GetActorsNamesComaSeparated(actors) + " finished their intimate encounter."
 
     bool shouldSkipNonPlayerThreads = TTON_Utils.ShouldPrioritizePlayerThreadComments(ThreadID)

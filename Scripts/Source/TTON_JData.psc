@@ -155,7 +155,7 @@ bool Function ToggleMcmCheckbox(string propName, int default = -1) global
     return val != 0
 EndFunction
 
-; if not set - default true
+; if not set - default false
 bool Function GetMcmCheckbox(string propName, int default = -1) global
     bool res = JDB_solveInt(GetNamespaceKey() + ".mcm." + propName, default) != 0
     return res
@@ -270,6 +270,66 @@ bool Function GetConfirmAddNewActors() global
 EndFunction
 
 ;/ ==============================
+   SECTION: Spectator Settings
+============================== /;
+
+bool Function GetSpectatorsEnabled() global
+    return GetMcmCheckbox("spectatorsEnabled", 0)
+EndFunction
+
+bool Function ToggleSpectatorsEnabled() global
+    return ToggleMcmCheckbox("spectatorsEnabled", 0)
+EndFunction
+
+Function SetMcmMaxSpectatorsOverall(int value) global
+    SetMcmInt("maxSpectatorsOverall", value)
+EndFunction
+
+int Function GetMcmMaxSpectatorsOverall() global
+    int val = GetMcmInt("maxSpectatorsOverall")
+    if(val == -1)
+        val = 5
+    endif
+    return val
+EndFunction
+
+Function SetMcmMaxSpectatorsPerThread(int value) global
+    SetMcmInt("maxSpectatorsPerThread", value)
+EndFunction
+
+int Function GetMcmMaxSpectatorsPerThread() global
+    int val = GetMcmInt("maxSpectatorsPerThread")
+    if(val == -1)
+        val = 2
+    endif
+    return val
+EndFunction
+
+Function SetMcmSpectatorCommentWeight(int value) global
+    SetMcmInt("spectatorCommentWeight", value)
+EndFunction
+
+int Function GetMcmSpectatorCommentWeight() global
+    int val = GetMcmInt("spectatorCommentWeight")
+    if(val == -1)
+        val = 50
+    endif
+    return val
+EndFunction
+
+Function SetMcmSpectatorScanInterval(int value) global
+    SetMcmInt("spectatorScanInterval", value)
+EndFunction
+
+int Function GetMcmSpectatorScanInterval() global
+    int val = GetMcmInt("spectatorScanInterval")
+    if(val == -1)
+        val = 10
+    endif
+    return val
+EndFunction
+
+;/ ==============================
    SECTION: Temporary data which cleans on each load
 ============================== /;
 
@@ -277,6 +337,34 @@ Function ClearTmpData() global
     int JTmp = JMap_object()
     JMap_setObj(JTmp, "denies", JFormMap_object())
     JDB_solveObjSetter(GetNamespaceKey() + ".tmp", JTmp, true)
+EndFunction
+
+Keyword Function GetSpectatorMarkerKeyword() global
+    return Game.GetFormFromFile(0x6, "TT_OstimNet.esp") as Keyword
+EndFunction
+
+Package Function GetSpectatorFollowPackage() global
+    return Game.GetFormFromFile(0x7, "TT_OstimNet.esp") as Package
+EndFunction
+
+Package Function GetSpectatorFleeEditorLocPackage() global
+    return Game.GetFormFromFile(0x5, "TT_OstimNet.esp") as Package
+EndFunction
+
+Package Function GetSpectatorFleeFarPackage() global
+    return Game.GetFormFromFile(0x3, "TT_OstimNet.esp") as Package
+EndFunction
+
+Faction Function GetSpectatorFaction() global
+    return Game.GetFormFromFile(0x8, "TT_OstimNet.esp") as Faction
+EndFunction
+
+Faction Function GetSpectatorFleeFaction() global
+    return Game.GetFormFromFile(0x2, "TT_OstimNet.esp") as Faction
+EndFunction
+
+Faction Function GetPlayerMarriedFaction() global
+    return Game.GetFormFromFile(0xc6472, "Skyrim.esm") as Faction
 EndFunction
 
 ;/ ==============================

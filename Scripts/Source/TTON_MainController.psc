@@ -23,6 +23,7 @@ Function Maintenance()
     TTON_Actions.RegisterActions()
     TTON_Events.RegisterEvents()
     TTON_Decorators.RegisterDecorators()
+    TTON_Spectators.ClearAllSpectators()
 EndFunction
 
 Event OStimStart(string eventName, string strArg, float numArg, Form sender)
@@ -39,6 +40,10 @@ Event OStimStart(string eventName, string strArg, float numArg, Form sender)
         TTON_Storage.SetThreadContinuationFrom(ThreadID, -1)
     else
         TTON_Events.RegisterSexStartEvent(ThreadID)
+    endif
+
+    if(TTON_Storage.GetActiveThreads().Length == 1)
+        TTON_Spectators.ScanPotentialSpectatorsPeriodically()
     endif
 EndEvent
 
@@ -83,6 +88,7 @@ Event OStimEnd(string eventName, string json, float numArg, Form sender)
         i += 1
     endwhile
 
+    TTON_Spectators.ClearSpectatorsForThread(ThreadID)
     TTON_Storage.EndThread(ThreadID)
 EndEvent
 

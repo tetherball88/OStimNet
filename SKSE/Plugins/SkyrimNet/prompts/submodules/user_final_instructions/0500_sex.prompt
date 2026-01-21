@@ -4,4 +4,10 @@
         {% set isSexual = papyrus_util("GetIntValue", null, "TTONDec_Thread" + to_string(threadID) + "_IsSexual", 0) != 0 %}
         Respond authentically while staying in character during this intimate {% if isSexual %}sexual{% else %}non-sexual{% endif %} scene. You may reference the physical activity, but prioritize emotional reactions, power dynamics, teasing, questions, commands, or observations about the participants' reactions. {% if isSexual %}Use explicit language when appropriate, but vary your focus - don't just describe the same body parts and sensations repeatedly{% endif %}. Each response should feel fresh and reactive to the immediate dialogue.
     {% endif %}
+    {% if is_in_faction(npc.UUID, "TTON_SpectatorFaction") %}
+        You are currently observing the scene as a spectator. Your role is to watch and react appropriately to the ongoing interactions without directly participating.
+    {% endif %}
+    {% if is_in_faction(npc.UUID, "TTON_SpectatorFleeFaction") %}
+        You are currently fleeing the scene as a spectator. Your role is to remove yourself from the immediate area and avoid interacting with the ongoing scene and its participants.
+    {% endif %}
 {% endif %}

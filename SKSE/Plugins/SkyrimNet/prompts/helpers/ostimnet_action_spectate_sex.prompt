@@ -1,0 +1,21 @@
+{% set speakingNpc = decnpc(npc.UUID) %}
+
+{% set target = "only-in-ostim" %}
+{% set nearbyNPCs = append(get_nearby_npc_list(npc.UUID), player) %}
+{% set ostimPotentialParticipants = [] %}
+{% for participantItem in nearbyNPCs %}
+    {% set participant = decnpc(participantItem.UUID) %}
+    {% if target == "only-in-ostim" %}
+        {% set ostimCondition = is_in_faction(participantItem.UUID, "OStimActorCountFaction") %}
+    {% else if target == "only-not-in-ostim" %}
+        {% set ostimCondition = not is_in_faction(participantItem.UUID, "OStimActorCountFaction") %}
+    {% else %}
+        {% set ostimCondition = true %}
+    {% endif %}
+    {% if not participant.isChild and participantItem.UUID != npc.UUID and ostimCondition and not is_in_faction(participantItem.UUID, "SexLabAnimatingFaction") %}
+        {% set ostimPotentialParticipants = append(ostimPotentialParticipants, participant.name) %}
+    {% endif %}
+{% endfor %}
+{% set ostimPotentialParticipantsString = join(ostimPotentialParticipants, ", ") %}
+
+{{speakingNpc.name}} decides to SPECTATE ongoing sex scene. Use when {{speakingNpc.name}} wants to watch/observe others having sex from close distance, NOT to join (use JoinOngoingSex). Possible targets: {{ostimActiveScenes}}. Select target based on {{speakingNpc.name}}'s relationships and likes/dislikes

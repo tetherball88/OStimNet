@@ -17,6 +17,14 @@ int property oid_SexCommentsGenderWeight auto
 int property oid_DeniesCooldown auto
 int property oid_AffectionSceneDuration auto
 
+int property oid_SpectatorsEnabled auto
+int property oid_MaxSpectatorsOverall auto
+int property oid_MaxSpectatorsPerThread auto
+int property oid_SpectatorCommentWeight auto
+int property oid_SpectatorScanInterval auto
+int property oid_ClearSpectatorsData auto
+int property oid_StopSpectatorScan auto
+
 int property oid_Mute auto
 int property oid_MuteHotkey auto
 
@@ -63,6 +71,23 @@ Function RenderLeftColumn()
     oid_EnableChangePositionConfirmationModal = AddToggleOption("Confirm scene position changes:", TTON_JData.GetConfirmChangeScenePosition())
     oid_EnableAddNewActorsConfirmationModal = AddToggleOption("Confirm adding new actors:", TTON_JData.GetConfirmAddNewActors())
 
+    AddHeaderOption("Spectators")
+    oid_SpectatorsEnabled = AddToggleOption("Enable spectators:", TTON_JData.GetSpectatorsEnabled())
+    if(TTON_JData.GetSpectatorsEnabled())
+        float maxOverall = TTON_JData.GetMcmMaxSpectatorsOverall() as float
+        oid_MaxSpectatorsOverall = AddSliderOption("Max spectators overall:", maxOverall)
+        float maxPerThread = TTON_JData.GetMcmMaxSpectatorsPerThread() as float
+        oid_MaxSpectatorsPerThread = AddSliderOption("Max spectators per thread:", maxPerThread)
+        float spectatorWeight = TTON_JData.GetMcmSpectatorCommentWeight() as float
+        oid_SpectatorCommentWeight = AddSliderOption("Comment weight (0=Participant, 100=Spectator):", spectatorWeight)
+        float scanInterval = TTON_JData.GetMcmSpectatorScanInterval() as float
+        oid_SpectatorScanInterval = AddSliderOption("Scan interval (seconds):", scanInterval)
+        oid_ClearSpectatorsData = AddTextOption("", "Clear spectators data")
+        oid_StopSpectatorScan = AddTextOption("", "Stop spectator scan loop")
+    endif
+
+
+    AddHeaderOption("Affection Scenes")
     float affectionDuration = TTON_JData.GetMcmAffectionDuration() as float
     oid_AffectionSceneDuration = AddSliderOption("Affection scene duration (seconds):", affectionDuration)
 EndFunction
@@ -114,6 +139,21 @@ event OnOptionSelect(int option)
         SetToggleOptionValue(oid_Mute, TTON_JData.ToggleMuteSetting())
     elseif(option == oid_PrioritizePlayerThreadComments)
         SetToggleOptionValue(oid_PrioritizePlayerThreadComments, TTON_JData.ToggleMcmCheckbox("prioritizePlayerThreadComments", 1))
+    elseif(option == oid_SpectatorsEnabled)
+        SetToggleOptionValue(oid_SpectatorsEnabled, TTON_JData.ToggleSpectatorsEnabled())
+        ForcePageReset()
+    elseif(option == oid_ClearSpectatorsData)
+        bool yes = ShowMessage("Are you sure you want to clear all spectators data?")
+        if(yes)
+            TTON_Spectators.ClearAllSpectators()
+        endif
+    elseif(option == oid_StopSpectatorScan)
+        if(TTON_Spectators.IsScanLoopRunning())
+            TTON_Spectators.StopScanLoop()
+            ShowMessage("Spectator scan loop stopped.")
+        else
+            ShowMessage("Spectator scan loop is not running.")
+        endif
     endif
 endevent
 
@@ -149,6 +189,20 @@ event OnOptionHighlight(int option)
         SetInfoText("Toggle Mute in-game without entering MCM.")
     elseif(option == oid_PrioritizePlayerThreadComments)
         SetInfoText("Prioritize comments from the player's thread in scenes and mute NPCs from other threads..")
+    elseif(option == oid_SpectatorsEnabled)
+        SetInfoText("Enable NPCs to become spectators when they discover their significant others in intimate scenes.")
+    elseif(option == oid_MaxSpectatorsOverall)
+        SetInfoText("Maximum number of spectators allowed across all active threads.")
+    elseif(option == oid_MaxSpectatorsPerThread)
+        SetInfoText("Maximum number of spectators allowed per individual thread.")
+    elseif(option == oid_SpectatorCommentWeight)
+        SetInfoText("Controls who comments more often. 0 = only participants, 100 = only spectators, 50 = equal chance.")
+    elseif(option == oid_SpectatorScanInterval)
+        SetInfoText("How often to scan for potential spectators (in seconds). Lower values find spectators faster but use more resources.")
+    elseif(option == oid_ClearSpectatorsData)
+        SetInfoText("Removes all active spectators and clears spectator-related storage data.")
+    elseif(option == oid_StopSpectatorScan)
+        SetInfoText("Manually stops the spectator scan loop if it's stuck running.")
     endif
 endevent
 
@@ -176,6 +230,30 @@ event OnOptionSliderOpen(int a_option)
         startRange = 0
         endRange = 120
         interval = 1
+    elseif(a_option == oid_MaxSpectatorsOverall)
+        startValue = TTON_JData.GetMcmMaxSpectatorsOverall() as float
+        defaultValue = 5.0
+        startRange = 0
+        endRange = 20
+        interval = 1
+    elseif(a_option == oid_MaxSpectatorsPerThread)
+        startValue = TTON_JData.GetMcmMaxSpectatorsPerThread() as float
+        defaultValue = 2.0
+        startRange = 0
+        endRange = 10
+        interval = 1
+    elseif(a_option == oid_SpectatorCommentWeight)
+        startValue = TTON_JData.GetMcmSpectatorCommentWeight() as float
+        defaultValue = 50.0
+        startRange = 0
+        endRange = 100
+        interval = 1
+    elseif(a_option == oid_SpectatorScanInterval)
+        startValue = TTON_JData.GetMcmSpectatorScanInterval() as float
+        defaultValue = 10.0
+        startRange = 5
+        endRange = 60
+        interval = 5
     endif
 
     SetSliderDialogStartValue(startValue)
@@ -191,6 +269,14 @@ event OnOptionSliderAccept(int a_option, float a_value)
         TTON_JData.SetMcmAffectionDuration(a_value as int)
     elseif(a_option == oid_DeniesCooldown)
         TTON_JData.SetMcmDenyCooldown(a_value as int)
+    elseif(a_option == oid_MaxSpectatorsOverall)
+        TTON_JData.SetMcmMaxSpectatorsOverall(a_value as int)
+    elseif(a_option == oid_MaxSpectatorsPerThread)
+        TTON_JData.SetMcmMaxSpectatorsPerThread(a_value as int)
+    elseif(a_option == oid_SpectatorCommentWeight)
+        TTON_JData.SetMcmSpectatorCommentWeight(a_value as int)
+    elseif(a_option == oid_SpectatorScanInterval)
+        TTON_JData.SetMcmSpectatorScanInterval(a_value as int)
     endif
 endEvent
 
@@ -208,6 +294,18 @@ event OnOptionDefault(int a_option)
         TTON_JData.SetMuteHotkey(-1)
         SetKeyMapOptionValue(oid_MuteHotkey, -1)
         RegisterMuteHotkey()
+    elseif(a_option == oid_MaxSpectatorsOverall)
+        SetSliderDialogStartValue(5)
+        TTON_JData.SetMcmMaxSpectatorsOverall(5)
+    elseif(a_option == oid_MaxSpectatorsPerThread)
+        SetSliderDialogStartValue(2)
+        TTON_JData.SetMcmMaxSpectatorsPerThread(2)
+    elseif(a_option == oid_SpectatorCommentWeight)
+        SetSliderDialogStartValue(50)
+        TTON_JData.SetMcmSpectatorCommentWeight(50)
+    elseif(a_option == oid_SpectatorScanInterval)
+        SetSliderDialogStartValue(10)
+        TTON_JData.SetMcmSpectatorScanInterval(10)
     endif
 endEvent
 

@@ -14,11 +14,17 @@ Function RegisterActions() global
         if(TTON_JData.GetActionAddTags(act))
             tags = GetTags()
         endif
-        SkyrimNetApi.RegisterAction(TTON_JData.GetActionName(act), \
-          TTON_JData.GetActionDescription(act), \
-          fileName, TTON_JData.GetActionIsEligible(act), fileName, TTON_JData.GetActionExecute(act), "", "PAPYRUS", 1, \
-          TTON_JData.GetActionParameters(act), \
-          "", tags)
+        string actionName = TTON_JData.GetActionName(act)
+        bool skipSpectatorActions = !TTON_JData.GetSpectatorsEnabled() && (actionName == "SpectatorOfSex" || actionName == "SpectatorOfSexFlee")
+        if(!skipSpectatorActions)
+            SkyrimNetApi.RegisterAction( \
+                actionName, \
+                TTON_JData.GetActionDescription(act), \
+                fileName, TTON_JData.GetActionIsEligible(act), fileName, TTON_JData.GetActionExecute(act), "", "PAPYRUS", 1, \
+                TTON_JData.GetActionParameters(act), \
+                "", tags \
+            )
+        endif
 
         act = TTON_JData.NextAction(act)
     endwhile
@@ -354,3 +360,47 @@ Function StopSexActionExecute(Actor akActor, string contextJson, string paramsJs
     SkyrimNetApi.SetActionCooldown("StopSex", TTON_JData.GetMcmDenyCooldown())
 EndFunction
 
+bool Function SpectatorOfSexIsEligible(Actor akActor, string contextJson, string paramsJson) global
+    ; TTON_Debug.Trace("SpectatorOfSexIsEligible:Actor" + akActor)
+    ; TTON_Debug.Trace("SpectatorOfSexIsEligible:CanAddSpectator" + TTON_Spectators.CanAddSpectator())
+    ; TTON_Debug.Trace("SpectatorOfSexIsEligible:IsSexLabInCharge" + TTON_Utils.IsSexLabInCharge())
+    ; TTON_Debug.Trace("SpectatorOfSexIsEligible:IsActorBusyWithScenes" + TTON_Utils.IsActorBusyWithScenes(akActor))
+    ; TTON_Debug.Trace("SpectatorOfSexIsEligible:IsOStimEligible" + TTON_Utils.IsOStimEligible(akActor))
+    ; TTON_Debug.Trace("SpectatorOfSexIsEligible:IsInSpectatorFaction" + akActor.IsInFaction(TTON_JData.GetSpectatorFaction()))
+    return TTON_Spectators.CanAddSpectator() && !TTON_Utils.IsSexLabInCharge() && !TTON_Utils.IsActorBusyWithScenes(akActor) && TTON_Utils.IsOStimEligible(akActor) && !akActor.IsInFaction(TTON_JData.GetSpectatorFaction())
+EndFunction
+
+Function SpectatorOfSexActionExecute(Actor akActor, string contextJson, string paramsJson) global
+    Actor target = SkyrimNetApi.GetJsonActor(paramsJson, "target", none)
+    if(!target)
+        TTON_Debug.warn("SpectatorOfSexActionExecute: target actor not found in paramsJson")
+        return
+    endif
+
+    int ThreadID = OActor.GetSceneID(akActor)
+
+    if(ThreadID == -1)
+        TTON_Debug.warn("SpectatorOfSexActionExecute: actor is not in a valid OStim scene")
+        return
+    endif
+
+    if(!TTON_Spectators.CanAddSpectatorsToThread(ThreadID))
+        TTON_Debug.warn("SpectatorOfSexActionExecute: cannot add more spectators to thread " + ThreadID)
+        return
+    endif
+
+    TTON_Spectators.TryMakeSpectator(akActor, target)
+EndFunction
+
+bool Function SpectatorOfSexFleeIsEligible(Actor akActor, string contextJson, string paramsJson) global
+    ; TTON_Debug.Trace("SpectatorOfSexFleeIsEligible:Actor" + akActor)
+    ; TTON_Debug.Trace("SpectatorOfSexFleeIsEligible:IsInSpectatorFaction" + akActor.IsInFaction(TTON_JData.GetSpectatorFaction()))
+    ; TTON_Debug.Trace("SpectatorOfSexFleeIsEligible:IsInSpectatorFleeFaction" + akActor.IsInFaction(TTON_JData.GetSpectatorFleeFaction()))
+    return akActor.IsInFaction(TTON_JData.GetSpectatorFaction()) && !akActor.IsInFaction(TTON_JData.GetSpectatorFleeFaction())
+EndFunction
+
+Function SpectatorOfSexFleeActionExecute(Actor akActor, string contextJson, string paramsJson) global
+    if(akActor.IsInFaction(TTON_JData.GetSpectatorFaction()))
+    endif
+    TTON_Spectators.MakeSpectatorFlee(akActor)
+EndFunction

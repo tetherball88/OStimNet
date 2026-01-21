@@ -9,7 +9,6 @@ Function StartThread(int ThreadID) global
         StorageUtil.FormListAdd(none, "TTONDec_Thread" + ThreadID + "_Actors", current, false)
         StorageUtil.StringListAdd(none, "TTONDec_Thread" + ThreadID + "_ActorsNames", TTON_Utils.GetActorName(current), false)
         StorageUtil.SetIntValue(current, "TTONDec_ThreadParticipant", ThreadID)
-
         i += 1
     endwhile
 EndFunction
@@ -32,6 +31,10 @@ Function EndThread(int ThreadID) global
     StorageUtil.IntListRemove(none, "TTONDec_ActiveOStimThreads", ThreadID)
     SetThreadAffectionOnly(ThreadID, 0)
     StorageUtil.ClearAllPrefix("TTONDec_Thread" + ThreadID)
+EndFunction
+
+int[] Function GetActiveThreads() global
+    return StorageUtil.IntListToArray(none, "TTONDec_ActiveOStimThreads")
 EndFunction
 
 Function ClearOnLoad() global

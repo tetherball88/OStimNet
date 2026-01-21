@@ -450,14 +450,28 @@ EndFunction
 
 ; if it's player only scene it will return none
 ; assume that actors are only actors from scene
-actor Function GetWeightedRandomActorToSpeak(actor[] actors = none, form[] actorForms = none) global
+actor Function GetWeightedRandomActorToSpeak(actor[] actors = none, form[] actorForms = none, int ThreadID = -1) global
+    if(TTON_JData.GetSpectatorsEnabled())
+        int chance = Utility.RandomInt(1, 100)
+        bool spectatorShouldTalk = chance <= TTON_JData.GetMcmSpectatorCommentWeight()
+        Form[] spectators = StorageUtil.FormListToArray(none, "TTON_AllSpectatorsForThread_" + ThreadID)
+        int availableSpectators = spectators.Length
+        int i = 0
+        while(i < spectators.Length)
+            Actor spectatorActor = spectators[i] as Actor
+            if(spectatorActor.IsInFaction(TTON_JData.GetSpectatorFleeFaction()))
+                availableSpectators -= 1
+            endif
+            i += 1
+        endwhile
+        if(spectatorShouldTalk && availableSpectators)
+            actorForms = spectators
+            actors = none
+        endif
+    endif
     Actor player = TTON_JData.GetPlayer()
     actor[] maleActors = PapyrusUtil.ActorArray(0)
     actor[] femaleActors = PapyrusUtil.ActorArray(0)
-
-    if !actors || actors.Length == 0
-        return none
-    endif
 
     int ArrLength = 0
 
@@ -510,12 +524,18 @@ actor Function GetWeightedRandomActorToSpeak(actor[] actors = none, form[] actor
     ; pick weighted type of npc who will talk
     bool isFemale = Utility.RandomInt(1, 100) <= TTON_JData.GetMcmCommentsGenderWeight()
 
-    TTON_Debug.debug("GetWeightedRandomActorToSpeak:"+TTON_JData.GetMcmCommentsGenderWeight())
-
-    if(isFemale && femaleActors.Length > 0)
-        return getRandomActor(femaleActors)
-    elseif(!isFemale && maleActors.Length > 0)
-        return getRandomActor(maleActors)
+    if(isFemale)
+        if(femaleActors.Length > 0)
+            return getRandomActor(femaleActors)
+        elseif(maleActors.Length > 0)
+            return getRandomActor(maleActors)
+        endif
+    else
+        if(maleActors.Length > 0)
+            return getRandomActor(maleActors)
+        elseif(femaleActors.Length > 0)
+            return getRandomActor(femaleActors)
+        endif
     endif
 
     return none
