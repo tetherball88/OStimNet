@@ -54,10 +54,10 @@ EndFunction
 ; Placeholder eligibility check for the affection scene action.
 ; Implementation should ensure actors are free from ongoing OStim threads and mutually willing.
 Bool Function StartAffectionSceneIsEligible(Actor akActor, string contextJson, string paramsJson) global
-    ; MiscUtil.PrintConsole("StartAffectionSceneIsEligible:IsSexLabInCharge:" + TTON_Utils.IsSexLabInCharge())
-    ; MiscUtil.PrintConsole("StartAffectionSceneIsEligible:IsActorBusyWithScenes:" + TTON_Utils.IsActorBusyWithScenes(akActor))
-    ; MiscUtil.PrintConsole("StartAffectionSceneIsEligible:IsOStimEligible:" + TTON_Utils.IsOStimEligible(akActor))
-    ; MiscUtil.PrintConsole("StartAffectionSceneIsEligible:CanUseActionAfterDecline:" + TTON_JData.CanUseActionAfterDecline(akActor, "StartAffectionScene"))
+    PrintEligibilityConditions(akActor, "StartAffectionSceneIsEligible", "IsSexLabInCharge", TTON_Utils.IsSexLabInCharge())
+    PrintEligibilityConditions(akActor, "StartAffectionSceneIsEligible", "IsActorBusyWithScenes", TTON_Utils.IsActorBusyWithScenes(akActor))
+    PrintEligibilityConditions(akActor, "StartAffectionSceneIsEligible", "IsOStimEligible", TTON_Utils.IsOStimEligible(akActor))
+    PrintEligibilityConditions(akActor, "StartAffectionSceneIsEligible", "CanUseActionAfterDecline", TTON_JData.CanUseActionAfterDecline(akActor, "StartAffectionScene"))
     return !TTON_Utils.IsSexLabInCharge() && !TTON_Utils.IsActorBusyWithScenes(akActor) && TTON_Utils.IsOStimEligible(akActor) && TTON_JData.CanUseActionAfterDecline(akActor, "StartAffectionScene")
 EndFunction
 
@@ -98,10 +98,10 @@ EndFunction
 ; @param paramsJson The parameters data in JSON format
 ; @returns True if the actor is eligible to start a new sexual encounter
 Bool Function StartSexActionIsEligible(Actor akActor, string contextJson, string paramsJson) global
-    ; MiscUtil.PrintConsole("StartSexActionIsEligible:IsSexLabInCharge:" + TTON_Utils.IsSexLabInCharge())
-    ; MiscUtil.PrintConsole("StartSexActionIsEligible:IsActorBusyWithScenes:" + TTON_Utils.IsActorBusyWithScenes(akActor))
-    ; MiscUtil.PrintConsole("StartSexActionIsEligible:IsOStimEligible:" + TTON_Utils.IsOStimEligible(akActor))
-    ; MiscUtil.PrintConsole("StartSexActionIsEligible:CanUseActionAfterDecline:" + TTON_JData.CanUseActionAfterDecline(akActor, "StartSexAction"))
+    PrintEligibilityConditions(akActor, "StartSexActionIsEligible", "IsSexLabInCharge", TTON_Utils.IsSexLabInCharge())
+    PrintEligibilityConditions(akActor, "StartSexActionIsEligible", "IsActorBusyWithScenes", TTON_Utils.IsActorBusyWithScenes(akActor))
+    PrintEligibilityConditions(akActor, "StartSexActionIsEligible", "IsOStimEligible", TTON_Utils.IsOStimEligible(akActor))
+    PrintEligibilityConditions(akActor, "StartSexActionIsEligible", "CanUseActionAfterDecline", TTON_JData.CanUseActionAfterDecline(akActor, "StartSexAction"))
     return !TTON_Utils.IsSexLabInCharge() && !TTON_Utils.IsActorBusyWithScenes(akActor) && TTON_Utils.IsOStimEligible(akActor) && TTON_JData.CanUseActionAfterDecline(akActor, "StartSexAction")
 EndFunction
 
@@ -177,9 +177,9 @@ EndFunction
 ; @returns True if the actor is currently in an OStim scene
 Bool Function ChangeSexActivityIsEligible(Actor akActor, string contextJson, string paramsJson) global
     int ThreadID = OActor.GetSceneID(akActor)
-    ; MiscUtil.PrintConsole("ChangeSexActivityIsEligible:GetThreadAffectionOnly:" + TTON_Storage.GetThreadAffectionOnly(ThreadID))
-    ; MiscUtil.PrintConsole("ChangeSexActivityIsEligible:CanUseActionAfterDecline:" + TTON_JData.CanUseActionAfterDecline(akActor, "ChangeSexActivity"))
-    ; MiscUtil.PrintConsole("ChangeSexActivityIsEligible:IsInOStim:" + OActor.IsInOStim(akActor))
+    PrintEligibilityConditions(akActor, "ChangeSexActivityIsEligible", "GetThreadAffectionOnly", TTON_Storage.GetThreadAffectionOnly(ThreadID))
+    PrintEligibilityConditions(akActor, "ChangeSexActivityIsEligible", "CanUseActionAfterDecline", TTON_JData.CanUseActionAfterDecline(akActor, "ChangeSexActivity"))
+    PrintEligibilityConditions(akActor, "ChangeSexActivityIsEligible", "IsInOStim", OActor.IsInOStim(akActor))
     return OActor.IsInOStim(akActor) && !TTON_Storage.GetThreadAffectionOnly(ThreadID) && TTON_JData.CanUseActionAfterDecline(akActor, "ChangeSexActivity")
 EndFunction
 
@@ -206,9 +206,9 @@ EndFunction
 ; @returns True if the actor is currently in an OStim scene
 Bool Function InviteToYourSexIsEligible(Actor akActor, string contextJson, string paramsJson) global
     int ThreadID =OActor.GetSceneID(akActor)
-    ; MiscUtil.PrintConsole("InviteToYourSexIsEligible:GetThreadAffectionOnly:" + TTON_Storage.GetThreadAffectionOnly(ThreadID))
-    ; MiscUtil.PrintConsole("InviteToYourSexIsEligible:CanUseActionAfterDecline:" + TTON_JData.CanUseActionAfterDecline(akActor, "InviteToYourSex"))
-    ; MiscUtil.PrintConsole("InviteToYourSexIsEligible:IsInOStim:" + OActor.IsInOStim(akActor))
+    PrintEligibilityConditions(akActor, "InviteToYourSexIsEligible", "IsInOStim", OActor.IsInOStim(akActor))
+    PrintEligibilityConditions(akActor, "InviteToYourSexIsEligible", "GetThreadAffectionOnly", TTON_Storage.GetThreadAffectionOnly(ThreadID))
+    PrintEligibilityConditions(akActor, "InviteToYourSexIsEligible", "CanUseActionAfterDecline", TTON_JData.CanUseActionAfterDecline(akActor, "InviteToYourSex"))
     return OActor.IsInOStim(akActor) && !TTON_Storage.GetThreadAffectionOnly(ThreadID) && TTON_JData.CanUseActionAfterDecline(akActor, "InviteToYourSex")
 EndFunction
 
@@ -272,9 +272,8 @@ EndFunction
 ; @param paramsJson The parameters data in JSON format
 ; @returns True if the actor is not in a scene, there are active scenes, and the actor is eligible
 Bool Function JoinOngoingSexIsEligible(Actor akActor, string contextJson, string paramsJson) global
-    ; MiscUtil.PrintConsole("InviteToYourSexIsEligible:IsActorEligibleToJoin:" + TTON_Utils.IsActorEligibleToJoin(akActor))
-    ; MiscUtil.PrintConsole("InviteToYourSexIsEligible:CanUseActionAfterDecline:" + TTON_JData.CanUseActionAfterDecline(akActor, "JoinOngoingSex"))
-    ; MiscUtil.PrintConsole("InviteToYourSexIsEligible:IsInOStim:" + OActor.IsInOStim(akActor))
+    PrintEligibilityConditions(akActor, "JoinOngoingSexIsEligible", "IsActorEligibleToJoin", TTON_Utils.IsActorEligibleToJoin(akActor))
+    PrintEligibilityConditions(akActor, "JoinOngoingSexIsEligible", "CanUseActionAfterDecline", TTON_JData.CanUseActionAfterDecline(akActor, "JoinOngoingSex"))
     return TTON_Utils.IsActorEligibleToJoin(akActor) && TTON_JData.CanUseActionAfterDecline(akActor, "JoinOngoingSex")
 EndFunction
 
@@ -345,9 +344,9 @@ EndFunction
 ; @returns True if the actor is currently in an OStim scene
 bool Function StopSexIsEligible(Actor akActor, string contextJson, string paramsJson) global
     int ThreadID = OActor.GetSceneID(akActor)
-    ; MiscUtil.PrintConsole("InviteToYourSexIsEligible:GetThreadAffectionOnly:" + TTON_Storage.GetThreadAffectionOnly(ThreadID))
-    ; MiscUtil.PrintConsole("InviteToYourSexIsEligible:CanUseActionAfterDecline:" + TTON_JData.CanUseActionAfterDecline(akActor, "StopSex"))
-    ; MiscUtil.PrintConsole("InviteToYourSexIsEligible:IsInOStim:" + OActor.IsInOStim(akActor))
+    PrintEligibilityConditions(akActor, "StopSexIsEligible", "GetThreadAffectionOnly", TTON_Storage.GetThreadAffectionOnly(ThreadID))
+    PrintEligibilityConditions(akActor, "StopSexIsEligible", "CanUseActionAfterDecline", TTON_JData.CanUseActionAfterDecline(akActor, "StopSex"))
+    PrintEligibilityConditions(akActor, "StopSexIsEligible", "IsInOStim", OActor.IsInOStim(akActor))
     return OActor.IsInOStim(akActor) && !TTON_Storage.GetThreadAffectionOnly(ThreadID) && TTON_JData.CanUseActionAfterDecline(akActor, "StopSex")
 EndFunction
 
@@ -361,12 +360,11 @@ Function StopSexActionExecute(Actor akActor, string contextJson, string paramsJs
 EndFunction
 
 bool Function SpectatorOfSexIsEligible(Actor akActor, string contextJson, string paramsJson) global
-    ; TTON_Debug.Trace("SpectatorOfSexIsEligible:Actor" + akActor)
-    ; TTON_Debug.Trace("SpectatorOfSexIsEligible:CanAddSpectator" + TTON_Spectators.CanAddSpectator())
-    ; TTON_Debug.Trace("SpectatorOfSexIsEligible:IsSexLabInCharge" + TTON_Utils.IsSexLabInCharge())
-    ; TTON_Debug.Trace("SpectatorOfSexIsEligible:IsActorBusyWithScenes" + TTON_Utils.IsActorBusyWithScenes(akActor))
-    ; TTON_Debug.Trace("SpectatorOfSexIsEligible:IsOStimEligible" + TTON_Utils.IsOStimEligible(akActor))
-    ; TTON_Debug.Trace("SpectatorOfSexIsEligible:IsInSpectatorFaction" + akActor.IsInFaction(TTON_JData.GetSpectatorFaction()))
+    PrintEligibilityConditions(akActor, "SpectatorOfSexIsEligible", "CanAddSpectator", TTON_Spectators.CanAddSpectator())
+    PrintEligibilityConditions(akActor, "SpectatorOfSexIsEligible", "IsSexLabInCharge", TTON_Utils.IsSexLabInCharge())
+    PrintEligibilityConditions(akActor, "SpectatorOfSexIsEligible", "IsActorBusyWithScenes", TTON_Utils.IsActorBusyWithScenes(akActor))
+    PrintEligibilityConditions(akActor, "SpectatorOfSexIsEligible", "IsOStimEligible", TTON_Utils.IsOStimEligible(akActor))
+    PrintEligibilityConditions(akActor, "SpectatorOfSexIsEligible", "IsInSpectatorFaction", akActor.IsInFaction(TTON_JData.GetSpectatorFaction()))
     return TTON_Spectators.CanAddSpectator() && !TTON_Utils.IsSexLabInCharge() && !TTON_Utils.IsActorBusyWithScenes(akActor) && TTON_Utils.IsOStimEligible(akActor) && !akActor.IsInFaction(TTON_JData.GetSpectatorFaction())
 EndFunction
 
@@ -393,9 +391,8 @@ Function SpectatorOfSexActionExecute(Actor akActor, string contextJson, string p
 EndFunction
 
 bool Function SpectatorOfSexFleeIsEligible(Actor akActor, string contextJson, string paramsJson) global
-    ; TTON_Debug.Trace("SpectatorOfSexFleeIsEligible:Actor" + akActor)
-    ; TTON_Debug.Trace("SpectatorOfSexFleeIsEligible:IsInSpectatorFaction" + akActor.IsInFaction(TTON_JData.GetSpectatorFaction()))
-    ; TTON_Debug.Trace("SpectatorOfSexFleeIsEligible:IsInSpectatorFleeFaction" + akActor.IsInFaction(TTON_JData.GetSpectatorFleeFaction()))
+    PrintEligibilityConditions(akActor, "SpectatorOfSexFleeIsEligible", "IsInSpectatorFaction", akActor.IsInFaction(TTON_JData.GetSpectatorFaction()))
+    PrintEligibilityConditions(akActor, "SpectatorOfSexFleeIsEligible", "IsInSpectatorFleeFaction", akActor.IsInFaction(TTON_JData.GetSpectatorFleeFaction()))
     return akActor.IsInFaction(TTON_JData.GetSpectatorFaction()) && !akActor.IsInFaction(TTON_JData.GetSpectatorFleeFaction())
 EndFunction
 
@@ -403,4 +400,9 @@ Function SpectatorOfSexFleeActionExecute(Actor akActor, string contextJson, stri
     if(akActor.IsInFaction(TTON_JData.GetSpectatorFaction()))
     endif
     TTON_Spectators.MakeSpectatorFlee(akActor)
+EndFunction
+
+Function PrintEligibilityConditions(Actor npc, string functionName, string keyName, bool value) global
+    ; string npcName = TTON_Utils.GetActorName(npc)
+    ; TTON_Debug.Trace(functionName + ":" + npcName + ":" + keyName + " is " + value)
 EndFunction
