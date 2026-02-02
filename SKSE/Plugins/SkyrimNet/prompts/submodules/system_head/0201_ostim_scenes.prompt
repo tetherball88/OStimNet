@@ -8,7 +8,6 @@
             {% set sceneDescription = papyrus_util("GetStringValue", null, "TTONDec_Thread" + to_string(threadID) + "_SceneDescription") %}
             {% set actors = papyrus_util("GetFormList", null, "TTONDec_Thread" + to_string(threadID) + "_Actors") %}
             {% set spectators = papyrus_util("GetFormList", null, "TTON_AllSpectatorsForThread_" + to_string(threadID)) %}
-            spectators - {{spectators}}
             {% if length(activeOstimThreads) > 1 %}
                 #### Scene {{ loop.index }}:
             {% endif %}
@@ -48,7 +47,6 @@
                         {# NPC can hear the scene from a distance #}
                         - **{{responseTargetName}}** can hear muffled sounds that might be sex.
                     {% endif %}
-                    - **{{responseTargetName}}** is involved in this intimate activity.
                 {% endif %}
             {% endif %}
             {{ sceneDescription }}

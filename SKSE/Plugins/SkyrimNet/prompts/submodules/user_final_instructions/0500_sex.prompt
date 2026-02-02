@@ -1,4 +1,4 @@
-{% if length(papyrus_util("GetIntValue", null, "TTONDec_ActiveOStimThreads")) > 0 and not decnpc(npc.UUID).isVirtual %}
+{% if length(papyrus_util("GetIntList", null, "TTONDec_ActiveOStimThreads")) > 0 and not decnpc(npc.UUID).isVirtual %}
     {% set threadID = papyrus_util("GetIntValue", npc.UUID, "TTONDec_ThreadParticipant", -1) %}
     {% if threadID != -1 %}
         {% set isSexual = papyrus_util("GetIntValue", null, "TTONDec_Thread" + to_string(threadID) + "_IsSexual", 0) != 0 %}
