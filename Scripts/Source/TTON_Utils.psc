@@ -309,42 +309,6 @@ bool Function IsOStimEligible(Actor npc) global
     return !OUtils.IsChild(npc) && OActor.VerifyActors(OActorUtil.ToArray(npc)) && !npc.IsInDialogueWithPlayer()
 EndFunction
 
-; Gets an eligible actor from JSON parameters
-; @param paramsJson The JSON parameters containing actor information
-; @param paramName The name of the parameter containing the actor
-; @returns The actor if eligible, none otherwise
-Actor Function GetEligibleActorFromParam(string paramsJson, string paramName) global
-    Actor npc = SkyrimNetApi.GetJsonActor(paramsJson, paramName, none)
-    if(!npc)
-        TTON_Debug.warn("TTON_Utils.GetEligibleActorFromParam: No actor found in param "+paramName+": "+paramsJson)
-        return none
-    endif
-    if(!IsOStimEligible(npc))
-        return none
-    endif
-    return npc
-EndFunction
-
-; Determines which speed changes are available for a given scene
-; @param SceneId The ID of the current scene
-; @param currentSpeed The current speed level
-; @returns String indicating available speed changes: "both", "increase", "decrease", or "none"
-String Function GetAvailableSpeedDirections(string SceneId, int currentSpeed) global
-    string defaultSpeed = OMetadata.GetDefaultSpeed(SceneId)
-    string maxSpeed = OMetadata.GetMaxSpeed(SceneId)
-    string res = "none"
-
-    if(currentSpeed > defaultSpeed && currentSpeed < maxSpeed)
-        res = "both"
-    elseif(currentSpeed > defaultSpeed)
-        res = "decrease"
-    elseif(currentSpeed < maxSpeed)
-        res = "increase"
-    endif
-
-    return res
-EndFunction
-
 string Function GetShclongOrgasmedLocation(Actor npc, int ThreadID) global
     string npcName = GetActorName(npc)
     string res = npcName + " ejaculated "

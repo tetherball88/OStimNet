@@ -2,7 +2,7 @@ scriptname TTON_Spectators
 
 Function ScanPotentialSpectatorsPeriodically() global
     StorageUtil.SetIntValue(none, "TTON_SpectatorScanLoopRunning", 1)
-    TTON_Debug.Trace("Starting periodic scan for potential spectators:"+CanAddSpectator()+":"+TTON_JData.GetSpectatorsEnabled())
+    ; TTON_Debug.Trace("Starting periodic scan for potential spectators:"+CanAddSpectator()+":"+TTON_JData.GetSpectatorsEnabled())
     while(CanAddSpectator() && TTON_JData.GetSpectatorsEnabled() && IsScanLoopRunning())
         ScanPotentialSpectators()
         Utility.Wait(TTON_JData.GetMcmSpectatorScanInterval() as float)
@@ -12,7 +12,7 @@ EndFunction
 
 Function StopScanLoop() global
     StorageUtil.SetIntValue(none, "TTON_SpectatorScanLoopRunning", 0)
-    TTON_Debug.Trace("Spectator scan loop stopped manually.")
+    ; TTON_Debug.Trace("Spectator scan loop stopped manually.")
 EndFunction
 
 bool Function IsScanLoopRunning() global
@@ -23,9 +23,9 @@ Function ScanPotentialSpectators() global
     if(!TTON_JData.GetSpectatorsEnabled())
         return
     endif
-    TTON_Debug.Trace("Scanning potential spectators...")
+    ; TTON_Debug.Trace("Scanning potential spectators...")
     Actor player = Game.GetPlayer()
-    Actor[] potentialSpectators = OActorUtil.GetActorsInRangeV2(Game.GetPlayer(), 800, false, false, true)
+    Actor[] potentialSpectators = OActorUtil.GetActorsInRangeV2(player, 800, false, false, true)
 
     int i = 0
     while(i < potentialSpectators.Length)
@@ -115,7 +115,7 @@ Function TryMakeSpectator(Actor spectator, Actor target) global
 
         if(closeDistance)
             TTON_Events.RegisterSpectatorAddedEvent(spectator, ThreadID)
-            TTON_Debug.trace("Added spectator: " + spectator + " targeting: " + target)
+            ; TTON_Debug.trace("Added spectator: " + spectator + " targeting: " + target)
         endif
     endif
 EndFunction
@@ -134,7 +134,7 @@ Function MakeSpectatorFlee(Actor spectator) global
         ActorUtil.AddPackageOverride(spectator, GetFleePackageForSpectator(spectator), 70)
         spectator.EvaluatePackage()
 
-        TTON_Debug.trace("Spectator " + spectator + " is now fleeing the scene.")
+        ; TTON_Debug.trace("Spectator " + spectator + " is now fleeing the scene.")
     endif
 EndFunction
 
@@ -153,7 +153,7 @@ Function RemoveSpectator(Actor spectator) global
     spectator.RemoveFromFaction(TTON_JData.GetSpectatorFaction())
     spectator.RemoveFromFaction(TTON_JData.GetSpectatorFleeFaction())
 
-    TTON_Debug.trace("Removed spectator: " + spectator)
+    ; TTON_Debug.trace("Removed spectator: " + spectator)
 EndFunction
 
 Function ClearSpectatorsForThread(int ThreadID) global
@@ -167,7 +167,7 @@ Function ClearSpectatorsForThread(int ThreadID) global
     endif
     StorageUtil.ClearAllPrefix("TTON_AllSpectatorsForThread_" + ThreadID)
 
-    TTON_Debug.trace("Cleared spectators for thread: " + ThreadID)
+    ; TTON_Debug.trace("Cleared spectators for thread: " + ThreadID)
 EndFunction
 
 Function ClearAllSpectators() global
@@ -181,7 +181,7 @@ Function ClearAllSpectators() global
     endif
     CleanAllSpectatorsStorage()
 
-    TTON_Debug.trace("Cleared all spectators.")
+    ; TTON_Debug.trace("Cleared all spectators.")
 EndFunction
 
 Function CleanAllSpectatorsStorage() global
@@ -190,7 +190,7 @@ Function CleanAllSpectatorsStorage() global
     ActorUtil.RemoveAllPackageOverride(TTON_JData.GetSpectatorFollowPackage())
     ActorUtil.RemoveAllPackageOverride(TTON_JData.GetSpectatorFleeEditorLocPackage())
     ActorUtil.RemoveAllPackageOverride(TTON_JData.GetSpectatorFleeFarPackage())
-    TTON_Debug.trace("Cleared all spectators storage.")
+    ; TTON_Debug.trace("Cleared all spectators storage.")
 EndFunction
 
 Package Function GetFleePackageForSpectator(Actor spectator) global

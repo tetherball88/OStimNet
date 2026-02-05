@@ -1,0 +1,36 @@
+name: SpectatorOfSex
+description: "{{render_template(\"helpers/ostimnet_action_spectate_sex\")}}"
+questEditorId: TTON_MainController
+scriptName: TTON_Actions
+executionFunctionName: SpectatorOfSexActionExecute
+parameterMapping:
+    - type: speaker
+      name: akActor
+      description: The actor initiating action
+    - type: dynamic
+      name: target
+      useNearbyActors: false
+      description: Person in sex scene to watch (spectate)
+enabled: true
+eligibilityRules:
+    - conditions:
+        - decoratorName: "is_in_faction"
+          arguments: ["currentActor", "OStimActorCountFaction"]
+          comparisonOperator: "=="
+          expectedValue: false
+        - decoratorName: "is_in_combat"
+          arguments: ["currentActor"]
+          comparisonOperator: "=="
+          expectedValue: false
+        - decoratorName: "is_in_faction"
+          arguments: ["currentActor", "TTON_SpectatorFaction"]
+          comparisonOperator: "=="
+          expectedValue: false
+        - decoratorName: decnpc
+          resultPath: isChild
+          arguments: ["currentActor"]
+          comparisonOperator: ==
+          expectedValue: false
+      logicalOperator: "AND"
+      required: true
+

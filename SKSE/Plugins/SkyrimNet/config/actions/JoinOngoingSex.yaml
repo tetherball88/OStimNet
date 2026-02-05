@@ -1,0 +1,48 @@
+name: JoinOngoingSex
+description: "{{render_template(\"helpers/ostimnet_action_join_ongoing_sex\")}}"
+questEditorId: TTON_MainController
+scriptName: TTON_Actions
+executionFunctionName: JoinOngoingSexActionExecute
+parameterMapping:
+    - type: speaker
+      name: akActor
+      description: The actor initiating action
+    - type: dynamic
+      name: participant1
+      useNearbyActors: false
+      description: Person in scene to interact with
+enabled: true
+eligibilityRules:
+    - conditions:
+        - decoratorName: "get_global_value"
+          arguments: ["skyrimnet_sexlab_ostim_player"]
+          comparisonOperator: "=="
+          expectedValue: 0
+        - decoratorName: "get_global_value"
+          arguments: ["TTON_IsOstimActive"]
+          comparisonOperator: "=="
+          expectedValue: 1
+        - decoratorName: "is_in_faction"
+          arguments: ["currentActor", "SexLabAnimatingFaction"]
+          comparisonOperator: "=="
+          expectedValue: false
+        - decoratorName: "is_in_faction"
+          arguments: ["currentActor", "OStimActorCountFaction"]
+          comparisonOperator: "=="
+          expectedValue: false
+        - decoratorName: "is_in_combat"
+          arguments: ["currentActor"]
+          comparisonOperator: "=="
+          expectedValue: false
+        - decoratorName: "has_magic_effect"
+          arguments: ["currentActor", "TTON_DeclineJoinOngoingSexEffect"]
+          comparisonOperator: "=="
+          expectedValue: false
+        - decoratorName: decnpc
+          resultPath: isChild
+          arguments: ["currentActor"]
+          comparisonOperator: ==
+          expectedValue: false
+      logicalOperator: "AND"
+      required: true
+

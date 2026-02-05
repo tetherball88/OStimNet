@@ -1,0 +1,54 @@
+name: StartAffectionScene
+description: "{{render_template(\"helpers/ostimnet_action_start_affectionate_scene\")}}"
+questEditorId: TTON_MainController
+scriptName: TTON_Actions
+executionFunctionName: StartAffectionSceneExecute
+parameterMapping:
+  - type: speaker
+    name: akActor
+    description: Speaker Actor parameter (triggering entity)
+  - type: dynamic
+    name: participant1
+    description: Affection partner
+    useNearbyActors: false
+  - type: dynamic
+    name: activity
+    description: Activity from list
+enabled: true
+eligibilityRules:
+  - conditions:
+      - decoratorName: get_global_value
+        arguments:
+          - skyrimnet_sexlab_ostim_player
+        comparisonOperator: ==
+        expectedValue: 0
+      - decoratorName: is_in_faction
+        arguments:
+          - currentActor
+          - SexLabAnimatingFaction
+        comparisonOperator: ==
+        expectedValue: false
+      - decoratorName: is_in_faction
+        arguments:
+          - currentActor
+          - OStimActorCountFaction
+        comparisonOperator: ==
+        expectedValue: false
+      - decoratorName: is_in_combat
+        arguments:
+          - currentActor
+        comparisonOperator: ==
+        expectedValue: false
+      - decoratorName: has_magic_effect
+        arguments:
+          - currentActor
+          - TTON_DeclineStartAffectionSceneEffect
+        comparisonOperator: ==
+        expectedValue: false
+      - decoratorName: decnpc
+        resultPath: isChild
+        arguments: ["currentActor"]
+        comparisonOperator: ==
+        expectedValue: false
+    logicalOperator: "AND"
+    required: true

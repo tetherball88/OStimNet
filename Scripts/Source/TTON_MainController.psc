@@ -10,7 +10,6 @@ EndEvent
 Function Maintenance()
     ; clear sexual data from Lover's Ledger which is now its own separate integration
     StorageUtil.ClearAllPrefix("TTONDec_SexualData")
-    TTON_JData.ImportStaticData()
     TTON_Storage.ClearOnLoad()
     TTON_Events.RegisterEventSchema()
 
@@ -20,7 +19,6 @@ Function Maintenance()
     RegisterForModEvent("ostim_actor_orgasm", "OStimOrgasm")
     RegisterForModEvent("ostim_thread_end", "OStimEnd")
 
-    TTON_Actions.RegisterActions()
     TTON_Events.RegisterEvents()
     TTON_Decorators.RegisterDecorators()
     TTON_Spectators.ClearAllSpectators()

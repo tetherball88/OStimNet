@@ -1,0 +1,66 @@
+name: StartNewSex
+description: "{{render_template(\"helpers/ostimnet_action_start_new_sex\")}}"
+questEditorId: TTON_MainController
+scriptName: TTON_Actions
+executionFunctionName: StartSexActionExecute
+parameterMapping:
+    - type: speaker
+      name: akActor
+      description: The actor initiating action
+    - type: dynamic
+      name: participant1
+      useNearbyActors: false
+      description: Primary partner (empty for solo)
+    - type: dynamic
+      name: participant2
+      useNearbyActors: false
+      description: Optional 2nd partner
+    - type: dynamic
+      name: participant3
+      useNearbyActors: false
+      description: Optional 3rd partner
+    - type: dynamic
+      name: participant4
+      useNearbyActors: false
+      description: Optional 4th partner
+    - type: dynamic
+      name: activity
+      description: Activity from list
+    - type: dynamic
+      name: furn
+      description: Furniture from list
+enabled: true
+eligibilityRules:
+    - conditions:
+        - decoratorName: "get_global_value"
+          arguments: ["skyrimnet_sexlab_ostim_player"]
+          comparisonOperator: "=="
+          expectedValue: 0
+        - decoratorName: "is_in_faction"
+          arguments: ["currentActor", "SexLabAnimatingFaction"]
+          comparisonOperator: "=="
+          expectedValue: false
+        - decoratorName: "is_in_faction"
+          arguments: ["currentActor", "OStimActorCountFaction"]
+          comparisonOperator: "=="
+          expectedValue: false
+        - decoratorName: "is_in_faction"
+          arguments: ["currentActor", "ChildFaction"]
+          comparisonOperator: "=="
+          expectedValue: false
+        - decoratorName: "is_in_combat"
+          arguments: ["currentActor"]
+          comparisonOperator: "=="
+          expectedValue: false
+        - decoratorName: "has_magic_effect"
+          arguments: ["currentActor", "TTON_DeclineStartNewSexEffect"]
+          comparisonOperator: "=="
+          expectedValue: false
+        - decoratorName: decnpc
+          resultPath: isChild
+          arguments: ["currentActor"]
+          comparisonOperator: ==
+          expectedValue: false
+      logicalOperator: "AND"
+      required: true
+

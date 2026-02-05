@@ -1,0 +1,23 @@
+name: SpectatorOfSexFlee
+description: "{{render_template(\"helpers/ostimnet_action_spectate_sex_flee\")}}"
+questEditorId: TTON_MainController
+scriptName: TTON_Actions
+executionFunctionName: SpectatorOfSexFleeActionExecute
+parameterMapping:
+    - type: speaker
+      name: akActor
+      description: The actor initiating action
+enabled: true
+eligibilityRules:
+    - conditions:
+        - decoratorName: "is_in_faction"
+          arguments: ["currentActor", "TTON_SpectatorFaction"]
+          comparisonOperator: "=="
+          expectedValue: true
+        - decoratorName: "is_in_faction"
+          arguments: ["currentActor", "TTON_SpectatorFleeFaction"]
+          comparisonOperator: "=="
+          expectedValue: false
+      logicalOperator: "AND"
+      required: true
+

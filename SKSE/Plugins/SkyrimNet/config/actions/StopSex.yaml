@@ -1,0 +1,24 @@
+name: StopSex
+description: "{{render_template(\"helpers/ostimnet_action_stop_sex\")}}"
+questEditorId: TTON_MainController
+scriptName: TTON_Actions
+executionFunctionName: ChangeSexActivityActionExecute
+parameterMapping:
+    - type: speaker
+      name: akActor
+      description: The actor initiating action
+enabled: true
+eligibilityRules:
+    - conditions:
+        - decoratorName: "is_in_faction"
+          arguments: ["currentActor", "OStimActorCountFaction"]
+          comparisonOperator: "=="
+          expectedValue: true
+        - decoratorName: "has_magic_effect"
+          arguments: ["currentActor", "TTON_DeclineStopSexEffect"]
+          comparisonOperator: "=="
+          expectedValue: false
+        # todo exclude children
+      logicalOperator: "AND"
+      required: true
+

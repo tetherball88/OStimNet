@@ -39,6 +39,15 @@ EndFunction
 
 Function ClearOnLoad() global
     StorageUtil.ClearAllPrefix("TTONDec_")
+
+    ; clear possible values from deny actions functionality, which was moved to spell based approach
+    StorageUtil.ClearAllPrefix("deny.StartAffectionScene")
+    StorageUtil.ClearAllPrefix("deny.StartNewSex")
+    StorageUtil.ClearAllPrefix("deny.ChangeSexActivity")
+    StorageUtil.ClearAllPrefix("deny.InviteToYourSex")
+    StorageUtil.ClearAllPrefix("deny.JoinOngoingSex")
+    StorageUtil.ClearAllPrefix("deny.ChangeSexPace")
+    StorageUtil.ClearAllPrefix("deny.StopSex")
 EndFunction
 
 string Function GetActorsNames(int ThreadID) global

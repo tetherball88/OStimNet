@@ -16,13 +16,6 @@ string Function GetStaticKey() global
     return GetNamespaceKey() + ".static"
 EndFunction
 
-;/
-  Returns the key for initial data in JContainers.
-/;
-string Function GetInitialDataKey() global
-    return GetStaticKey() + ".initialData"
-EndFunction
-
 ;/ ==============================
    SECTION: Object Top level
 ============================== /;
@@ -31,7 +24,6 @@ EndFunction
 /;
 Function Clear() global
     JDB_solveObjSetter(GetNamespaceKey(), JMap_object())
-    ImportStaticData()
 EndFunction
 
 ;/
@@ -49,18 +41,6 @@ Function ImportData() global
     JDB_solveObjSetter(GetNamespaceKey(), jObj)
 EndFunction
 
-;/
-  Imports static data (initialData.json) into JContainers.
-/;
-Function ImportStaticData() global
-    int JRoot = JDB_solveObj(GetNamespaceKey())
-    if(JRoot == 0)
-        JDB_solveObjSetter(GetNamespaceKey(), JMap_object())
-    endif
-    JDB_solveObjSetter(GetStaticKey() + ".initialData", JValue_readFromFile("Data/SKSE/Plugins/OStimNet/initialData.json"), true)
-    ImportAnimationsDescriptions()
-    ClearTmpData()
-EndFunction
 
 int Function LoadMultipleFiles(string folderPath, bool isFormMap = false) global
     int JTarget
@@ -99,43 +79,7 @@ EndFunction
   Returns the player Actor form.
 /;
 Actor Function GetPlayer() global
-    return JDB_solveForm(GetInitialDataKey() + ".player") as Actor
-EndFunction
-
-int Function GetActions() global
-    return JDB_solveObj(GetInitialDataKey() + ".actions")
-EndFunction
-
-string Function NextAction(string previousKey = "") global
-    return JMap_nextKey(GetActions(), previousKey)
-EndFunction
-
-string Function GetActionName(string actionName) global
-    return JDB_solveStr(GetInitialDataKey() + ".actions." + actionName + ".name")
-EndFunction
-
-string Function GetActionScriptFileName(string actionName) global
-    return JDB_solveStr(GetInitialDataKey() + ".actions." + actionName + ".scriptFileName")
-EndFunction
-
-string Function GetActionIsEligible(string actionName) global
-    return JDB_solveStr(GetInitialDataKey() + ".actions." + actionName + ".isEligible")
-EndFunction
-
-string Function GetActionExecute(string actionName) global
-    return JDB_solveStr(GetInitialDataKey() + ".actions." + actionName + ".execute")
-EndFunction
-
-bool Function GetActionAddTags(string actionName) global
-    return JDB_solveInt(GetInitialDataKey() + ".actions." + actionName + ".addTags") == 1
-EndFunction
-
-string Function GetActionDescription(string actionName) global
-    return JDB_solveStr(GetInitialDataKey() + ".actions." + actionName + ".description")
-EndFunction
-
-string Function GetActionParameters(string actionName) global
-    return JDB_solveStr(GetInitialDataKey() + ".actions." + actionName + ".parameters")
+    return Game.GetPlayer()
 EndFunction
 
 ;/ ==============================
@@ -367,26 +311,35 @@ Faction Function GetPlayerMarriedFaction() global
     return Game.GetFormFromFile(0xc6472, "Skyrim.esm") as Faction
 EndFunction
 
+Spell Function GetDeclineSpell(string actionName) global
+    int formId = 0
+    if(actionName == "StartAffectionScene")
+        formId = 0x9
+    elseif(actionName == "StartNewSex")
+        formId = 0x10
+    elseif(actionName == "ChangeSexActivity")
+        formId = 0x11
+    elseif(actionName == "InviteToYourSex")
+        formId = 0x12
+    elseif(actionName == "JoinOngoingSex")
+        formId = 0x13
+    elseif(actionName == "ChangeSexPace")
+        formId = 0x14
+    elseif(actionName == "StopSex")
+        formId = 0x15
+    endif
+
+    if(formId == 0)
+        return none
+    endif
+
+    return Game.GetFormFromFile(formId, "TT_OstimNet.esp") as Spell
+EndFunction
+
 ;/ ==============================
    SECTION: Sex comments
 ============================== /;
 
 Function SetDeclineActionCooldown(Actor akActor, string actionName) global
-    StorageUtil.SetFloatValue(akActor, "deny." + actionName, Utility.GetCurrentRealTime())
-EndFunction
-
-float Function GetDeclineActionCooldown(Actor akActor, string actionName) global
-    return StorageUtil.GetFloatValue(akActor, "deny." + actionName)
-EndFunction
-
-bool Function CanUseActionAfterDecline(Actor akActor, string actionName) global
-    float lastDeclineTime = GetDeclineActionCooldown(akActor, actionName)
-    if(lastDeclineTime == 0.0)
-        return true
-    endif
-
-    float now = Utility.GetCurrentRealTime()
-    float diff = now - lastDeclineTime
-
-    return TTON_JData.GetMcmDenyCooldown() <= diff
+    akActor.AddSpell(GetDeclineSpell(actionName))
 EndFunction

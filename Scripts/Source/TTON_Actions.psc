@@ -1,4 +1,4 @@
-scriptname TTON_Actions
+scriptname TTON_Actions extends Quest
 
 ;==========================================================================
 ; Main Registration
@@ -7,27 +7,7 @@ scriptname TTON_Actions
 ; Registers all available OStimNet actions with the SkyrimNet system.
 ; This is the main entry point for registering all sex-related actions.
 Function RegisterActions() global
-    string act = TTON_JData.NextAction()
-    while(act != "")
-        string fileName = TTON_JData.GetActionScriptFileName(act)
-        string tags
-        if(TTON_JData.GetActionAddTags(act))
-            tags = GetTags()
-        endif
-        string actionName = TTON_JData.GetActionName(act)
-        bool skipSpectatorActions = !TTON_JData.GetSpectatorsEnabled() && (actionName == "SpectatorOfSex" || actionName == "SpectatorOfSexFlee")
-        if(!skipSpectatorActions)
-            SkyrimNetApi.RegisterAction( \
-                actionName, \
-                TTON_JData.GetActionDescription(act), \
-                fileName, TTON_JData.GetActionIsEligible(act), fileName, TTON_JData.GetActionExecute(act), "", "PAPYRUS", 1, \
-                TTON_JData.GetActionParameters(act), \
-                "", tags \
-            )
-        endif
-
-        act = TTON_JData.NextAction(act)
-    endwhile
+; placeholder
 EndFunction
 
 ; -------------------------------------------------
@@ -51,22 +31,9 @@ EndFunction
 ; gentle interactions like kissing, hugging, or cuddling.
 ;==========================================================================
 
-; Placeholder eligibility check for the affection scene action.
-; Implementation should ensure actors are free from ongoing OStim threads and mutually willing.
-Bool Function StartAffectionSceneIsEligible(Actor akActor, string contextJson, string paramsJson) global
-    PrintEligibilityConditions(akActor, "StartAffectionSceneIsEligible", "IsSexLabInCharge", TTON_Utils.IsSexLabInCharge())
-    PrintEligibilityConditions(akActor, "StartAffectionSceneIsEligible", "IsActorBusyWithScenes", TTON_Utils.IsActorBusyWithScenes(akActor))
-    PrintEligibilityConditions(akActor, "StartAffectionSceneIsEligible", "IsOStimEligible", TTON_Utils.IsOStimEligible(akActor))
-    PrintEligibilityConditions(akActor, "StartAffectionSceneIsEligible", "CanUseActionAfterDecline", TTON_JData.CanUseActionAfterDecline(akActor, "StartAffectionScene"))
-    return !TTON_Utils.IsSexLabInCharge() && !TTON_Utils.IsActorBusyWithScenes(akActor) && TTON_Utils.IsOStimEligible(akActor) && TTON_JData.CanUseActionAfterDecline(akActor, "StartAffectionScene")
-EndFunction
-
 ; Placeholder handler for initiating the affection scene.
 ; Actual implementation should be added when the underlying scene logic is available.
-Function StartAffectionSceneExecute(Actor akActor, string contextJson, string paramsJson) global
-    string activity = SkyrimNetApi.GetJsonString(paramsJson, "activity", "kissing")
-    Actor participant1 = TTON_Utils.GetEligibleActorFromParam(paramsJson, "participant1")
-
+Function StartAffectionSceneExecute(Actor akActor, Actor participant1, string activity)
     if(TTON_Utils.IsSexLabInCharge())
         TTON_Debug.warn("OStimNet is disabled for player scenes while SkyrimNet_SexLab has control.")
         return
@@ -92,31 +59,11 @@ EndFunction
 ; This action allows NPCs to initiate new sexual encounters with up to 4 participants - total up to 5 participants including speaking npc.
 ;==========================================================================
 
-; Checks if an actor is eligible to start a new sexual encounter
-; @param akActor The actor to check eligibility for
-; @param contextJson The context data in JSON format
-; @param paramsJson The parameters data in JSON format
-; @returns True if the actor is eligible to start a new sexual encounter
-Bool Function StartSexActionIsEligible(Actor akActor, string contextJson, string paramsJson) global
-    PrintEligibilityConditions(akActor, "StartSexActionIsEligible", "IsSexLabInCharge", TTON_Utils.IsSexLabInCharge())
-    PrintEligibilityConditions(akActor, "StartSexActionIsEligible", "IsActorBusyWithScenes", TTON_Utils.IsActorBusyWithScenes(akActor))
-    PrintEligibilityConditions(akActor, "StartSexActionIsEligible", "IsOStimEligible", TTON_Utils.IsOStimEligible(akActor))
-    PrintEligibilityConditions(akActor, "StartSexActionIsEligible", "CanUseActionAfterDecline", TTON_JData.CanUseActionAfterDecline(akActor, "StartSexAction"))
-    return !TTON_Utils.IsSexLabInCharge() && !TTON_Utils.IsActorBusyWithScenes(akActor) && TTON_Utils.IsOStimEligible(akActor) && TTON_JData.CanUseActionAfterDecline(akActor, "StartSexAction")
-EndFunction
-
 ; Starts a new sexual encounter with specified participants
 ; @param akActor The initiating actor
 ; @param contextJson The context data in JSON format
 ; @param paramsJson The parameters containing participant info and encounter type
-Function StartSexActionExecute(Actor akActor, string contextJson, string paramsJson) global
-    string actions = SkyrimNetApi.GetJsonString(paramsJson, "activity", "vaginalsex")
-    string furn = SkyrimNetApi.GetJsonString(paramsJson, "furniture", "none")
-    Actor participant1 = TTON_Utils.GetEligibleActorFromParam(paramsJson, "participant1")
-    Actor participant2 = TTON_Utils.GetEligibleActorFromParam(paramsJson, "participant2")
-    Actor participant3 = TTON_Utils.GetEligibleActorFromParam(paramsJson, "participant3")
-    Actor participant4 = TTON_Utils.GetEligibleActorFromParam(paramsJson, "participant4")
-
+Function StartSexActionExecute(Actor akActor, Actor participant1, Actor participant2, Actor participant3, Actor participant4, string activity, string furn) global
     if(TTON_Utils.IsSexLabInCharge())
         TTON_Debug.warn("OStimNet is disabled while SkyrimNet_SexLab has control of player scenes.")
         return
@@ -162,7 +109,7 @@ Function StartSexActionExecute(Actor akActor, string contextJson, string paramsJ
     Actor[] actors = OActorUtil.ToArray(akActor, participant1, participant2, participant3, participant4)
 
     TTON_Debug.warn("Starting OStim scene with actors: " + actors)
-    TTON_OStimIntegration.StartOstim(actors, actions, furn, initiator = akActor)
+    TTON_OStimIntegration.StartOstim(actors, activity, furn, initiator = akActor)
 EndFunction
 
 ;==========================================================================
@@ -170,26 +117,13 @@ EndFunction
 ; This action allows NPCs to change their current sexual activity or position
 ;==========================================================================
 
-; Checks if an actor is eligible to change their current sexual position
-; @param akActor The actor to check eligibility for
-; @param contextJson The context data in JSON format
-; @param paramsJson The parameters data in JSON format
-; @returns True if the actor is currently in an OStim scene
-Bool Function ChangeSexActivityIsEligible(Actor akActor, string contextJson, string paramsJson) global
-    int ThreadID = OActor.GetSceneID(akActor)
-    PrintEligibilityConditions(akActor, "ChangeSexActivityIsEligible", "GetThreadAffectionOnly", TTON_Storage.GetThreadAffectionOnly(ThreadID))
-    PrintEligibilityConditions(akActor, "ChangeSexActivityIsEligible", "CanUseActionAfterDecline", TTON_JData.CanUseActionAfterDecline(akActor, "ChangeSexActivity"))
-    PrintEligibilityConditions(akActor, "ChangeSexActivityIsEligible", "IsInOStim", OActor.IsInOStim(akActor))
-    return OActor.IsInOStim(akActor) && !TTON_Storage.GetThreadAffectionOnly(ThreadID) && TTON_JData.CanUseActionAfterDecline(akActor, "ChangeSexActivity")
-EndFunction
 
 ; Changes the sexual position or activity in an ongoing encounter
 ; @param akActor The actor requesting the position change
 ; @param contextJson The context data in JSON format
 ; @param paramsJson The parameters containing the new position type
 ; @returns True if the position was successfully changed
-Bool Function ChangeSexActivityActionExecute(Actor akActor, string contextJson, string paramsJson) global
-    string activity = SkyrimNetApi.GetJsonString(paramsJson, "activity", "empty")
+Bool Function ChangeSexActivityActionExecute(Actor akActor, string activity) global
     TTON_OStimIntegration.OStimChangeScene(akActor, activity)
     SkyrimNetApi.SetActionCooldown("ChangeSexActivity", TTON_JData.GetMcmDenyCooldown())
 EndFunction
@@ -199,63 +133,50 @@ EndFunction
 ; This action allows NPCs to invite others to join their ongoing sexual encounter
 ;==========================================================================
 
-; Checks if an actor is eligible to invite others to their sexual encounter
-; @param akActor The actor wanting to invite others
-; @param contextJson The context data in JSON format
-; @param paramsJson The parameters data in JSON format
-; @returns True if the actor is currently in an OStim scene
-Bool Function InviteToYourSexIsEligible(Actor akActor, string contextJson, string paramsJson) global
-    int ThreadID =OActor.GetSceneID(akActor)
-    PrintEligibilityConditions(akActor, "InviteToYourSexIsEligible", "IsInOStim", OActor.IsInOStim(akActor))
-    PrintEligibilityConditions(akActor, "InviteToYourSexIsEligible", "GetThreadAffectionOnly", TTON_Storage.GetThreadAffectionOnly(ThreadID))
-    PrintEligibilityConditions(akActor, "InviteToYourSexIsEligible", "CanUseActionAfterDecline", TTON_JData.CanUseActionAfterDecline(akActor, "InviteToYourSex"))
-    return OActor.IsInOStim(akActor) && !TTON_Storage.GetThreadAffectionOnly(ThreadID) && TTON_JData.CanUseActionAfterDecline(akActor, "InviteToYourSex")
-EndFunction
-
 ; Handles the invitation of new participants to an ongoing sexual encounter
 ; @param akActor The actor sending the invitation
 ; @param contextJson The context data in JSON format
 ; @param paramsJson The parameters containing target actors to invite
-Bool Function InviteToYourSexExecute(Actor akActor, string contextJson, string paramsJson) global
+Bool Function InviteToYourSexExecute(Actor akActor, Actor participant1, Actor participant2, Actor participant3) global
     int ThreadID = OActor.GetSceneID(akActor)
     int currentActorsLength = OThread.GetActors(ThreadID).Length
-    ; OStim scenes animations at this time can support up to 5 participants total
-    Actor participant1 = none
-    Actor participant2 = none
-    Actor participant3 = none
-
     ; max participants in current ostim scenes is 5, if it is already 5 skip this action
     if(currentActorsLength == 5)
         return false
     endif
 
+    ; OStim scenes animations at this time can support up to 5 participants total
+    Actor finalParticipant1 = none
+    Actor finalParticipant2 = none
+    Actor finalParticipant3 = none
+
     ; 1 or more free spaces in current thread
     if(currentActorsLength < 5)
-        participant1 = TTON_Utils.GetEligibleActorFromParam(paramsJson, "participant1")
+        finalParticipant1 = participant1
         if(StorageUtil.GetIntValue(participant1, "SexInviteConsidering") == 1)
-            participant1 = none
+            finalParticipant1 = none
         else
-            StorageUtil.SetIntValue(participant1, "SexInviteConsidering", 1)
+            StorageUtil.SetIntValue(finalParticipant1, "SexInviteConsidering", 1)
         endif
     endif
 
     ; 2 or more free spaces in current thread
     if(currentActorsLength < 4)
-        participant2 = TTON_Utils.GetEligibleActorFromParam(paramsJson, "participant2")
+        finalParticipant2 = participant2
         if(StorageUtil.GetIntValue(participant2, "SexInviteConsidering") == 1)
-            participant2 = none
+            finalParticipant2 = none
         else
-            StorageUtil.SetIntValue(participant2, "SexInviteConsidering", 1)
+            StorageUtil.SetIntValue(finalParticipant2, "SexInviteConsidering", 1)
         endif
     endif
 
     ; 3 or more free spaces in current thread
     if(currentActorsLength < 3)
-        participant3 = TTON_Utils.GetEligibleActorFromParam(paramsJson, "participant3")
+        finalParticipant3 = participant3
         if(StorageUtil.GetIntValue(participant3, "SexInviteConsidering") == 1)
-            participant3 = none
+            finalParticipant3 = none
         else
-            StorageUtil.SetIntValue(participant3, "SexInviteConsidering", 1)
+            StorageUtil.SetIntValue(finalParticipant3, "SexInviteConsidering", 1)
         endif
     endif
     TTON_OStimIntegration.AddActorsToActiveThread(ThreadID, OActorUtil.ToArray(participant1, participant2, participant3), "InviteToYourSex", akActor)
@@ -266,24 +187,13 @@ EndFunction
 ; This action allows NPCs to join an ongoing sexual encounter they are observing
 ;==========================================================================
 
-; Checks if an actor is eligible to join an ongoing sexual encounter
-; @param akActor The actor wanting to join
-; @param contextJson The context data in JSON format
-; @param paramsJson The parameters data in JSON format
-; @returns True if the actor is not in a scene, there are active scenes, and the actor is eligible
-Bool Function JoinOngoingSexIsEligible(Actor akActor, string contextJson, string paramsJson) global
-    PrintEligibilityConditions(akActor, "JoinOngoingSexIsEligible", "IsActorEligibleToJoin", TTON_Utils.IsActorEligibleToJoin(akActor))
-    PrintEligibilityConditions(akActor, "JoinOngoingSexIsEligible", "CanUseActionAfterDecline", TTON_JData.CanUseActionAfterDecline(akActor, "JoinOngoingSex"))
-    return TTON_Utils.IsActorEligibleToJoin(akActor) && TTON_JData.CanUseActionAfterDecline(akActor, "JoinOngoingSex")
-EndFunction
 
 ; Handles joining an ongoing sexual encounter
 ; @param akActor The actor joining the scene
 ; @param contextJson The context data in JSON format
 ; @param paramsJson The parameters containing the target actor to interact with
 ; @returns True if successfully joined the scene
-Bool Function JoinOngoingSexActionExecute(Actor akActor, string contextJson, string paramsJson) global
-    Actor participant1 = SkyrimNetApi.GetJsonActor(paramsJson, "participant1", none)
+Bool Function JoinOngoingSexActionExecute(Actor akActor, Actor participant1) global
     int ThreadID = OActor.GetSceneID(participant1)
     int currentActorsLength = OThread.GetActors(ThreadID).Length
     ; max participants in current ostim scenes is 5, if it is already 5 skip this action
@@ -305,27 +215,13 @@ EndFunction
 ; This action allows NPCs to change the speed and intensity of the current sexual activity
 ;==========================================================================
 
-; Checks if an actor is eligible to change the pace of their current sexual activity
-; @param akActor The actor wanting to change pace
-; @param contextJson The context data in JSON format
-; @param paramsJson The parameters data in JSON format
-; @returns True if the actor is in a scene and the scene has available speed changes
-Bool Function ChangeSexPaceIsEligible(Actor akActor, string contextJson, string paramsJson) global
-    int ThreadId = OActor.GetSceneID(akActor)
-    string SceneId = OThread.GetScene(ThreadId)
-    int currentSpeed = OThread.GetSpeed(ThreadId)
-    string hasSpeedsToMove = TTON_Utils.GetAvailableSpeedDirections(SceneId, currentSpeed)
-    return OActor.IsInOStim(akActor) && hasSpeedsToMove != "none" && !TTON_Storage.GetThreadAffectionOnly(ThreadId) && TTON_JData.CanUseActionAfterDecline(akActor, "ChangeSexPace")
-EndFunction
-
 ; Changes the pace of the current sexual activity
 ; @param akActor The actor changing the pace
 ; @param contextJson The context data in JSON format
 ; @param paramsJson The parameters containing the desired speed change
-Function ChangeSexPaceActionExecute(Actor akActor, string contextJson, string paramsJson) global
+Function ChangeSexPaceActionExecute(Actor akActor, string speed) global
     int ThreadId = OActor.GetSceneID(akActor)
-    string speed = SkyrimNetApi.GetJsonString(paramsJson, "speed", "none")
-    if(speed == "none")
+    if(speed != "increase" && speed != "decrease")
         return
     endif
 
@@ -337,35 +233,14 @@ EndFunction
 ; This action allows NPCs to end their current sexual encounter
 ;==========================================================================
 
-; Checks if an actor is eligible to stop their current sexual encounter
-; @param akActor The actor wanting to stop
-; @param contextJson The context data in JSON format
-; @param paramsJson The parameters data in JSON format
-; @returns True if the actor is currently in an OStim scene
-bool Function StopSexIsEligible(Actor akActor, string contextJson, string paramsJson) global
-    int ThreadID = OActor.GetSceneID(akActor)
-    PrintEligibilityConditions(akActor, "StopSexIsEligible", "GetThreadAffectionOnly", TTON_Storage.GetThreadAffectionOnly(ThreadID))
-    PrintEligibilityConditions(akActor, "StopSexIsEligible", "CanUseActionAfterDecline", TTON_JData.CanUseActionAfterDecline(akActor, "StopSex"))
-    PrintEligibilityConditions(akActor, "StopSexIsEligible", "IsInOStim", OActor.IsInOStim(akActor))
-    return OActor.IsInOStim(akActor) && !TTON_Storage.GetThreadAffectionOnly(ThreadID) && TTON_JData.CanUseActionAfterDecline(akActor, "StopSex")
-EndFunction
 
 ; Stops the current sexual encounter
 ; @param akActor The actor stopping the scene
 ; @param contextJson The context data in JSON format
 ; @param paramsJson The parameters data in JSON format
-Function StopSexActionExecute(Actor akActor, string contextJson, string paramsJson) global
+Function StopSexActionExecute(Actor akActor) global
     TTON_OStimIntegration.StopOStim(akActor)
     SkyrimNetApi.SetActionCooldown("StopSex", TTON_JData.GetMcmDenyCooldown())
-EndFunction
-
-bool Function SpectatorOfSexIsEligible(Actor akActor, string contextJson, string paramsJson) global
-    PrintEligibilityConditions(akActor, "SpectatorOfSexIsEligible", "CanAddSpectator", TTON_Spectators.CanAddSpectator())
-    PrintEligibilityConditions(akActor, "SpectatorOfSexIsEligible", "IsSexLabInCharge", TTON_Utils.IsSexLabInCharge())
-    PrintEligibilityConditions(akActor, "SpectatorOfSexIsEligible", "IsActorBusyWithScenes", TTON_Utils.IsActorBusyWithScenes(akActor))
-    PrintEligibilityConditions(akActor, "SpectatorOfSexIsEligible", "IsOStimEligible", TTON_Utils.IsOStimEligible(akActor))
-    PrintEligibilityConditions(akActor, "SpectatorOfSexIsEligible", "IsInSpectatorFaction", akActor.IsInFaction(TTON_JData.GetSpectatorFaction()))
-    return TTON_Spectators.CanAddSpectator() && !TTON_Utils.IsSexLabInCharge() && !TTON_Utils.IsActorBusyWithScenes(akActor) && TTON_Utils.IsOStimEligible(akActor) && !akActor.IsInFaction(TTON_JData.GetSpectatorFaction())
 EndFunction
 
 Function SpectatorOfSexActionExecute(Actor akActor, string contextJson, string paramsJson) global
@@ -382,18 +257,17 @@ Function SpectatorOfSexActionExecute(Actor akActor, string contextJson, string p
         return
     endif
 
+    if(!TTON_Spectators.CanAddSpectator())
+        TTON_Debug.warn("SpectatorOfSexActionExecute: cannot add spectator")
+        return
+    endif
+
     if(!TTON_Spectators.CanAddSpectatorsToThread(ThreadID))
         TTON_Debug.warn("SpectatorOfSexActionExecute: cannot add more spectators to thread " + ThreadID)
         return
     endif
 
     TTON_Spectators.TryMakeSpectator(akActor, target)
-EndFunction
-
-bool Function SpectatorOfSexFleeIsEligible(Actor akActor, string contextJson, string paramsJson) global
-    PrintEligibilityConditions(akActor, "SpectatorOfSexFleeIsEligible", "IsInSpectatorFaction", akActor.IsInFaction(TTON_JData.GetSpectatorFaction()))
-    PrintEligibilityConditions(akActor, "SpectatorOfSexFleeIsEligible", "IsInSpectatorFleeFaction", akActor.IsInFaction(TTON_JData.GetSpectatorFleeFaction()))
-    return akActor.IsInFaction(TTON_JData.GetSpectatorFaction()) && !akActor.IsInFaction(TTON_JData.GetSpectatorFleeFaction())
 EndFunction
 
 Function SpectatorOfSexFleeActionExecute(Actor akActor, string contextJson, string paramsJson) global
