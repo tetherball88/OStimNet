@@ -1,5 +1,5 @@
-name: StartAffectionScene
-description: "{{render_template(\"helpers/ostimnet_action_start_affectionate_scene\")}}"
+name: StartAffectionSceneRomantic
+description: "{{render_template(\"helpers/ostimnet_action_start_affectionate_scene_romantic\")}}"
 questEditorId: TTON_MainController
 scriptName: TTON_Actions
 executionFunctionName: StartAffectionSceneExecute

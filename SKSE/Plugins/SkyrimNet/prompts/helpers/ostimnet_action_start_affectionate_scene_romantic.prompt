@@ -22,4 +22,4 @@
 {% endfor %}
 {% set ostimPotentialParticipantsString = join(ostimPotentialParticipants, ", ") %}
 {% set ostimActions = "cuddling|hugging|frenchkissing|kissing|kissingcheek|kissinghand|kissingneck|pattinghead" %}
-{{speakingNpc.name}} initiates non-sexual physical affection. Use when NPC explicitly INITIATES physical affection (proposing to cuddle/kiss/hug), NOT for affectionate talk or commentary during/after other scenes, NOT for intercourse (use StartNewSex). Partners: {{ostimPotentialParticipantsString}}. Activities: {{ostimActions}}
+{{speakingNpc.name}} initiates non-sexual physical ROMANTIC affection. Use when NPC explicitly INITIATES physical affection (proposing to cuddle/kiss/hug), NOT for affectionate talk or commentary during/after other scenes, NOT for intercourse (use StartNewSex). Partners: {{ostimPotentialParticipantsString}}. Activities: {{ostimActions}} DON'T USE this action on family members(except spouses) or NPCs in platonic or friendly relationships. Use StartAffectionSceneFriend instead.
