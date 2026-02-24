@@ -108,6 +108,28 @@ Function StartSexActionExecute(Actor akActor, Actor participant1, Actor particip
 
     Actor[] actors = OActorUtil.ToArray(akActor, participant1, participant2, participant3, participant4)
 
+    if(TTON_JData.GetEvaluateParticipantsWithGameMaster() && actors.Length > 1)
+        Quest _q = self
+        TTON_GameMaster gm = _q as TTON_GameMaster
+
+        int res = gm.EvaluatePotentialParticipants(akActor, participant1, participant2, participant3, participant4)
+
+        if(res == 0)
+            TTON_Debug.info("StartSexActionExecute: Task queued successfully.")
+            ; interrupt current dialogue so for example potential participants will schedule their answers as no, but after that their willingness from this call comes as yes
+            SkyrimNetApi.TriggerInterruptDialogue(true)
+            return ; it will start inside ProcessPotentialParticipants if LLM decides everyone agree
+        endif
+
+        if(res == 1)
+            TTON_Debug.warn("StartSexActionExecute: Another task is already queued. Start without consent.")
+        endif
+
+        if(res == 2)
+            TTON_Debug.warn("StartSexActionExecute: Failed to evaluate potential participants. Start without consent.")
+        endif
+    endif
+
     TTON_Debug.warn("Starting OStim scene with actors: " + actors)
     TTON_OStimIntegration.StartOstim(actors, activity, furn, initiator = akActor)
 EndFunction

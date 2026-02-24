@@ -1,0 +1,19 @@
+{% if render_mode == "tton_gm" %}
+### Summary
+{{ render_character_profile("bio_summary", actorUUID) }}
+### Background
+{{ render_character_profile("bio_background", actorUUID) }}
+### Personality
+{{ render_character_profile("bio_personality", actorUUID) }}
+{{ render_character_profile("ttll_relations", actorUUID) }}
+### Appearance
+{{ render_character_profile("bio_appearance", actorUUID) }}
+### Relationships
+{{ render_character_profile("bio_relationships", actorUUID) }}
+{{ render_character_profile("ttll_relations", actorUUID) }}
+{{ render_character_profile("ttm_relations", actorUUID) }}
+
+### Memories
+{{ render_character_profile("bio_long_term_memories", actorUUID) }}
+{% include "submodules/character_bio/7100_memories.prompt" %} 
+{% endif %}

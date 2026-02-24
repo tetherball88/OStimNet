@@ -12,6 +12,7 @@ Function Maintenance()
     StorageUtil.ClearAllPrefix("TTONDec_SexualData")
     TTON_Storage.ClearOnLoad()
     TTON_Events.RegisterEventSchema()
+    TTON_GameMaster.ClearStorage()
 
     RegisterForModEvent("ostim_thread_start", "OStimStart")
     RegisterForModEvent("ostim_thread_scenechanged", "OStimSceneChange")

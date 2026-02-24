@@ -36,10 +36,17 @@ int function StartOstim(actor[] actors, string actions = "", string furn = "", b
                 return -1
             endif
         else
-            bool yes = TTON_Utils.Ask("StartNewSex", initiator, \
-            initiatorName + " wants to have sexual encounter with " + TTON_Utils.GetActorsNamesComaSeparated(actors, initiator) + ". Do you accept?")
+            string msg = initiatorName + " wants to have sexual encounter with " + TTON_Utils.GetActorsNamesComaSeparated(actors, initiator) + ". Do you accept?"
+            if(actors.Length > 2)
+                msg += "(if you reject they will start without you)"
+            endif
+            bool yes = TTON_Utils.Ask("StartNewSex", initiator, msg)
             if(!yes)
-                return -1
+                if(actors.Length > 2)
+                    actors = PapyrusUtil.RemoveActor(actors, player)
+                else
+                    return -1
+                endif
             endif
         endif
     endif

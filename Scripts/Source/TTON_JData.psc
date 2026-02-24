@@ -213,6 +213,34 @@ bool Function GetConfirmAddNewActors() global
     return GetMcmCheckbox("confirmAddActors", 1)
 EndFunction
 
+bool Function GetEvaluateParticipantsWithGameMaster() global
+    return GetMcmCheckbox("evaluateParticipantsWithGameMaster", 0)
+EndFunction
+
+bool Function GetGmScanOnLocationChange() global
+    return GetMcmCheckbox("gmScanOnLocationChange", 0)
+EndFunction
+
+Function SetGmMatchmakingHotkey(int value) global
+    SetMcmInt("gmMatchmakingHotkey", value)
+EndFunction
+
+int Function GetGmMatchmakingHotkey() global
+    return GetMcmInt("gmMatchmakingHotkey")
+EndFunction
+
+Function SetGmLlmVariant(string value) global
+    JDB_solveStrSetter(GetNamespaceKey() + ".mcm.gmLlmVariant", value, true)
+EndFunction
+
+string Function GetGmLlmVariant() global
+    string val = JDB_solveStr(GetNamespaceKey() + ".mcm.gmLlmVariant")
+    if(val == "")
+        val = "meta"
+    endif
+    return val
+EndFunction
+
 ;/ ==============================
    SECTION: Spectator Settings
 ============================== /;
