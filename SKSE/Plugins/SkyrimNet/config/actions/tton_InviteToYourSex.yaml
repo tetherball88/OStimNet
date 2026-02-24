@@ -14,11 +14,13 @@ parameterMapping:
     - type: dynamic
       name: participant2
       description: Second invitee (optional)
+      optional: true
       useNearbyActors: false
     - type: dynamic
       name: participant3
       description: Third invitee (optional)
       useNearbyActors: false
+      optional: true
 enabled: true
 eligibilityRules:
     - conditions:

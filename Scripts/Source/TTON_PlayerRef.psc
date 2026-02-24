@@ -5,3 +5,9 @@ Event OnPlayerLoadGame()
     mainController.Maintenance()
 EndEvent
 
+Event OnLocationChange(Location akOldLoc, Location akNewLoc)
+    if(TTON_JData.GetGmScanOnLocationChange())
+        TTON_GameMaster gm = self.GetOwningQuest() as TTON_GameMaster
+        gm.EvaluateNearbyNpcs()
+    endif
+EndEvent

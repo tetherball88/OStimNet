@@ -36,10 +36,17 @@ int function StartOstim(actor[] actors, string actions = "", string furn = "", b
                 return -1
             endif
         else
-            bool yes = TTON_Utils.Ask("StartNewSex", initiator, \
-            initiatorName + " wants to have sexual encounter with " + TTON_Utils.GetActorsNamesComaSeparated(actors, initiator) + ". Do you accept?")
+            string msg = initiatorName + " wants to have sexual encounter with " + TTON_Utils.GetActorsNamesComaSeparated(actors, initiator) + ". Do you accept?"
+            if(actors.Length > 2)
+                msg += "(if you reject they will start without you)"
+            endif
+            bool yes = TTON_Utils.Ask("StartNewSex", initiator, msg)
             if(!yes)
-                return -1
+                if(actors.Length > 2)
+                    actors = PapyrusUtil.RemoveActor(actors, player)
+                else
+                    return -1
+                endif
             endif
         endif
     endif
@@ -189,11 +196,9 @@ function AddActorsToActiveThread(int ThreadID, actor[] newActors, string actionN
     endif
     if(!shouldSkip)
         TTON_Storage.SetThreadAddNewActors(ThreadID, 1)
-        OThread.Stop(ThreadID)
-        while(OThread.isRunning(ThreadID))
-            Utility.Wait(0.2)
-        endwhile
-        int NewThreadID = StartOstim(allActors, "", OThread.GetFurnitureType(ThreadID), continuation = true)
+        int NewThreadID = OStimHotSwap.MigrateThread(ThreadID, allActors)
+        TTON_Debug.debug("Migrated thread " + ThreadID + " to new thread " + NewThreadID)
+
         TTON_Storage.SetThreadContinuationFrom(ThreadID, NewThreadID)
     endif
 

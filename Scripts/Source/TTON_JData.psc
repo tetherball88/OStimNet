@@ -213,6 +213,22 @@ bool Function GetConfirmAddNewActors() global
     return GetMcmCheckbox("confirmAddActors", 1)
 EndFunction
 
+bool Function GetEvaluateParticipantsWithGameMaster() global
+    return GetMcmCheckbox("evaluateParticipantsWithGameMaster", 0)
+EndFunction
+
+bool Function GetGmScanOnLocationChange() global
+    return GetMcmCheckbox("gmScanOnLocationChange", 0)
+EndFunction
+
+Function SetGmMatchmakingHotkey(int value) global
+    SetMcmInt("gmMatchmakingHotkey", value)
+EndFunction
+
+int Function GetGmMatchmakingHotkey() global
+    return GetMcmInt("gmMatchmakingHotkey")
+EndFunction
+
 ;/ ==============================
    SECTION: Spectator Settings
 ============================== /;

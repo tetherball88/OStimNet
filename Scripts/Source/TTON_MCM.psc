@@ -4,6 +4,9 @@ int property oid_SettingsClearData auto
 int property oid_SettingsExportData auto
 int property oid_SettingsImportData auto
 
+int property oid_EvaluateParticipantsWithGameMaster auto
+int property oid_GmScanOnLocationChange auto
+int property oid_GmMatchmakingHotkey auto
 int property oid_EnableStartSexConfirmationModal auto
 int property oid_EnableStartAffectionateConfirmationModal auto
 int property oid_EnableChangePositionConfirmationModal auto
@@ -36,11 +39,11 @@ Event OnConfigInit()
     Pages = new string[1]
 
     Pages[0] = "Settings"
-    RegisterMuteHotkey()
+    RegisterHotkeys()
 EndEvent
 
 Event OnConfigOpen()
-    RegisterMuteHotkey()
+    RegisterHotkeys()
 EndEvent
 
 Event OnPageReset(string page)
@@ -106,6 +109,11 @@ Function RenderRightColumn()
     float denyCooldown = TTON_JData.GetMcmDenyCooldown() as float
     oid_DeniesCooldown = AddSliderOption("Deny action cooldown (seconds):", denyCooldown)
 
+    AddHeaderOption("Game Master")
+    oid_EvaluateParticipantsWithGameMaster = AddToggleOption("Evaluate participants before sex:", TTON_JData.GetEvaluateParticipantsWithGameMaster())
+    oid_GmScanOnLocationChange = AddToggleOption("Scan on location change:", TTON_JData.GetGmScanOnLocationChange())
+    oid_GmMatchmakingHotkey = AddKeyMapOption("Hotkey for matchmaking scan:", TTON_JData.GetGmMatchmakingHotkey())
+
     AddHeaderOption("Data Management")
     oid_SettingsExportData = AddTextOption("", "Export data to file")
     oid_SettingsImportData = AddTextOption("", "Import data from file")
@@ -123,6 +131,10 @@ event OnOptionSelect(int option)
         TTON_JData.ExportData()
     elseif (oid_SettingsImportData == option)
         TTON_JData.ImportData()
+    elseif(option == oid_EvaluateParticipantsWithGameMaster)
+        SetToggleOptionValue(oid_EvaluateParticipantsWithGameMaster, TTON_JData.ToggleMcmCheckbox("evaluateParticipantsWithGameMaster", 1))
+    elseif(option == oid_GmScanOnLocationChange)
+        SetToggleOptionValue(oid_GmScanOnLocationChange, TTON_JData.ToggleMcmCheckbox("gmScanOnLocationChange", 0))
     elseif(option == oid_EnableStartSexConfirmationModal)
         SetToggleOptionValue(oid_EnableStartSexConfirmationModal, TTON_JData.ToggleMcmCheckbox("confirmStartSex", 1))
     elseif(option == oid_EnableStartAffectionateConfirmationModal)
@@ -165,6 +177,12 @@ event OnOptionHighlight(int option)
         SetInfoText("Saves your settings to: Documents\\My Games\\Skyrim Special Edition\\JCUser\\MARAS\\store.json")
     elseif(option == oid_SettingsImportData)
         SetInfoText("Loads settings from: Documents\\My Games\\Skyrim Special Edition\\JCUser\\MARAS\\store.json")
+    elseif(option == oid_EvaluateParticipantsWithGameMaster)
+        SetInfoText("Before starting a sex scene, the Game Master LLM evaluates the potential participants and may exclude those who wouldn't consent.")
+    elseif(option == oid_GmScanOnLocationChange)
+        SetInfoText("Trigger a Game Master matchmaking scan whenever the player enters a new location.")
+    elseif(option == oid_GmMatchmakingHotkey)
+        SetInfoText("Press this key in-game to manually trigger a Game Master matchmaking scan.")
     elseif(option == oid_EnableStartSexConfirmationModal)
         SetInfoText("Ask for permission when NPCs want to start intimate scenes with you.")
     elseif(option == oid_EnableStartAffectionateConfirmationModal)
@@ -293,7 +311,11 @@ event OnOptionDefault(int a_option)
     elseif(a_option == oid_MuteHotkey)
         TTON_JData.SetMuteHotkey(-1)
         SetKeyMapOptionValue(oid_MuteHotkey, -1)
-        RegisterMuteHotkey()
+        RegisterHotkeys()
+    elseif(a_option == oid_GmMatchmakingHotkey)
+        TTON_JData.SetGmMatchmakingHotkey(-1)
+        SetKeyMapOptionValue(oid_GmMatchmakingHotkey, -1)
+        RegisterHotkeys()
     elseif(a_option == oid_MaxSpectatorsOverall)
         SetSliderDialogStartValue(5)
         TTON_JData.SetMcmMaxSpectatorsOverall(5)
@@ -309,23 +331,31 @@ event OnOptionDefault(int a_option)
     endif
 endEvent
 
-Function RegisterMuteHotkey()
+Function RegisterHotkeys()
     UnregisterForAllKeys()
-    int keyCode = TTON_JData.GetMuteHotkey()
-    if(keyCode > 0)
-        RegisterForKey(keyCode)
+    int muteKey = TTON_JData.GetMuteHotkey()
+    if(muteKey > 0)
+        RegisterForKey(muteKey)
+    endif
+    int gmKey = TTON_JData.GetGmMatchmakingHotkey()
+    if(gmKey > 0)
+        RegisterForKey(gmKey)
     endif
 EndFunction
 
 event OnOptionKeyMapChange(int option, int keyCode, string conflictControl, string conflictName)
+    int finalKeyCode = keyCode
+    if(keyCode == 0)
+        finalKeyCode = -1
+    endif
     if(option == oid_MuteHotkey)
-        int finalKeyCode = keyCode
-        if(keyCode == 0)
-            finalKeyCode = -1
-        endif
         TTON_JData.SetMuteHotkey(finalKeyCode)
         SetKeyMapOptionValue(option, finalKeyCode)
-        RegisterMuteHotkey()
+        RegisterHotkeys()
+    elseif(option == oid_GmMatchmakingHotkey)
+        TTON_JData.SetGmMatchmakingHotkey(finalKeyCode)
+        SetKeyMapOptionValue(option, finalKeyCode)
+        RegisterHotkeys()
     endif
 endevent
 
@@ -333,18 +363,32 @@ Event OnKeyDown(int keyCode)
     if UI.IsTextInputEnabled()
         return
     endif
-    int configuredKey = TTON_JData.GetMuteHotkey()
-    if(keyCode != configuredKey || keyCode <= 0)
+
+    int muteKey = TTON_JData.GetMuteHotkey()
+    if(keyCode == muteKey && muteKey > 0)
+        bool isPaused = TTON_JData.ToggleMuteSetting()
+        if(oid_Mute > 0)
+            SetToggleOptionValue(oid_Mute, isPaused)
+        endif
+        if(isPaused)
+            Debug.Notification("OStimNet NPCs are muted.")
+        else
+            Debug.Notification("OStimNet NPCs are talking.")
+        endif
         return
     endif
 
-    bool isPaused = TTON_JData.ToggleMuteSetting()
-    if(oid_Mute > 0)
-        SetToggleOptionValue(oid_Mute, isPaused)
-    endif
-    if(isPaused)
-        Debug.Notification("OStimNet NPCs are muted.")
-    else
-        Debug.Notification("OStimNet NPCs are talking.")
+    int gmKey = TTON_JData.GetGmMatchmakingHotkey()
+    if(keyCode == gmKey && gmKey > 0)
+        Quest _q = self as Quest
+        TTON_GameMaster gm = _q as TTON_GameMaster
+        int res = gm.EvaluateNearbyNpcs()
+        if(res == 0)
+            Debug.Notification("OStimNet: Game Master matchmaking scan triggered.")
+        elseif(res == 1)
+            Debug.Notification("OStimNet: Game Master scan already running.")
+        else
+            Debug.Notification("OStimNet: Game Master scan failed.")
+        endif
     endif
 EndEvent
