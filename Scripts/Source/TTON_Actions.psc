@@ -6,7 +6,7 @@ scriptname TTON_Actions extends Quest
 
 ; Registers all available OStimNet actions with the SkyrimNet system.
 ; This is the main entry point for registering all sex-related actions.
-Function RegisterActions() global
+Function RegisterActions()
 ; placeholder
 EndFunction
 
@@ -14,7 +14,7 @@ EndFunction
 ; Body Animation Tag
 ; -------------------------------------------------
 
-string Function GetTags() global
+string Function GetTags()
     Form cuddle = Game.GetFormFromFile(0x800, "SkyrimNet_Cuddle.esp")
     Form sexlab = Game.GetFormFromFile(0x800, "SkyrimNet_SexLab.esp")
     if(cuddle || sexlab)
@@ -63,7 +63,7 @@ EndFunction
 ; @param akActor The initiating actor
 ; @param contextJson The context data in JSON format
 ; @param paramsJson The parameters containing participant info and encounter type
-Function StartSexActionExecute(Actor akActor, Actor participant1, Actor participant2, Actor participant3, Actor participant4, string activity, string furn) global
+Function StartSexActionExecute(Actor akActor, Actor participant1, Actor participant2, Actor participant3, Actor participant4, string activity, string furn)
     if(TTON_Utils.IsSexLabInCharge())
         TTON_Debug.warn("OStimNet is disabled while SkyrimNet_SexLab has control of player scenes.")
         return
@@ -123,7 +123,7 @@ EndFunction
 ; @param contextJson The context data in JSON format
 ; @param paramsJson The parameters containing the new position type
 ; @returns True if the position was successfully changed
-Bool Function ChangeSexActivityActionExecute(Actor akActor, string activity) global
+Bool Function ChangeSexActivityActionExecute(Actor akActor, string activity)
     TTON_OStimIntegration.OStimChangeScene(akActor, activity)
     SkyrimNetApi.SetActionCooldown("ChangeSexActivity", TTON_JData.GetMcmDenyCooldown())
 EndFunction
@@ -137,7 +137,7 @@ EndFunction
 ; @param akActor The actor sending the invitation
 ; @param contextJson The context data in JSON format
 ; @param paramsJson The parameters containing target actors to invite
-Bool Function InviteToYourSexExecute(Actor akActor, Actor participant1, Actor participant2, Actor participant3) global
+Bool Function InviteToYourSexExecute(Actor akActor, Actor participant1, Actor participant2, Actor participant3)
     int ThreadID = OActor.GetSceneID(akActor)
     int currentActorsLength = OThread.GetActors(ThreadID).Length
     ; max participants in current ostim scenes is 5, if it is already 5 skip this action
@@ -193,7 +193,7 @@ EndFunction
 ; @param contextJson The context data in JSON format
 ; @param paramsJson The parameters containing the target actor to interact with
 ; @returns True if successfully joined the scene
-Bool Function JoinOngoingSexActionExecute(Actor akActor, Actor participant1) global
+Bool Function JoinOngoingSexActionExecute(Actor akActor, Actor participant1)
     int ThreadID = OActor.GetSceneID(participant1)
     int currentActorsLength = OThread.GetActors(ThreadID).Length
     ; max participants in current ostim scenes is 5, if it is already 5 skip this action
@@ -219,7 +219,7 @@ EndFunction
 ; @param akActor The actor changing the pace
 ; @param contextJson The context data in JSON format
 ; @param paramsJson The parameters containing the desired speed change
-Function ChangeSexPaceActionExecute(Actor akActor, string speed) global
+Function ChangeSexPaceActionExecute(Actor akActor, string speed)
     int ThreadId = OActor.GetSceneID(akActor)
     if(speed != "increase" && speed != "decrease")
         return
@@ -238,12 +238,12 @@ EndFunction
 ; @param akActor The actor stopping the scene
 ; @param contextJson The context data in JSON format
 ; @param paramsJson The parameters data in JSON format
-Function StopSexActionExecute(Actor akActor) global
+Function StopSexActionExecute(Actor akActor)
     TTON_OStimIntegration.StopOStim(akActor)
     SkyrimNetApi.SetActionCooldown("StopSex", TTON_JData.GetMcmDenyCooldown())
 EndFunction
 
-Function SpectatorOfSexActionExecute(Actor akActor, string contextJson, string paramsJson) global
+Function SpectatorOfSexActionExecute(Actor akActor, string contextJson, string paramsJson)
     Actor target = SkyrimNetApi.GetJsonActor(paramsJson, "target", none)
     if(!target)
         TTON_Debug.warn("SpectatorOfSexActionExecute: target actor not found in paramsJson")
@@ -270,13 +270,13 @@ Function SpectatorOfSexActionExecute(Actor akActor, string contextJson, string p
     TTON_Spectators.TryMakeSpectator(akActor, target)
 EndFunction
 
-Function SpectatorOfSexFleeActionExecute(Actor akActor, string contextJson, string paramsJson) global
+Function SpectatorOfSexFleeActionExecute(Actor akActor, string contextJson, string paramsJson)
     if(akActor.IsInFaction(TTON_JData.GetSpectatorFaction()))
     endif
     TTON_Spectators.MakeSpectatorFlee(akActor)
 EndFunction
 
-Function PrintEligibilityConditions(Actor npc, string functionName, string keyName, bool value) global
+Function PrintEligibilityConditions(Actor npc, string functionName, string keyName, bool value)
     ; string npcName = TTON_Utils.GetActorName(npc)
     ; TTON_Debug.Trace(functionName + ":" + npcName + ":" + keyName + " is " + value)
 EndFunction
