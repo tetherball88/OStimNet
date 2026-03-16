@@ -243,8 +243,7 @@ Function StopSexActionExecute(Actor akActor)
     SkyrimNetApi.SetActionCooldown("StopSex", TTON_JData.GetMcmDenyCooldown())
 EndFunction
 
-Function SpectatorOfSexActionExecute(Actor akActor, string contextJson, string paramsJson)
-    Actor target = SkyrimNetApi.GetJsonActor(paramsJson, "target", none)
+Function SpectatorOfSexActionExecute(Actor akActor, Actor target)
     if(!target)
         TTON_Debug.warn("SpectatorOfSexActionExecute: target actor not found in paramsJson")
         return
@@ -270,7 +269,7 @@ Function SpectatorOfSexActionExecute(Actor akActor, string contextJson, string p
     TTON_Spectators.TryMakeSpectator(akActor, target)
 EndFunction
 
-Function SpectatorOfSexFleeActionExecute(Actor akActor, string contextJson, string paramsJson)
+Function SpectatorOfSexFleeActionExecute(Actor akActor)
     if(akActor.IsInFaction(TTON_JData.GetSpectatorFaction()))
     endif
     TTON_Spectators.MakeSpectatorFlee(akActor)

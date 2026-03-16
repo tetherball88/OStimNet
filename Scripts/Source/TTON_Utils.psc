@@ -342,23 +342,26 @@ string Function GetShclongOrgasmedLocation(Actor npc, int ThreadID) global
         string locations = ""
         while(i < actors.Length)
             Actor cumOnActor = actors[i] as Actor
-            String[] SlotsOn = StorageUtil.StringListToArray(cumOnActor, npcName+"_cumOnPlacesOn")
-            String[] SlotsIn = StorageUtil.StringListToArray(cumOnActor, npcName+"_cumOnPlacesIn")
+            if(cumOnActor != npc)
+                String[] SlotsOn = StorageUtil.StringListToArray(cumOnActor, npcName+"_cumOnPlacesOn")
+                String[] SlotsIn = StorageUtil.StringListToArray(cumOnActor, npcName+"_cumOnPlacesIn")
 
-            if(SlotsOn.Length > 0)
-                locations += "on " + GetActorName(cumOnActor) + "'s "
-                hadLocations = true
-                locations += OCSV.ToCSVList(SlotsOn)
-                if(SlotsIn.Length > 0)
-                    locations += " and "
+                if(SlotsOn.Length > 0)
+                    locations += "on " + GetActorName(cumOnActor) + "'s "
+                    hadLocations = true
+                    locations += OCSV.ToCSVList(SlotsOn)
+                    if(SlotsIn.Length > 0)
+                        locations += " and "
+                    endif
                 endif
+                if(SlotsIn.Length > 0)
+                    locations += "in " + GetActorName(cumOnActor) + "'s "
+                    hadLocations = true
+                    locations += OCSV.ToCSVList(SlotsIn)
+                endif
+                locations += "; "
             endif
-            if(SlotsIn.Length > 0)
-                locations += "in " + GetActorName(cumOnActor) + "'s "
-                hadLocations = true
-                locations += OCSV.ToCSVList(SlotsIn)
-            endif
-            locations += "; "
+
             i += 1
             StorageUtil.StringListClear(cumOnActor, npcName+"_cumOnPlacesOn")
             StorageUtil.StringListClear(cumOnActor, npcName+"_cumOnPlacesIn")
@@ -367,11 +370,11 @@ string Function GetShclongOrgasmedLocation(Actor npc, int ThreadID) global
         res += locations
     endif
 
+    StorageUtil.FormListClear(npc, "cumOnNpcs")
+
     if(!hadLocations)
         return ""
     endif
-
-    StorageUtil.FormListClear(npc, "cumOnNpcs")
 
     return res
 EndFunction
