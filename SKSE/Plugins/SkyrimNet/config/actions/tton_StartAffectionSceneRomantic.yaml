@@ -21,7 +21,7 @@ eligibilityRules:
         arguments:
           - skyrimnet_sexlab_ostim_player
         comparisonOperator: ==
-        expectedValue: 0
+        expectedValue: 1
       - decoratorName: is_in_faction
         arguments:
           - currentActor

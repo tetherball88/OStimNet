@@ -1,5 +1,5 @@
 {% set speakingNpc = decnpc(npc.UUID) %}
-{% set target = "all" %}
+{% set target = "only-not-in-ostim" %}
 {% set ostimPotentialParticipants = append([], player.name) %}
 {% if not is_in_faction(player.UUID, "OStimActorCountFaction") and not is_in_faction(player.UUID,"SexLabAnimatingFaction") %}
     {% set ostimPotentialParticipants = append([], player.name) %}

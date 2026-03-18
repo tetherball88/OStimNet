@@ -17,7 +17,7 @@ eligibilityRules:
         - decoratorName: "get_global_value"
           arguments: ["skyrimnet_sexlab_ostim_player"]
           comparisonOperator: "=="
-          expectedValue: 0
+          expectedValue: 1
         - decoratorName: "get_global_value"
           arguments: ["TTON_IsOstimActive"]
           comparisonOperator: "=="

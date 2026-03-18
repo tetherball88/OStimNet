@@ -18,4 +18,4 @@
 {% endfor %}
 {% set ostimPotentialParticipantsString = join(ostimPotentialParticipants, ", ") %}
 
-{{speakingNpc.name}} decides to SPECTATE ongoing sex scene. Use when {{speakingNpc.name}} wants to watch/observe others having sex from close distance, NOT to join (use JoinOngoingSex). Possible targets: {{ostimActiveScenes}}. Select target based on {{speakingNpc.name}}'s relationships and likes/dislikes
+{{speakingNpc.name}} decides to SPECTATE ongoing sex scene. Use when {{speakingNpc.name}} wants to watch/observe others having sex from close distance, NOT to join (use JoinOngoingSex). Possible targets: {{ostimPotentialParticipantsString}}. Select target based on {{speakingNpc.name}}'s relationships and likes/dislikes
