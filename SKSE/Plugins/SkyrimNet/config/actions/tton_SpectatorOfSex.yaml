@@ -4,33 +4,41 @@ questEditorId: TTON_MainController
 scriptName: TTON_Actions
 executionFunctionName: SpectatorOfSexActionExecute
 parameterMapping:
-    - type: speaker
-      name: akActor
-      description: The actor initiating action
-    - type: dynamic
-      name: target
-      useNearbyActors: false
-      description: Person in sex scene to watch (spectate)
+  - type: speaker
+    name: akActor
+    description: Speaker Actor parameter (triggering entity)
+  - type: dynamic
+    name: target
+    description: Person in sex scene to watch (spectate)
+    useNearbyActors: false
 enabled: true
 eligibilityRules:
-    - conditions:
-        - decoratorName: "is_in_faction"
-          arguments: ["currentActor", "OStimActorCountFaction"]
-          comparisonOperator: "=="
-          expectedValue: false
-        - decoratorName: "is_in_combat"
-          arguments: ["currentActor"]
-          comparisonOperator: "=="
-          expectedValue: false
-        - decoratorName: "is_in_faction"
-          arguments: ["currentActor", "TTON_SpectatorFaction"]
-          comparisonOperator: "=="
-          expectedValue: false
-        - decoratorName: decnpc
-          resultPath: isChild
-          arguments: ["currentActor"]
-          comparisonOperator: ==
-          expectedValue: false
-      logicalOperator: "AND"
-      required: true
-
+  - conditions:
+      - decoratorName: get_global_value
+        arguments:
+          - TTON_IsOstimActive
+        comparisonOperator: ==
+        expectedValue: 1
+      - decoratorName: is_in_faction
+        arguments:
+          - currentActor
+          - OStimActorCountFaction
+        comparisonOperator: ==
+        expectedValue: false
+      - decoratorName: is_in_combat
+        arguments:
+          - currentActor
+        comparisonOperator: ==
+        expectedValue: false
+      - decoratorName: is_in_faction
+        arguments:
+          - currentActor
+          - TTON_SpectatorFaction
+        comparisonOperator: ==
+        expectedValue: false
+      - decoratorName: decnpc
+        arguments:
+          - currentActor
+        comparisonOperator: ==
+        expectedValue: false
+        resultPath: isChild

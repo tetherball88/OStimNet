@@ -4,34 +4,35 @@ questEditorId: TTON_MainController
 scriptName: TTON_Actions
 executionFunctionName: InviteToYourSexExecute
 parameterMapping:
-    - type: speaker
-      name: akActor
-      description: The actor initiating action
-    - type: dynamic
-      name: participant1
-      description: First invitee (required)
-      useNearbyActors: false
-    - type: dynamic
-      name: participant2
-      description: Second invitee (optional)
-      optional: true
-      useNearbyActors: false
-    - type: dynamic
-      name: participant3
-      description: Third invitee (optional)
-      useNearbyActors: false
-      optional: true
+  - type: speaker
+    name: akActor
+    description: Speaker Actor parameter (triggering entity)
+  - type: dynamic
+    name: participant1
+    description: First invitee (required)
+    useNearbyActors: false
+  - type: dynamic
+    name: participant2
+    description: Second invitee (optional)
+    useNearbyActors: false
+    optional: true
+  - type: dynamic
+    name: participant3
+    description: Third invitee (optional)
+    useNearbyActors: false
+    optional: true
 enabled: true
 eligibilityRules:
-    - conditions:
-        - decoratorName: "is_in_faction"
-          arguments: ["currentActor", "OStimActorCountFaction"]
-          comparisonOperator: "=="
-          expectedValue: true
-        - decoratorName: "has_magic_effect"
-          arguments: ["currentActor", "TTON_DeclineInviteToYourSexEffect"]
-          comparisonOperator: "=="
-          expectedValue: false
-      logicalOperator: "AND"
-      required: true
-
+  - conditions:
+      - decoratorName: is_in_faction
+        arguments:
+          - currentActor
+          - OStimActorCountFaction
+        comparisonOperator: ==
+        expectedValue: true
+      - decoratorName: has_magic_effect
+        arguments:
+          - currentActor
+          - TTON_DeclineInviteToYourSexEffect
+        comparisonOperator: ==
+        expectedValue: false

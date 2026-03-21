@@ -37,11 +37,6 @@ parameterMapping:
 enabled: true
 eligibilityRules:
   - conditions:
-      - decoratorName: get_global_value
-        arguments:
-          - skyrimnet_sexlab_ostim_player
-        comparisonOperator: ==
-        expectedValue: 1
       - decoratorName: is_in_faction
         arguments:
           - currentActor
@@ -77,3 +72,15 @@ eligibilityRules:
         comparisonOperator: ==
         expectedValue: false
         resultPath: isChild
+  - conditions:
+      - decoratorName: get_global_value
+        arguments:
+          - skyrimnet_sexlab_ostim_player
+        comparisonOperator: ==
+        expectedValue: 1
+      - decoratorName: is_plugin_loaded
+        arguments:
+          - SkyrimNet_SexLab.esp
+        comparisonOperator: ==
+        expectedValue: false
+    logicalOperator: OR
