@@ -1,7 +1,12 @@
 scriptname TTON_Debug
 
+Function ClearLogFile() global
+    MiscUtil.WriteToFile("OStimNet_Debug.log", "OStimNet loaded", false, true)
+EndFunction
+
 Function log(string msg) global
     MiscUtil.PrintConsole(msg)
+    MiscUtil.WriteToFile("OStimNet_Debug.log", "\n" + msg, true, true)
 EndFunction
 
 Function trace(string msg) global

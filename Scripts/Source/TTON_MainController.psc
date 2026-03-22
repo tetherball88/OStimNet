@@ -13,6 +13,7 @@ Function Maintenance()
     TTON_Storage.ClearOnLoad()
     TTON_Events.RegisterEventSchema()
     TTON_GameMaster.ClearStorage()
+    TTON_Debug.ClearLogFile()
 
     RegisterForModEvent("ostim_thread_start", "OStimStart")
     RegisterForModEvent("ostim_thread_scenechanged", "OStimSceneChange")

@@ -130,8 +130,8 @@ Function ProcessPotentialParticipants(String response, Int success)
     Actor participant3 = StorageUtil.GetFormValue(none, "TTON_GameMaster_EvaluatePotentialParticipants_Participant3") as Actor
     Actor participant4 = StorageUtil.GetFormValue(none, "TTON_GameMaster_EvaluatePotentialParticipants_Participant4") as Actor
 
-    MiscUtil.PrintConsole("ProcessPotentialParticipants: initiator=" + initiator + ", participant1=" + participant1 + ", participant2=" + participant2 + ", participant3=" + participant3 + ", participant4=" + participant4)
-    MiscUtil.PrintConsole("ProcessPotentialParticipants:Reason" + SkyrimNetApi.GetJsonString(response, "reason", ""))
+    TTON_Debug.debug("ProcessPotentialParticipants: initiator=" + initiator + ", participant1=" + participant1 + ", participant2=" + participant2 + ", participant3=" + participant3 + ", participant4=" + participant4)
+    TTON_Debug.debug("ProcessPotentialParticipants:Reason" + SkyrimNetApi.GetJsonString(response, "reason", ""))
 
 
     bool participant1Agreed = SkyrimNetApi.GetJsonBool(response, "participant1", true)
