@@ -35,44 +35,61 @@ Function ProcessNearbyNpcs(String response, Int success)
     Actor participant4 = SkyrimNetApi.GetJsonActor(response, "participant4", none)
     Actor participant5 = SkyrimNetApi.GetJsonActor(response, "participant5", none)
 
-    Actor[] participants = PapyrusUtil.ActorArray(0)
-
-    string partcipantsString = ""
-
-    if(participant1)
+    if(participant1 && WaitParticipantLoaded(participant1))
         ; Make sure player isn't first participant, which considered to be initiator.
         if(participant1 == Game.GetPlayer())
             Actor tmp = participant2
             participant2 = participant1
             participant1 = tmp
         endif
-        participants = PapyrusUtil.PushActor(participants, participant1)
-        partcipantsString += TTON_Utils.GetActorName(participant1) + ", "
+    else
+        participant1 = none
     endif
 
-    if(participant2)
-        participants = PapyrusUtil.PushActor(participants, participant2)
-        partcipantsString += TTON_Utils.GetActorName(participant2) + ", "
+    if(participant1 && !WaitParticipantLoaded(participant1))
+        participant1 = none
+    endif
+    if(participant2 && !WaitParticipantLoaded(participant2))
+        participant2 = none
+    endif
+    if(participant3 && !WaitParticipantLoaded(participant3))
+        participant3 = none
+    endif
+    if(participant4 && !WaitParticipantLoaded(participant4))
+        participant4 = none
+    endif
+    if(participant5 && !WaitParticipantLoaded(participant5))
+        participant5 = none
     endif
 
-    if(participant3)
-        participants = PapyrusUtil.PushActor(participants, participant3)
-        partcipantsString += TTON_Utils.GetActorName(participant3) + ", "
-    endif
-
-    if(participant4)
-        participants = PapyrusUtil.PushActor(participants, participant4)
-        partcipantsString += TTON_Utils.GetActorName(participant4) + ", "
-    endif
-
-    if(participant5)
-        participants = PapyrusUtil.PushActor(participants, participant5)
-        partcipantsString += TTON_Utils.GetActorName(participant5)
-    endif
+    Actor[] participants = OActorUtil.ToArray(participant1, participant2, participant3, participant4, participant5)
 
     if(participants.Length > 0)
         TTON_OStimIntegration.StartOstim(participants, initiator = participants[0], furn = "bed")
     endif
+EndFunction
+
+bool Function WaitParticipantLoaded(Actor participant)
+    MiscUtil.PrintConsole("WaitParticipantLoaded: Waiting for participant " + TTON_Utils.GetActorName(participant) + " to load.")
+    if(!participant)
+        return false
+    endif
+    if(participant.Is3DLoaded())
+        MiscUtil.PrintConsole("WaitParticipantLoaded: Participant " + TTON_Utils.GetActorName(participant) + " loaded.")
+        return true
+    endif
+    int tries = 0
+    while(tries < 10)
+        Utility.Wait(1.0)
+        if(participant.Is3DLoaded())
+            MiscUtil.PrintConsole("WaitParticipantLoaded: Participant " + TTON_Utils.GetActorName(participant) + " loaded after waiting.")
+            return true
+        endif
+        tries += 1
+    endwhile
+    MiscUtil.PrintConsole("WaitParticipantLoaded: Participant " + TTON_Utils.GetActorName(participant) + " failed to load after waiting.")
+
+    return false
 EndFunction
 
 ; 0 - sent
