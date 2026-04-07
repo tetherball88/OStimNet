@@ -188,7 +188,7 @@ event OnOptionHighlight(int option)
     elseif(option == oid_GmMatchmakingHotkey)
         SetInfoText("Press this key in-game to manually trigger a Game Master matchmaking scan.")
     elseif(option == oid_GmLlmVariant)
-        SetInfoText("The LLM variant (model route) used by the Game Master for matchmaking and participant evaluation.\nThese variants are from SkyrimNet LLM settings.\nMake sure LLM of selected variant is smart enough to fully support JSON outputs.")
+        SetInfoText("The LLM variant (model route) used by the Game Master for matchmaking and participant evaluation.\nThese variants are from SkyrimNet LLM settings.\nMake sure LLM of selected variant is smart enough to fully support JSON outputs.\nExcludes variants with too small output size settings.")
     elseif(option == oid_EnableStartSexConfirmationModal)
         SetInfoText("Ask for permission when NPCs want to start intimate scenes with you.")
     elseif(option == oid_EnableStartAffectionateConfirmationModal)
@@ -335,14 +335,15 @@ event OnOptionDefault(int a_option)
         SetSliderDialogStartValue(10)
         TTON_JData.SetMcmSpectatorScanInterval(10)
     elseif(a_option == oid_GmLlmVariant)
-        TTON_JData.SetGmLlmVariant("meta")
-        SetMenuOptionValue(oid_GmLlmVariant, "meta")
+        TTON_JData.SetGmLlmVariant("gamemaster_evaluation")
+        SetMenuOptionValue(oid_GmLlmVariant, "gamemaster_evaluation")
     endif
 endEvent
 
 event OnOptionMenuOpen(int a_option)
     if(a_option == oid_GmLlmVariant)
-        string[] options = new string[11]
+        ; excludes meta(max_tokens:100)
+        string[] options = new string[10]
         options[0] = "default"
         options[1] = "AgentDefault"
         options[2] = "CharacterProfileGeneration"
@@ -352,8 +353,8 @@ event OnOptionMenuOpen(int a_option)
         options[6] = "combat"
         options[7] = "gamemaster_evaluation"
         options[8] = "memory"
-        options[9] = "meta"
-        options[10] = "vision"
+        ; options[9] = "meta"
+        options[9] = "vision"
         string current = TTON_JData.GetGmLlmVariant()
         int idx = options.Find(current)
         if(idx == -1)
@@ -367,7 +368,7 @@ endevent
 
 event OnOptionMenuAccept(int a_option, int a_index)
     if(a_option == oid_GmLlmVariant)
-        string[] options = new string[11]
+        string[] options = new string[10]
         options[0] = "default"
         options[1] = "AgentDefault"
         options[2] = "CharacterProfileGeneration"
@@ -377,8 +378,8 @@ event OnOptionMenuAccept(int a_option, int a_index)
         options[6] = "combat"
         options[7] = "gamemaster_evaluation"
         options[8] = "memory"
-        options[9] = "meta"
-        options[10] = "vision"
+        ; options[9] = "meta"
+        options[9] = "vision"
         string selected = options[a_index]
         TTON_JData.SetGmLlmVariant(selected)
         SetMenuOptionValue(oid_GmLlmVariant, selected)

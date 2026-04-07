@@ -29,6 +29,7 @@ Function ProcessNearbyNpcs(String response, Int success)
         TTON_Debug.warn("ProcessNearbyNpcs: rejected success=" + success )
         Return
     EndIf
+    String eventMsg = SkyrimNetApi.GetJsonString(response, "reason", none)
     Actor participant1 = SkyrimNetApi.GetJsonActor(response, "participant1", none)
     Actor participant2 = SkyrimNetApi.GetJsonActor(response, "participant2", none)
     Actor participant3 = SkyrimNetApi.GetJsonActor(response, "participant3", none)
@@ -65,6 +66,7 @@ Function ProcessNearbyNpcs(String response, Int success)
     Actor[] participants = OActorUtil.ToArray(participant1, participant2, participant3, participant4, participant5)
 
     if(participants.Length > 0)
+        TTON_Events.GameMasterMatchMakerEvent(eventMsg, participant1)
         TTON_OStimIntegration.StartOstim(participants, initiator = participants[0], furn = "bed")
     endif
 EndFunction

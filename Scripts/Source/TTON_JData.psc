@@ -235,8 +235,8 @@ EndFunction
 
 string Function GetGmLlmVariant() global
     string val = JDB_solveStr(GetNamespaceKey() + ".mcm.gmLlmVariant")
-    if(val == "")
-        val = "meta"
+    if(val == "" || val == "meta")
+        val = "gamemaster_evaluation"
     endif
     return val
 EndFunction

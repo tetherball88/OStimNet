@@ -19,8 +19,7 @@ Analyze the available NPCs and determine **who would plausibly participate** in 
 
 ## Available NPCs
 {% set target = "only-not-in-ostim" %}
-{% set nearbyNPCs = append(get_nearby_npc_list(player.UUID, 3000), player) %}
-{% set ostimPotentialParticipants = [] %}
+{% set nearbyNPCs = append(get_nearby_npc_list(player.UUID, 2000), player) %}
 {% for participantItem in nearbyNPCs %}
     {% set participant = decnpc(participantItem.UUID) %}
     {% if target == "only-in-ostim" %}
@@ -31,8 +30,7 @@ Analyze the available NPCs and determine **who would plausibly participate** in 
         {% set ostimCondition = true %}
     {% endif %}
     {% if not participant.isChild and ostimCondition and not is_in_faction(participantItem.UUID, "SexLabAnimatingFaction") and not is_in_combat(participantItem.UUID) and not participant.isBusy %}
-        {% set ostimPotentialParticipants = append(ostimPotentialParticipants, participant.name) %}
-        ### {{ decnpc(participantItem.UUID).name }} ({{ decnpc(participantItem.UUID).gender }} {{ decnpc(participantItem.UUID).race }})
+        ### {{ participant.name }} ({{ participant.gender }} {{ participant.race }})
 
         {{ render_character_profile("tton_gm", participantItem.UUID) }}
         ---
@@ -43,6 +41,11 @@ Analyze the available NPCs and determine **who would plausibly participate** in 
 {{ render_template("components\\event_history_compact") }}
 
 ## Participant Selection Guidelines
+
+### Participant Count
+- **Minimum:** 1 participant (solo is valid if only one willing)
+- **Maximum:** 5 participants
+- Include ONLY characters who would plausibly consent to participate together
 
 ### Factors That INCREASE Willingness
 - Existing attraction or romantic relationship
@@ -67,15 +70,25 @@ Analyze the available NPCs and determine **who would plausibly participate** in 
 - **The player counts as a potential participant** player can be a potential participant.
 - **Err toward exclusion when uncertain.** If justification is weak or ambiguous, DO NOT include the character. Quality over quantity.
 
-## Participant Count
-- **Minimum:** 1 participant (solo is valid if only one willing)
-- **Maximum:** 5 participants
-- Include ONLY characters who would plausibly consent to participate together
-
 ## Quick Sanity Check
 Before returning participants, verify:
 - Are they working right now? (innkeepers, guards on duty → probably not)
 - Have they actually shown interest, or just exist nearby? (nearby ≠ interested)
+
+## Reason Writing Style
+
+Write the reason like a story beat — specific, character-driven, grounded in this moment.
+
+**Write like this:**
+- "Ysolda had been drinking since the market closed and when she found Erik alone in the inn, she stopped pretending she wasn't lonely."
+- "Vilkas and the player had nearly died in Dustman's Cairn that morning. Back at Whiterun, neither of them wanted to be alone."
+- "Camilla was tired of her loveless arrangement with Faendal watching her every move. When a stranger passed through, she made a choice she'd been delaying for months."
+- "It was stupid and Balimund knew it — he was married — but the player had been coming to his forge every day and today she touched his arm and he didn't pull away."
+
+**Never write like this:**
+- "NPCa showed signs of attraction and the location was favorable."
+- "Given their relationship history, participation is plausible."
+- "NPCa decided to participate due to emotional vulnerability."
 
 ## Response Format
 
@@ -86,10 +99,11 @@ Evaluate each available NPC. If **any** characters are willing to participate, r
 }
 {% endraw %}
 
+The reason field must be 80 words or fewer. Count before returning.
 Return a JSON object with willing participants:
 {% raw %}
 {
-    "reason": "VERY SHORT explanation why you selected these npcs. 1-2 SHORT sentences. MAX 120 words!"
+    "reason": "MAX 80 words, 1-2 sentences. A single narrative beat — what pushed them over the line in this specific moment. Follow the Reason Writing Style guidelines. Use character names, third person, past tense. No flowery language, no buildup, just the hook.",
     "participant1": "Actor Name",
     "participant2": "Actor Name",
     "participant3": "Actor Name",
@@ -98,22 +112,19 @@ Return a JSON object with willing participants:
 }
 {% endraw %}
 
-Only include participant keys for actual willing participants. If 2 characters are willing, only include participant1 and participant2.
+Only include participant keys for actual willing participants. If 2 characters are willing, only include participant1 and participant2. participant1 is always initiator.
 
 
 [ end system ]
 
 [ user ]
-{% set ostimPotentialParticipantsString = join(ostimPotentialParticipants, ", ") %}
-
 # Participant Selection Request
 Evaluate the nearby NPCs and determine who would participate in an intimate scene.
 
-Available Characters: {{ ostimPotentialParticipantsString }}
-
 Consider:
-
-What attraction or chemistry exists between available characters?
+For the reason field: don't explain why participation is logical. Tell the story of how it happened. What pushed them over the line tonight? A drink too many? A fight they just survived? A marriage that's been cold for years? A stranger
+who arrived at the right moment? Find the human crack in each character and write to it.
+"reason" field: 80 words MAXIMUM. One tight paragraph. No exceptions.
 Have recent events created emotional openings or bonding moments?
 What personalities would naturally gravitate toward intimacy in this setting?
 Would any characters be drawn to each other by circumstance alone?

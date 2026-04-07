@@ -3,6 +3,28 @@ scriptname TTON_Events
 Function RegisterEvents() global
     ; tmp disabled events they don't make sense currently with direct narration logging additional data instead of events
     RegisterEventSchema()
+    ClearStorage()
+EndFunction
+
+Function ClearStorage() global
+    StorageUtil.ClearAllPrefix(GetSkipKey(-1))
+    StorageUtil.ClearAllPrefix(GetIgnoreKey(-1))
+EndFunction
+
+string Function GetSkipKey(int ThreadID) global
+    string prefix = "TTON_Thread_SkipSceneChangeTrigger_"
+    if(ThreadID == -1)
+        return prefix
+    endif
+    return prefix + ThreadID
+EndFunction
+
+string Function GetIgnoreKey(int ThreadID) global
+    string prefix = "TTON_Thread_IgnoreSceneChangeEvent_"
+    if(ThreadID == -1)
+        return prefix
+    endif
+    return prefix + ThreadID
 EndFunction
 
 Function RegisterEventSchema() global
@@ -34,10 +56,15 @@ Function RegisterSexStartEvent(int ThreadID) global
 
     string jsonData = BuildJson("sex_start", msg, ThreadID, skipTrigger)
     SkyrimNetApi.RegisterEvent("tton_event", jsonData, weightedActor, none)
-    ; StorageUtil.SetIntValue(none, "TTON_Thread"+ThreadID+"_SkipSceneChangeTrigger", 1)
+    StorageUtil.SetIntValue(none, GetIgnoreKey(ThreadID), 1)
 EndFunction
 
 Function RegisterSexChangeEvent(int ThreadID) global
+    ; don't register sex change right after start
+    if(StorageUtil.GetIntValue(none, GetIgnoreKey(ThreadID), 0) == 1)
+        StorageUtil.SetIntValue(none, GetIgnoreKey(ThreadID), 0)
+        return
+    endif
     Actor[] actors = OThread.GetActors(ThreadID)
     Actor weightedActor = TTON_Utils.GetWeightedRandomActorToSpeak(actors, ThreadID = ThreadID)
 
@@ -47,12 +74,12 @@ Function RegisterSexChangeEvent(int ThreadID) global
     string msg = "Participants "+actorsNames+" changed position to: "+sceneDesc
     bool shouldSkipNonPlayerThreads = TTON_Utils.ShouldPrioritizePlayerThreadComments(ThreadID)
 
-    bool skipTriggerOnce = StorageUtil.GetIntValue(none, "TTON_Thread"+ThreadID+"_SkipSceneChangeTrigger", 0) == 1
+    bool skipTriggerOnce = StorageUtil.GetIntValue(none, GetSkipKey(ThreadID), 0) == 1
     bool skipTrigger = skipTriggerOnce || TTON_JData.GetMuteSetting() || shouldSkipNonPlayerThreads
     string jsonData = BuildJson("sex_change", msg, ThreadID, skipTrigger)
 
     if(skipTriggerOnce)
-        StorageUtil.SetIntValue(none, "TTON_Thread"+ThreadID+"_SkipSceneChangeTrigger", 0)
+        StorageUtil.SetIntValue(none, GetSkipKey(ThreadID), 0)
     endif
 
     SkyrimNetApi.RegisterEvent("tton_event", jsonData, weightedActor, none)
@@ -86,7 +113,7 @@ Function RegisterSexClimaxEvent(int ThreadID, Form[] orgasmedActors) global
     bool skipTrigger = TTON_JData.GetMuteSetting() || shouldSkipNonPlayerThreads
     string jsonData = BuildJson("climax", msg, ThreadID, skipTrigger)
     SkyrimNetApi.RegisterEvent("tton_event", jsonData, speakingActor, none)
-    StorageUtil.SetIntValue(none, "TTON_Thread"+ThreadID+"_SkipSceneChangeTrigger", 1)
+    StorageUtil.SetIntValue(none, GetSkipKey(ThreadID), 1)
 EndFunction
 
 Function RegisterSpectatorAddedEvent(Actor spectator, int ThreadID) global
@@ -95,7 +122,7 @@ Function RegisterSpectatorAddedEvent(Actor spectator, int ThreadID) global
     string msg = spectatorName + " decided to watch " + actorsNames + " having intimate encounter."
     bool shouldSkipNonPlayerThreads = TTON_Utils.ShouldPrioritizePlayerThreadComments(ThreadID)
 
-    bool skipTriggerOnce = StorageUtil.GetIntValue(none, "TTON_Thread"+ThreadID+"_SkipSceneChangeTrigger", 0) == 1
+    bool skipTriggerOnce = StorageUtil.GetIntValue(none, GetSkipKey(ThreadID), 0) == 1
     bool skipTrigger = skipTriggerOnce || TTON_JData.GetMuteSetting() || shouldSkipNonPlayerThreads
     string jsonData = BuildJson("spectator_added", msg, ThreadID, skipTrigger)
 
@@ -114,7 +141,7 @@ Function RegisterSpectatorFledEvent(Actor spectator, int ThreadID) global
 
     bool shouldSkipNonPlayerThreads = TTON_Utils.ShouldPrioritizePlayerThreadComments(ThreadID)
 
-    bool skipTriggerOnce = StorageUtil.GetIntValue(none, "TTON_Thread"+ThreadID+"_SkipSceneChangeTrigger", 0) == 1
+    bool skipTriggerOnce = StorageUtil.GetIntValue(none, GetSkipKey(ThreadID), 0) == 1
     bool skipTrigger = skipTriggerOnce || TTON_JData.GetMuteSetting() || shouldSkipNonPlayerThreads
     string jsonData = BuildJson("spectator_fled", msg, ThreadID, skipTrigger)
 
@@ -161,6 +188,11 @@ Function RegisterDeclineEvent(string actionName, Actor initiator, bool isPlayerI
     bool skipTrigger = TTON_JData.GetMuteSetting()
     string jsonData = BuildJson("action_decline", msg, 0, skipTrigger, actionName)
     SkyrimNetApi.RegisterEvent("tton_event", jsonData, player, initiator)
+EndFunction
+
+Function GameMasterMatchMakerEvent(string msg, Actor initiator) global
+    string jsonData = BuildJson("matchmaker_event", msg, 0, false)
+    SkyrimNetApi.RegisterEvent("tton_event", jsonData, initiator, none)
 EndFunction
 
 string Function BuildJson(string type, string msg, int ThreadID, bool skipTrigger, string declinedAction = "") global
