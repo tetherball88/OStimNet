@@ -14,11 +14,12 @@ eventCriteria:
 
 response:
   type: "direct_narration"
-  content: "Declining isn't bad on its own. Evaluate recent events and dialogues to make decision if decline has bad intetion or simply \"not right at this moment\". {{ originator }} makes comment based on if decline was in bad faith or not."
+  content: "Declining isn't bad on its own. Evaluate recent events and dialogues to make decision if decline has bad intetion or simply \"not right at this moment\". {{ target }} makes comment based on if decline was in bad faith or not."
 
 audience: "nearby_npcs"
 
 enabled: true
+interrupt: false
 probability: 1
 cooldownSeconds: 30
 priority: 3
