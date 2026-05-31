@@ -4,7 +4,7 @@ description: "Reaction when a spectator was added to a scene in OStim"
 eventCriteria:
   eventType: "tton_event"
   schemaConditions:
-    - fieldPath: "type"
+    - fieldPath: "tton_type"
       operator: "equals"
       value: "spectator_added"
       caseSensitive: false
@@ -14,11 +14,12 @@ eventCriteria:
 
 response:
   type: "direct_narration"
-  content: "{{ event_json.msg }}"
+  content: "{{ originator }} reacts to ongoing intimate scene."
 
 audience: "nearby_npcs"
 
 enabled: true
+interrupt: false
 probability: 1
 cooldownSeconds: 30
 priority: 1

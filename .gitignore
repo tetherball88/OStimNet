@@ -8,3 +8,4 @@ script*.js
 .editorconfig
 .claude/settings.local.json
 tag-push.bat
+/SKSE_Source/build

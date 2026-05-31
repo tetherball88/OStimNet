@@ -26,6 +26,7 @@ jobs:
           TAG="${{ github.ref_name }}"
           # quote paths in case
           zip -r "out/OStimNet_${TAG}.zip" \
+            Interface/ \
             Scripts/ \
             SKSE/ \
             TT_OStimNet.esp \

@@ -4,7 +4,7 @@ description: "Reaction when OStim Ended"
 eventCriteria:
   eventType: "tton_event"
   schemaConditions:
-    - fieldPath: "type"
+    - fieldPath: "tton_type"
       operator: "equals"
       value: "sex_stop"
       caseSensitive: false

@@ -1,0 +1,84 @@
+{
+    "pages": [
+        {
+            "name": "OStimNet",
+            "description": "OStimNet Options",
+            "icon": "OStimNet/OStimNet",
+            "parent": null
+        },
+        {
+            "name": "ChangeIntent",
+            "description": "Change intent of current thread",
+            "icon": "OStimNet/OStimChangeIntents",
+            "parent": "OStimNet"
+        }
+    ],
+    "options": [
+        {
+            "name": "ChangeActorsRoles",
+            "page": "OStimNet",
+            "states": {
+                "0": {
+                    "icon": "OStimNet/OStimChangeMainActors",
+                    "description": "Select main actors(all other actors will be assigned secondary roles)",
+                    "function": "TTON_OStimOptions/ChangeActorsRoles"
+                }
+            }
+        },
+        {
+            "name": "IntentOptionRomantic",
+            "page": "ChangeIntent",
+            "states": {
+                "0": {
+                    "icon": "OStimNet/OStimIntentRomantic",
+                    "description": "Romantic",
+                    "function": "TTON_OStimOptions/ChangeIntentRomantic"
+                }
+            }
+        },
+        {
+            "name": "IntentOptionLustful",
+            "page": "ChangeIntent",
+            "states": {
+                "0": {
+                    "icon": "OStimNet/OStimIntentLustful",
+                    "description": "Lustful",
+                    "function": "TTON_OStimOptions/ChangeIntentLustful"
+                }
+            }
+        },
+        {
+            "name": "IntentOptionTransactional",
+            "page": "ChangeIntent",
+            "states": {
+                "0": {
+                    "icon": "OStimNet/OStimIntentTransactional",
+                    "description": "Transactional",
+                    "function": "TTON_OStimOptions/ChangeIntentTransactional"
+                }
+            }
+        },
+        {
+            "name": "IntentOptionDom",
+            "page": "ChangeIntent",
+            "states": {
+                "0": {
+                    "icon": "OStimNet/OStimIntentDom",
+                    "description": "Dom",
+                    "function": "TTON_OStimOptions/ChangeIntentDom"
+                }
+            }
+        },
+        {
+            "name": "IntentOptionAggressive",
+            "page": "ChangeIntent",
+            "states": {
+                "0": {
+                    "icon": "OStimNet/OStimIntentAggressive",
+                    "description": "Aggressive",
+                    "function": "TTON_OStimOptions/ChangeIntentAggressive"
+                }
+            }
+        }
+    ]
+}

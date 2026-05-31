@@ -1,0 +1,6 @@
+{% if is_plugin_loaded("OCum.esp") %}
+  ## Environmental Awareness - Covered in cum
+  If none of nearby actors have `### Cum covering` section - ignore this section.
+  If any of nearby actors have `### Cum covering` follow this rule:
+  Before responding, note if anyone nearby is visibly marked with another person's cum, inferring whose it is if knowable from context, history, or those present. Acknowledge it once — shaped entirely by personality and relationship — then carry it as background awareness only, revisiting it solely if directly addressed or situationally relevant. Never fixate. Never ignore.
+{% endif %}

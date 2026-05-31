@@ -1,0 +1,110 @@
+{# Use events context variable if set by C++, otherwise fetch via decorator #}
+{% set _event_filter = [] %}
+{% if exists("npc") and existsIn(npc, "UUID") %}
+  {% set _event_filter = append(_event_filter, npc.UUID) %}
+{% endif %}
+{% if exists("responseTarget") and existsIn(responseTarget,"UUID") %}
+  {% set _event_filter = append(_event_filter, responseTarget.UUID) %}
+{% endif %}
+{% set _event_count = 30 %}
+{% set events = get_recent_events(_event_count, _event_filter) %}
+{% set _npc_is_private_virtual = false %}
+{% if exists("npc") and existsIn(npc, "UUID") %}
+  {% set _npc_is_private_virtual = decnpc(npc.UUID).isVirtualPrivate %}
+{% endif %}
+{% set lastLocation = "" %}
+{% set lastSignificantTime = 0 %}
+{% set latestGMDialogueTime = 0 %}
+{% for event in events %}
+  {% if event.type == "gamemaster_dialogue" %}
+    {% set latestGMDialogueTime = event.gameTime %}
+  {% endif %}
+{% endfor %}
+{% set hasShownGMDialogue = false %}
+{% for event in events %}
+  {% if isValidActor(event.originatingActor) or event.type == "dialogue_background" %}
+    {% if event.type != "spell" and event.type != "hit" and event.type != "combat" %}
+      {% set locationChanged = (lastLocation != "" and event.location != lastLocation) %}
+      {% set timeDiff = gameTimeNumeric - event.gameTime %}
+      {% if lastSignificantTime > 0 %}
+          {% set timeSinceLastSignificant = event.gameTime - lastSignificantTime %}
+      {% else %}
+          {% set timeSinceLastSignificant = 0 %}
+      {% endif %}
+      {% set timeIndicator = "" %}
+      {% set showTimeGap = false %}
+
+      {% if timeDiff > 604800 %}{% set timeIndicator = "[Over a week ago] " %}
+      {% else if timeDiff > 172800 %}{% set timeIndicator = "[Several days ago] " %}
+      {% else if timeDiff > 86400 %}{% set timeIndicator = "[Yesterday] " %}
+      {% else if timeDiff > 28800 %}{% set timeIndicator = "[Many hours ago] " %}
+      {% else if timeDiff > 14400 %}{% set timeIndicator = "[Earlier today] " %}
+      {% else if timeDiff > 7200 %}{% set timeIndicator = "[A few hours ago] " %}
+      {% else if timeDiff > 3600 %}{% set timeIndicator = "[About an hour ago] " %}
+      {% else if timeDiff > 1800 %}{% set timeIndicator = "[A while ago] " %}
+      {% endif %}
+
+      {% if timeSinceLastSignificant > 1800 %}{% set showTimeGap = true %}{% endif %}
+
+      {% if showTimeGap and lastSignificantTime > 0 %}
+          {% set gapDescription = "" %}
+          {% if timeSinceLastSignificant > 31536000 %}{% set gapDescription = "Over a year later..." %}
+          {% else if timeSinceLastSignificant > 15552000 %}{% set gapDescription = "Many months later..." %}
+          {% else if timeSinceLastSignificant > 7776000 %}{% set gapDescription = "Several months later..." %}
+          {% else if timeSinceLastSignificant > 5184000 %}{% set gapDescription = "A couple months later..." %}
+          {% else if timeSinceLastSignificant > 2592000 %}{% set gapDescription = "A month later..." %}
+          {% else if timeSinceLastSignificant > 1209600 %}{% set gapDescription = "A couple weeks later..." %}
+          {% else if timeSinceLastSignificant > 604800 %}{% set gapDescription = "A week later..." %}
+          {% else if timeSinceLastSignificant > 86400 %}{% set gapDescription = "The next day..." %}
+          {% else if timeSinceLastSignificant > 28800 %}{% set gapDescription = "Many hours later..." %}
+          {% else if timeSinceLastSignificant > 14400 %}{% set gapDescription = "Several hours pass..." %}
+          {% else if timeSinceLastSignificant > 7200 %}{% set gapDescription = "A few hours later..." %}
+          {% else if timeSinceLastSignificant > 3600 %}{% set gapDescription = "About an hour passes..." %}
+          {% else if timeSinceLastSignificant > 1800 %}{% set gapDescription = "Some time passes..." %}
+          {% endif %}
+- *{{ gapDescription }}* ({{ event.gameTimeStr }})
+      {% endif %}
+
+      {% if event.type == "gamemaster_dialogue" %}
+          {% if event.gameTime == latestGMDialogueTime and not hasShownGMDialogue %}
+- [{{ short_time(event.gameTimeStr) }}] {{ format_event(event, "compact") }}
+              {% set hasShownGMDialogue = true %}
+          {% endif %}
+      {% else if event.type == "direct_narration" %}
+- {{ timeIndicator }}*{{ format_event(event, "compact") }}*
+      {% else %}
+{# Telepathy: an NPC thought rendered into a different actor's prompt context (canonical-telepath audience expansion). Mark so the LLM doesn't read it as spoken dialogue. #}
+{% set _isTelepathyObserved = event.type == "npc_thoughts" and exists("npc") and existsIn(npc, "UUID") and event.originatingActor != npc.UUID %}
+- [{{ short_time(event.gameTimeStr) }}] {% if locationChanged %}[Now at {{ event.location }}] {% endif %}({{ event.type }}) {% if event.type == "dialogue" or event.type == "dialogue_npc" or event.type == "dialogue_player" or event.type == "dialogue_player_stt" or event.type == "dialogue_player_text" or event.type == "dialogue_background"%}{% if isValidActor(event.originatingActor) %}{{ get_name(event.originatingActor) }}{% if isValidActor(event.targetActor) %}{% if decnpc(event.targetActor).isVirtualPrivate and not _npc_is_private_virtual %}{% if decnpc(event.originatingActor).isFemale %} (talking to herself){% else %} (talking to himself){% endif %}{% else %} to {{ get_name(event.targetActor) }}{% endif %}{% endif %}: {% else if event.type == "dialogue_background" and event.data and event.data.speaker != "" %}{{ event.data.speaker }}: {% endif %}{% else %}{{ get_name(event.originatingActor) }}{% if _isTelepathyObserved %} (thought, telepathically observed){% endif %}: {% endif %}{{ format_event(event, "compact") }}
+      {% endif %}
+
+      {% set lastLocation = event.location %}
+      {% if showTimeGap or lastSignificantTime == 0 %}{% if existsIn(event, "gameTimeEnd") and event.gameTimeEnd %}{% set lastSignificantTime = event.gameTimeEnd %}{% else %}{% set lastSignificantTime = event.gameTime %}{% endif %}{% endif %}
+    {% endif %}
+  {% endif %}
+{% endfor %}
+{% if lastSignificantTime > 0 %}
+    {% if exists("npc") and existsIn(npc, "UUID") %}{% set currentActorLocation = get_location(npc.UUID) %}{% else %}{% set currentActorLocation = location %}{% endif %}
+    {% set timeSinceLastEvent = gameTimeNumeric - lastSignificantTime %}
+    {% set locationChangedSinceLastEvent = (lastLocation != "" and lastLocation != currentActorLocation) %}
+    {% set timePassedDescription = "" %}
+    {% if timeSinceLastEvent > 31536000 %}{% set timePassedDescription = "Over a year has passed" %}
+    {% else if timeSinceLastEvent > 15552000 %}{% set timePassedDescription = "Many months have passed" %}
+    {% else if timeSinceLastEvent > 7776000 %}{% set timePassedDescription = "Several months have passed" %}
+    {% else if timeSinceLastEvent > 5184000 %}{% set timePassedDescription = "A couple months have passed" %}
+    {% else if timeSinceLastEvent > 2592000 %}{% set timePassedDescription = "A month has passed" %}
+    {% else if timeSinceLastEvent > 1209600 %}{% set timePassedDescription = "A couple weeks have passed" %}
+    {% else if timeSinceLastEvent > 604800 %}{% set timePassedDescription = "Over a week has passed" %}
+    {% else if timeSinceLastEvent > 172800 %}{% set timePassedDescription = "Several days have passed" %}
+    {% else if timeSinceLastEvent > 86400 %}{% set timePassedDescription = "A day has passed" %}
+    {% else if timeSinceLastEvent > 28800 %}{% set timePassedDescription = "Many hours have passed" %}
+    {% else if timeSinceLastEvent > 14400 %}{% set timePassedDescription = "Several hours have passed" %}
+    {% else if timeSinceLastEvent > 7200 %}{% set timePassedDescription = "A few hours have passed" %}
+    {% else if timeSinceLastEvent > 3600 %}{% set timePassedDescription = "About an hour has passed" %}
+    {% else if timeSinceLastEvent > 1800 %}{% set timePassedDescription = "Some time has passed" %}
+    {% else if timeSinceLastEvent > 600 %}{% set timePassedDescription = "A little time has passed" %}
+    {% endif %}
+    {% if timePassedDescription != "" or locationChangedSinceLastEvent %}
+- *{{ timePassedDescription }}{% if locationChangedSinceLastEvent %}{% if timePassedDescription != "" %}, now{% else %}Now{% endif %} at {{ currentActorLocation }}{% endif %}.*
+    {% endif %}
+{% endif %}

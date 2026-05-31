@@ -1,0 +1,7 @@
+Include an actor only if ALL hold:
+- No hostility, disgust, or strong discomfort toward any participant
+- At least one positive motivation: genuine attraction, love, or emotional investment toward at least one participant
+- No dealbreakers: exclusive commitment to someone absent, or strong moral opposition to the act
+- "No reason to refuse" is not sufficient — emotional investment must be present
+
+If the most recent relevant `dialogue` or `npc_thoughts` from this participant clearly permits or welcomes the interaction, treat willingness for this participant as fully satisfied and skip all remaining conditions.

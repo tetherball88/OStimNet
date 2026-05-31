@@ -1,5 +1,5 @@
 name: SpectatorOfSexFlee
-description: "{{render_template(\"helpers/ostimnet_action_spectate_sex_flee\")}}"
+description: "{{render_template(\"ostimnet_actions/ostimnet_action_spectate_sex_flee\")}}"
 questEditorId: TTON_MainController
 scriptName: TTON_Actions
 executionFunctionName: SpectatorOfSexFleeActionExecute
@@ -10,15 +10,8 @@ parameterMapping:
 enabled: true
 eligibilityRules:
   - conditions:
-      - decoratorName: is_in_faction
+      - decoratorName: is_spectate_sex_flee_available
         arguments:
           - currentActor
-          - TTON_SpectatorFaction
         comparisonOperator: ==
-        expectedValue: true
-      - decoratorName: is_in_faction
-        arguments:
-          - currentActor
-          - TTON_SpectatorFleeFaction
-        comparisonOperator: ==
-        expectedValue: false
+        expectedValue: "available"

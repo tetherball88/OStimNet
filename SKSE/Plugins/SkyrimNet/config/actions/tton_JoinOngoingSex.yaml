@@ -1,5 +1,6 @@
+customCategory: TTON_CategoryStart
 name: JoinOngoingSex
-description: "{{render_template(\"helpers/ostimnet_action_join_ongoing_sex\")}}"
+description: "{{render_template(\"ostimnet_actions/ostimnet_action_join_ongoing_sex\")}}"
 questEditorId: TTON_MainController
 scriptName: TTON_Actions
 executionFunctionName: JoinOngoingSexActionExecute
@@ -9,8 +10,14 @@ parameterMapping:
     description: Speaker Actor parameter (triggering entity)
   - type: dynamic
     name: participant1
-    description: Person in scene to interact with
+    description: Person in ongoing sexual scene to interact with
     useNearbyActors: false
+  - type: dynamic
+    name: intent
+    description: romantic|lustful|transactional|dom|aggressive
+  - type: dynamic
+    name: reasoning
+    description: Explain why you selected parameters. 1-2 short sentences.
 enabled: true
 eligibilityRules:
   - conditions:
@@ -19,44 +26,8 @@ eligibilityRules:
           - TTON_IsOstimActive
         comparisonOperator: ==
         expectedValue: 1
-      - decoratorName: is_in_faction
-        arguments:
-          - currentActor
-          - SexLabAnimatingFaction
-        comparisonOperator: ==
-        expectedValue: false
-      - decoratorName: is_in_faction
-        arguments:
-          - currentActor
-          - OStimActorCountFaction
-        comparisonOperator: ==
-        expectedValue: false
-      - decoratorName: is_in_combat
+      - decoratorName: is_join_ongoing_sex_available
         arguments:
           - currentActor
         comparisonOperator: ==
-        expectedValue: false
-      - decoratorName: has_magic_effect
-        arguments:
-          - currentActor
-          - TTON_DeclineJoinOngoingSexEffect
-        comparisonOperator: ==
-        expectedValue: false
-      - decoratorName: decnpc
-        arguments:
-          - currentActor
-        comparisonOperator: ==
-        expectedValue: false
-        resultPath: isChild
-  - conditions:
-      - decoratorName: get_global_value
-        arguments:
-          - skyrimnet_sexlab_ostim_player
-        comparisonOperator: ==
-        expectedValue: 1
-      - decoratorName: is_plugin_loaded
-        arguments:
-          - SkyrimNet_SexLab.esp
-        comparisonOperator: ==
-        expectedValue: false
-    logicalOperator: OR
+        expectedValue: "available"

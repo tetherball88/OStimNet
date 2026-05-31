@@ -1,0 +1,135 @@
+{% if tton_type == "sex_start" %}
+    {% if intent == "platonic" %}
+        {{mainActorNames}} initiated this intimate but non-sexual encounter — driven by companionship and mutual trust — and {{secondaryActorNames}} joined in warmly, the connection between them purely platonic.
+    {% else if intent == "romantic" %}
+        {% if isSexual %}
+            {{mainActorNames}} initiated this sexual encounter rooted in genuine romantic feelings and emotional connection and {{secondaryActorNames}} welcomed it, with emotional intimacy present throughout.
+        {% else %}
+            {{mainActorNames}} initiated this romantic but non-sexual encounter — drawn together by emotional attraction and genuine affection — and {{secondaryActorNames}} welcomed it, tenderness and closeness present between them throughout.
+        {% endif %}
+    {% else if intent == "lustful" %}
+        {{mainActorNames}} initiated this sexual encounter driven purely by raw physical desire with no emotional undertones, and {{secondaryActorNames}} joined in, both consumed by urgent physical need.
+    {% else if intent == "transactional" %}
+        {{mainActorNames}} is providing sexual services to {{secondaryActorNames}} in exchange for coin, goods, or favors. The encounter is transactional — detached, purposeful, with no emotional connection between them.
+    {% else if intent == "dom" %}
+        {{mainActorNames}} started this sexual encounter where they are controlling, commanding, and set the pace, while {{secondaryActorNames}} are obedient, yielding, and responsive to their dominant's lead.
+        It is a consensual sexual encounter defined by a clear dominant/submissive power dynamic throughout.
+    {% else if intent == "aggressive" %}
+        {{mainActorNames}} forced this sexual encounter upon {{secondaryActorNames}}, who did not consent. What follows is non-consensual — {{mainActorNames}} hold the power here, and {{secondaryActorNames}} have none.
+    {% else %}
+        {{mainActorNames}} initiated this encounter and {{secondaryActorNames}} joined in.
+    {% endif %}
+    {{msg}}
+{% else if tton_type == "sex_change" %}
+    {% if intent == "dom" %}
+        {{mainActorNames}} dictate the next position, {{secondaryActorNames}} obediently adjust.
+    {% else if intent == "aggressive" %}
+        {{mainActorNames}} force a change current position, {{secondaryActorNames}} have no choice but to yield.
+    {% else %}
+        {{mainActorNames}} shift to a new position, {{secondaryActorNames}} move with them.
+    {% endif %}
+    {{msg}}
+{% else if tton_type == "sex_pace_change" %}
+    {{msg}}
+{% else if tton_type == "climax" %}
+    {{msg}}
+{% else if tton_type == "sex_stop" %}
+    {% if isSexual %}
+      Sexual encounter between {{mainActorNames}} and {{secondaryActorNames}} has finished. Participants returned to their state before encounter, they don't participate in any sexualactivities at this moment. Their dressed state returned to initial state.
+      {% if intent == "dom" %}
+        The dominance and submission between {{mainActorNames}} and {{secondaryActorNames}} existed within that encounter and ended with it. They return to themselves now, as equals.
+      {% endif %}
+    {% else %}
+      {% if intent == "platonic" %}
+        Friendly platonic activity has finished. There is no platonic activity between {{mainActorNames}} and {{secondaryActorNames}} anymore at this moment.
+      {% else if intent == "romantic" %}
+        Romantic activity has finished. There is no romantic activity between {{mainActorNames}} and {{secondaryActorNames}} anymore at this moment.
+      {% endif %}
+      The encounter is fully concluded and should not be revisited or re-initiated unless actors explicitly and unambiguously propose it again. Do not use StartNewSex or StartCareScene based on prior encounter history alone.
+    {% endif %}
+{% else if tton_type == "action_decline" %}
+    {{msg}}
+{% else if tton_type == "spectator_added" %}
+    {{msg}}
+{% else if tton_type == "spectator_fled" %}
+    {{msg}}
+{% else if tton_type == "intent_changed" %}
+    {% if intent == "romantic" %}
+        {% set mainActorsRole = "initiators" %}
+        {% set secondaryActorsRole = "followers" %}
+    {% else if intent == "lustful" %}
+        {% set mainActorsRole = "initiators" %}
+        {% set secondaryActorsRole = "followers" %}
+    {% else if intent == "transactional" %}
+        {% set mainActorsRole = "recipients of service" %}
+        {% set secondaryActorsRole = "providers of service" %}
+    {% else if intent == "dom" %}
+        {% set mainActorsRole = "dominants" %}
+        {% set secondaryActorsRole = "submissives" %}
+    {% else if intent == "aggressive" %}
+        {% set mainActorsRole = "aggressors" %}
+        {% set secondaryActorsRole = "victims" %}
+    {% endif %}
+
+    {% if oldIntent != intent %}
+        {% if intent == "romantic" %}
+            {% if oldIntent == "lustful" %}
+                {% set transisionDescription = "The dynamic has shifted from a purely physical desire to a romantic connection." %}
+            {% else if oldIntent == "transactional" %}
+                {% set transisionDescription = "What was once a detached, purposeful exchange has blossomed into genuine romantic feelings." %}
+            {% else if oldIntent == "dom" %}
+                {% set transisionDescription = "The power dynamic has softened, evolving from dominance and submission into a romantic connection between them." %}
+            {% else if oldIntent == "aggressive" %}
+                {% set transisionDescription = "What was once a non-consensual encounter has transformed into a consensual romantic connection." %}
+            {% endif %}
+        {% else if intent == "lustful" %}
+            {% if oldIntent == "romantic" %}
+                {% set transisionDescription = "The dynamic has shifted from a romantic connection to a purely physical desire." %}
+            {% else if oldIntent == "transactional" %}
+                {% set transisionDescription = "What was once a detached, purposeful exchange has evolved into a purely physical desire." %}
+            {% else if oldIntent == "dom" %}
+                {% set transisionDescription = "The power dynamic has shifted from dominance and submission to a purely physical desire." %}
+            {% else if oldIntent == "aggressive" %}
+                {% set transisionDescription = "What was once a non-consensual encounter has transformed into a consensual physical desire." %}
+            {% endif %}
+        {% else if intent == "transactional" %}
+            {% if oldIntent == "romantic" %}
+                {% set transisionDescription = "What was once a romantic connection has become a detached, purposeful exchange." %}
+            {% else if oldIntent == "lustful" %}
+                {% set transisionDescription = "What was once a purely physical desire has evolved into a detached, purposeful exchange." %}
+            {% else if oldIntent == "dom" %}
+                {% set transisionDescription = "The power dynamic has shifted from dominance and submission to a detached, purposeful exchange." %}
+            {% else if oldIntent == "aggressive" %}
+                {% set transisionDescription = "What was once a non-consensual encounter has transformed into a detached, purposeful exchange." %}
+            {% endif %}
+        {% else if intent == "dom" %}
+            {% if oldIntent == "romantic" %}
+                {% set transisionDescription = "The dynamic has shifted from a romantic connection to a consensual dominant/submissive power dynamic." %}
+            {% else if oldIntent == "lustful" %}
+                {% set transisionDescription = "The dynamic has shifted from a purely physical desire to a consensual dominant/submissive power dynamic." %}
+            {% else if oldIntent == "transactional" %}
+                {% set transisionDescription = "What was once a detached, purposeful exchange has evolved into a consensual dominant/submissive power dynamic." %}
+            {% else if oldIntent == "aggressive" %}
+                {% set transisionDescription = "What was once a non-consensual encounter has transformed into a consensual dominant/submissive power dynamic." %}
+            {% endif %}
+        {% else if intent == "aggressive" %}
+            {% if oldIntent == "romantic" %}
+                {% set transisionDescription = "What was once a romantic connection has become a non-consensual aggressive encounter." %}
+            {% else if oldIntent == "lustful" %}
+                {% set transisionDescription = "What was once a purely physical desire has evolved into a non-consensual aggressive encounter." %}
+            {% else if oldIntent == "transactional" %}
+                {% set transisionDescription = "What was once a detached, purposeful exchange has become a non-consensual aggressive encounter." %}
+            {% else if oldIntent == "dom" %}
+                {% set transisionDescription = "The power dynamic has shifted from a consensual dominant/submissive relationship to a non-consensual aggressive encounter." %}
+            {% endif %}
+        {% endif %}
+
+        {% if SameMainActors %}
+            Sexual dynamic between {{mainActorNames}} and {{secondaryActorNames}} has shifted. {{transisionDescription}}
+        {% else %}
+            {{transisionDescription}} {{mainActorNames}} are now the {{mainActorsRole}}, while {{secondaryActorNames}} are the {{secondaryActorsRole}}.
+        {% endif %}
+    {% else %}
+        Sexual dynamic remains {{intent}}. {{mainActorNames}} became the {{mainActorsRole}}, while {{secondaryActorNames}} are the {{secondaryActorsRole}}.
+    {% endif %}
+{% endif %}

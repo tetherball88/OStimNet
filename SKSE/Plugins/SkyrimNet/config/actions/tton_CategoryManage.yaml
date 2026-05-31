@@ -1,0 +1,16 @@
+customCategory: TTON_CategoryManage
+name: ManageIntimateScenes
+description: "Actions to manage ongoing sex - change position, change pace, change intent, invite others, stop sex"
+enabled: true
+parameterMapping:
+  - type: dynamic
+    name: intent
+    description: What you intended to do when selected this action. For example, switch to doggy style, slow down the pace, or invite character A to join speaking npc's sex.
+eligibilityRules:
+  - conditions:
+      - decoratorName: is_sex_scene_position_change_available
+        arguments:
+          - currentActor
+        comparisonOperator: ==
+        expectedValue: "available"
+

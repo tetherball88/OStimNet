@@ -1,5 +1,6 @@
+customCategory: TTON_CategoryStart
 name: StartNewSex
-description: "{{render_template(\"helpers/ostimnet_action_start_new_sex\")}}"
+description: "{{render_template(\"ostimnet_actions/ostimnet_action_start_new_sex\")}}"
 questEditorId: TTON_MainController
 scriptName: TTON_Actions
 executionFunctionName: StartSexActionExecute
@@ -9,78 +10,38 @@ parameterMapping:
     description: Speaker Actor parameter (triggering entity)
   - type: dynamic
     name: participant1
-    description: Primary partner (empty for solo)
+    description: Display name of the primary partner, exactly as listed under available partners. Leave empty only for solo/masturbation scenes.
     useNearbyActors: false
     optional: true
   - type: dynamic
     name: participant2
-    description: Optional 2nd partner
+    description: Display name of an additional participant for group sex. Only include if the scene explicitly involves more than 2 people.
     useNearbyActors: false
     optional: true
   - type: dynamic
     name: participant3
-    description: Optional 3rd partner
+    description: Display name of an additional participant for group sex. Only include if the scene explicitly involves more than 3 people.
     useNearbyActors: false
     optional: true
   - type: dynamic
     name: participant4
-    description: Optional 4th partner
+    description: Display name of an additional participant for group sex. Only include if the scene explicitly involves more than 4 people.
     useNearbyActors: false
     optional: true
   - type: dynamic
-    name: activity
-    description: Activity from list
+    name: furniture
+    description: Select furniture from list, return exact furniture type. Floor only when urgency is overwhelming or no other option exists. Priority - bed(best privacy comfort) > situational furniture(better variety and unexpected positions) > floor as last resort.
   - type: dynamic
-    name: furn
-    description: Furniture from list
-    optional: true
+    name: intent
+    description: "romantic|lustful|transactional|dom|aggressive"
+  - type: dynamic
+    name: reason
+    description: Short 1-2 sentence reason why LLM decided to initiate this action with these participants, intent and furniture.
 enabled: true
 eligibilityRules:
   - conditions:
-      - decoratorName: is_in_faction
-        arguments:
-          - currentActor
-          - SexLabAnimatingFaction
-        comparisonOperator: ==
-        expectedValue: false
-      - decoratorName: is_in_faction
-        arguments:
-          - currentActor
-          - OStimActorCountFaction
-        comparisonOperator: ==
-        expectedValue: false
-      - decoratorName: is_in_faction
-        arguments:
-          - currentActor
-          - ChildFaction
-        comparisonOperator: ==
-        expectedValue: false
-      - decoratorName: is_in_combat
+      - decoratorName: is_start_new_sex_available
         arguments:
           - currentActor
         comparisonOperator: ==
-        expectedValue: false
-      - decoratorName: has_magic_effect
-        arguments:
-          - currentActor
-          - TTON_DeclineStartNewSexEffect
-        comparisonOperator: ==
-        expectedValue: false
-      - decoratorName: decnpc
-        arguments:
-          - currentActor
-        comparisonOperator: ==
-        expectedValue: false
-        resultPath: isChild
-  - conditions:
-      - decoratorName: get_global_value
-        arguments:
-          - skyrimnet_sexlab_ostim_player
-        comparisonOperator: ==
-        expectedValue: 1
-      - decoratorName: is_plugin_loaded
-        arguments:
-          - SkyrimNet_SexLab.esp
-        comparisonOperator: ==
-        expectedValue: false
-    logicalOperator: OR
+        expectedValue: "available"

@@ -1,0 +1,5 @@
+Include an actor only if their role-specific motivation is present:
+- Potential service provider: explicit or implicit material motivation such as coin, favor, leverage, or desperation; no strong moral opposition to the act; no active hostility that overrides the benefit
+- Potential service recipient: desire or demand for the service and the means or willingness to provide the agreed benefit
+
+If the most recent relevant `dialogue` or `npc_thoughts` from participant clearly permits or welcomes their role in the interaction, treat willingness for this participant as fully satisfied and skip all remaining conditions.

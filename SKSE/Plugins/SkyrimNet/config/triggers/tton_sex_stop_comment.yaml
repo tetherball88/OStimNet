@@ -4,7 +4,7 @@ description: "Reaction when OStim Ended"
 eventCriteria:
   eventType: "tton_event"
   schemaConditions:
-    - fieldPath: "type"
+    - fieldPath: "tton_type"
       operator: "equals"
       value: "sex_stop"
       caseSensitive: false
@@ -14,7 +14,7 @@ eventCriteria:
 
 response:
   type: "direct_narration"
-  content: "{{ originator }} makes comment on finished encounter."
+  content: "{{ originator }} surfaces from it — body settling, mind returning — one honest unguarded thought about how this ended and where they are now."
 
 audience: "nearby_npcs"
 

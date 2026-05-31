@@ -1,27 +1,18 @@
+customCategory: TTON_CategoryManage
 name: StopSex
-description: "{{render_template(\"helpers/ostimnet_action_stop_sex\")}}"
+description: "{{render_template(\"ostimnet_actions/ostimnet_action_stop_sex\")}}"
 questEditorId: TTON_MainController
 scriptName: TTON_Actions
-executionFunctionName: ChangeSexActivityActionExecute
+executionFunctionName: StopSexActionExecute
 parameterMapping:
   - type: speaker
     name: akActor
     description: Speaker Actor parameter (triggering entity)
-  - type: dynamic
-    name: activity
-    description: The activity parameter for this action
 enabled: true
 eligibilityRules:
   - conditions:
-      - decoratorName: is_in_faction
+      - decoratorName: is_stop_sex_available
         arguments:
           - currentActor
-          - OStimActorCountFaction
         comparisonOperator: ==
-        expectedValue: true
-      - decoratorName: has_magic_effect
-        arguments:
-          - currentActor
-          - TTON_DeclineStopSexEffect
-        comparisonOperator: ==
-        expectedValue: false
+        expectedValue: "available"

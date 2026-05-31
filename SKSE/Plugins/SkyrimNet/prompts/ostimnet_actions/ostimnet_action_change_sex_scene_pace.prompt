@@ -1,0 +1,10 @@
+{% set speakingNpc = decnpc(npc.UUID) %}
+{{speakingNpc.name}} changes sex pace/intensity. Use when explicitly requesting speed/intensity change, NOT for moans or dirty talk.
+{% set speedDirection = ostimnet_sex_pace_direction(npc.UUID) %}
+{% if speedDirection == "both" %}
+    Speed can be increased or decreased. Use "increase" to speed up and "decrease" to slow down.
+{% else if speedDirection == "increase" %}
+    Speed can only be increased. Use "increase" to speed up.
+{% else if speedDirection == "decrease" %}
+    Speed can only be decreased. Use "decrease" to slow down.
+{% endif %}

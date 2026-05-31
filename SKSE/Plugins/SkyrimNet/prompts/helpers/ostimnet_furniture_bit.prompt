@@ -1,0 +1,2 @@
+Available furniture: floor, {{ ostimnet_available_furniture_types(npc.UUID) }}
+Prefer beds in buildings — they imply privacy. Non-bed furniture is viable and situationally natural — use it when it fits the location and characters. In public indoor spaces, floor means the main hall — avoid it unless the characters support exhibitionism. Outdoor or semi-private locations, floor is fine.

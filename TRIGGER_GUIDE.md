@@ -104,7 +104,7 @@ Fires when NPCs begin an intimate scene.
 - Lower probability for shy characters (0.5 = 50% chance)
 - Increase cooldown to reduce initial chatter
 
-### 2. Position Change (`tton_sex_change`)
+### 2. Position Change (`tton_sex_position_change`)
 Fires when the scene changes to a new position.
 
 **Settings:**
@@ -162,7 +162,7 @@ Let's create a trigger that only comments on position changes 30% of the time wi
 
 **Step 2:** Fill in the basic fields:
 
-- **Name:** `tton_sex_change_quiet`
+- **Name:** `tton_sex_position_change`
 - **Priority:** `1`
 - **Description:** "Less frequent reactions to position changes"
 - **Event Type:** Select `tton_event` from dropdown
@@ -196,7 +196,7 @@ Let's create a trigger that only comments on position changes 30% of the time wi
 
 **Step 6:** Click **Create Trigger**
 
-**Step 7:** Disable the original `tton_sex_change` trigger:
+**Step 7:** Disable the original `tton_sex_position_change` trigger:
 - Find it in the list
 - Click **Edit**
 - Uncheck **Enabled**

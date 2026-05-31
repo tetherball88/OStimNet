@@ -1,0 +1,10 @@
+{% set speakingNpc = decnpc(npc.UUID) %}
+
+{% set nearbyNPCsJson = get_nearby_actors_not_in_ostim(npc.UUID) %}
+{% set ostimPotentialParticipantsString = nearbyNPCsJson.actorsNameString %}
+{{speakingNpc.name}} initiates NEW sex. Use when explicitly proposing/accepting SEX or intercourse, NOT non-sexual affection (use StartCareScene) {% if is_join_ongoing_sex_available(npc.UUID) == "available" %} or joining existing scenes (use JoinOngoingSex){% endif %}.
+Available intents: {{ render_template("ostimnet_intents\\ostimnet_intents_available") }}
+Available partners: {{ostimPotentialParticipantsString}}
+NEVER select partner only based on watching or being present.
+Select partners only if they are active participants not bystanders or spectating or watching.
+{{ render_template("helpers\\ostimnet_furniture_bit") }}

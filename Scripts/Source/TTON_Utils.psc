@@ -15,241 +15,6 @@ string Function GetActorName(actor akActor) global
     EndIf
 EndFunction
 
-
-;==========================================================================
-; Scene Description Generation
-;==========================================================================
-
-; Generates a detailed textual description of an ongoing OStim scene
-; @param ThreadID The ID of the thread to describe
-; @returns Natural language description of the scene and its participants
-string Function GenerateOStimSceneDescription(string sceneId, Actor[] actors) global
-    string[] actionTypes = OMetadata.GetActionTypes(sceneId)
-    string actorString = GetActorsNamesComaSeparated(actors)
-
-    string result = actorString + " engaged in intimate scene."
-
-    int i = 0
-
-    while(i < actionTypes.Length)
-        int actorIdx = OMetadata.GetActionActor(sceneId, i)
-        int targetIdx = OMetadata.GetActionTarget(sceneId, i)
-        int performerIdx = OMetadata.GetActionPerformer(sceneId, i)
-        Actor activeActor = actors[actorIdx]
-        Actor target = actors[targetIdx]
-        Actor performer = actors[performerIdx]
-
-        string performerTags = ""
-
-        if(performer != activeActor && performer != target)
-        performerTags = GetActorTagsCsv(sceneId, actorIdx)
-        endif
-
-        result += " " + GetActorName(activeActor) + "("+GetActorTagsCsv(sceneId, actorIdx)+") enacts the " + actionTypes[i] + ", taking the active physical role with " + GetActorName(target) + "("+GetActorTagsCsv(sceneId, targetIdx)+"). The pace and movement are guided by " + GetActorName(performer) + "'s"+performerTags+" lead."
-
-        i += 1
-    endwhile
-
-    return result
-EndFunction
-
-; Gets a comma-separated list of tags for an actor in a scene
-; @param sceneId The ID of the scene
-; @param actorIdx The index of the actor in the scene
-; @returns CSV string of actor tags
-string Function GetActorTagsCsv(string sceneId, int actorIdx) global
-    return OCSV.ToCSVList(OMetadata.GetActorTags(sceneId, actorIdx))
-EndFunction
-
-;==========================================================================
-; OStim Scene Management
-;==========================================================================
-
-; Finds an appropriate scene based on actors and specified actions
-; @param actors Array of actors to find a scene for
-; @param actions CSV string of action types or scene actions to search for
-; @param useRandom Whether to fall back to a random scene if no matching scene is found
-; @returns Scene ID if found, empty string if no suitable scene
-string function getSceneByActions(actor[] actors, string actions, string furn = "none", bool nonSexual = false) global
-    string newScene
-
-    if(!nonSexual)
-        if(furn != "none")
-            if(OFurniture.IsChildOf("bed", furn))
-                ; prioritize scenes without standing actors if bed is used
-                newScene = OLibrary.GetRandomSceneSuperloadCSV(actors, furn, AnyActionType = actions, ActorTagBlacklistForAll ="standing")
-                if(newScene == "")
-                    ; while using bed, prioritize finding scene without standing actors over specific action types
-                    newScene = OLibrary.GetRandomSceneSuperloadCSV(actors, furn, ActionWhitelistTypes = "sexual", ActorTagBlacklistForAll ="standing")
-                endif
-            endif
-            if(newScene == "")
-                ; try to find by action with furniture
-                newScene = OLibrary.GetRandomSceneSuperloadCSV(actors, furn, AnyActionType = actions)
-                ; still no match, try any sexual scene
-                if(newScene == "")
-                    newScene = OLibrary.GetRandomSceneSuperloadCSV(actors, furn, ActionWhitelistTypes = "sexual")
-                endif
-            endif
-        else
-            ; prioritize scenes with at least one standing actor if no furniture specified
-            newScene = OLibrary.GetRandomSceneSuperloadCSV(actors, AnyActionType = actions, ActorTagWhitelistForAny ="standing")
-        endif
-
-        ; try to find by action but without furniture
-        if(newScene == "")
-            newScene = OLibrary.GetRandomSceneSuperloadCSV(actors, AnyActionType = actions)
-        endif
-
-        if(newScene == "")
-            ; try to find any sexual scene
-            newScene = OLibrary.GetRandomSceneSuperloadCSV(actors, ActionWhitelistTypes = "sexual")
-        endif
-    else
-        ; try to find non sexual scene for standing actors
-        newScene = OLibrary.GetRandomSceneSuperloadCSV(actors, AnyActionType = actions, ActionBlacklistTypes = "sexual", AllActorTagsForAll = "standing")
-        if(newScene == "")
-            ; try to find by action but without standing restriction
-            newScene = OLibrary.GetRandomSceneSuperloadCSV(actors, AnyActionType = actions, ActionBlacklistTypes = "sexual")
-        endif
-    endif
-
-    return newScene
-endfunction
-
-; Checks if there are any available scenes for the given actor combination
-; @param actors Array of actors to check scenes for
-; @returns True if at least one suitable scene exists
-bool Function UserHasScenesForActors(Actor[] actors, string furn = "") global
-    string sceneId = OLibrary.GetRandomSceneSuperloadCSV(actors, furn, AnyActionType = "sexual") != ""
-    if(sceneId == "")
-        return false
-    endif
-
-    return true
-EndFunction
-
-; return changed animation position based on actor's ostim tags or original position
-int Function GetActorAnimationIndex(Actor currentA, int position, string sceneId) global
-    string[] actorTags = OMetadata.GetActorTags(sceneId, position)
-    int k = 0
-    while(k < actorTags.Length)
-        string tag = actorTags[k]
-        if(StringUtil.Find(tag, "animationIndex") == 0)
-            if(tag == "animationIndex0")
-                return 0
-            elseif(tag == "animationIndex1")
-                return 1
-            elseif(tag == "animationIndex2")
-                return 2
-            elseif(tag == "animationIndex3")
-                return 3
-            elseif(tag == "animationIndex4")
-                return 4
-            endif
-        endif
-        k += 1
-    endwhile
-
-    return position
-EndFunction
-
-Actor[] Function SortOstimActorsWithAnimationIndex(Actor[] actors, string sceneId) global
-    int aLength = actors.length
-    Actor[] sortedActors = PapyrusUtil.ActorArray(aLength)
-
-    int j = 0
-    while(j < aLength)
-        Actor currentA = actors[j]
-        int animationIndex = GetActorAnimationIndex(currentA, j, sceneId)
-
-        sortedActors[animationIndex] = currentA
-        j += 1
-    endwhile
-
-    return sortedActors
-EndFunction
-
-; Converts an array of actors into a JSON array of their names
-; @param actors Array of actors to convert
-; @returns JSON array string containing actor names
-string Function GetActorsNamesJson(Actor[] actors, string sceneId, bool sortByAnimationIndex = false) global
-    string actorNames = "["
-    int i = 0
-
-    int aLength = actors.length
-    Actor[] sortedActors = SortOstimActorsWithAnimationIndex(actors, sceneId)
-
-    while(i < sortedActors.length)
-        if(i != 0)
-        actorNames += ","
-        endif
-
-        actorNames += "\""+TTON_Utils.GetActorName(sortedActors[i])+"\""
-        i += 1
-    endwhile
-
-    string res = actorNames + "]"
-
-    return res
-EndFunction
-
-; Converts an array of actors into a comma-separated string of their names
-; @param actors Array of actors to convert
-; @returns Comma-separated string of actor names
-string Function GetActorsNamesComaSeparated(Actor[] actors, Actor exclude = none) global
-    int i = 0
-    string res = ""
-    while(i < actors.Length)
-        if(actors[i] != exclude)
-            string actorName = TTON_Utils.GetActorName(actors[i])
-            if(actorName != "")
-                if(res != "")
-                    res += ", "
-                endif
-                res += TTON_Utils.GetActorName(actors[i])
-            endif
-        endif
-        i += 1
-    endwhile
-    return res
-EndFunction
-
-;==========================================================================
-; Scene Data Serialization
-;==========================================================================
-
-string Function GetBaseSceneId(string variantId) global
-    int idx = StringUtil.Find(variantId, "Swapped")
-    if idx != -1
-        ; return everything before "Swapped"
-        return StringUtil.Substring(variantId, 0, idx)
-    endif
-    ; no suffix found, return unchanged
-    return variantId
-EndFunction
-
-string Function GetSceneDescription(string sceneId, Actor[] actors) global
-    string baseSceneId = GetBaseSceneId(sceneId)
-
-    string actorsStrArr = GetActorsNamesJson(actors, sceneId, true)
-
-    string template = TTON_JData.GetDescription(baseSceneId)
-
-    string description = ""
-
-    if(template)
-        description = SkyrimNetApi.ParseString(template, "scenedata", "{\"actors\": "+actorsStrArr+"}")
-    endif
-
-    if(!description)
-      description = TTON_Utils.GenerateOStimSceneDescription(sceneId, actors)
-    endif
-
-    return description
-EndFunction
-
-
 Faction Function GetSexLabAnimatingFaction() global
     Faction SexLabAnimatingFaction = none
     if(Game.GetModByName("SexLab.esm") != 255)
@@ -272,8 +37,12 @@ bool Function IsInSexLab(Actor npc) global
     return npc.IsInFaction(slFaction)
 EndFunction
 
-bool Function IsActorBusyWithScenes(Actor npc) global
-    return OActor.IsInOStim(npc) || IsInSexLab(npc)
+bool Function IsActorBusyWithScenes(Actor npc, bool includePending = true) global
+    bool isActorPening = false
+    if(includePending)
+        isActorPening = IsActorPending(npc)
+    endif
+    return OActor.IsInOStim(npc) || IsInSexLab(npc) || isActorPening
 EndFunction
 
 GlobalVariable Function GetSexLabOStimPlayerGlobal() global
@@ -302,266 +71,100 @@ bool Function IsSexLabInCharge() global
     return GetSexLabOStimPlayerMode() == 0
 EndFunction
 
-; Checks if an actor is eligible for OStim scenes
-; @param npc The actor to check for eligibility
-; @returns True if the actor is eligible (not a child and passes OStim verification)
-bool Function IsOStimEligible(Actor npc) global
-    return !OUtils.IsChild(npc) && OActor.VerifyActors(OActorUtil.ToArray(npc)) && !npc.IsInDialogueWithPlayer()
-EndFunction
 
-string Function GetShclongOrgasmedLocation(Actor npc, int ThreadID) global
-    string npcName = GetActorName(npc)
-    string res = npcName + " ejaculated "
 
-    ; those who can cum inside
-    bool hadLocations = false
-    if OActor.HasSchlong(npc)
-        string sceneId = OThread.GetScene(ThreadID)
-        int actorPosition = GetActorAnimationIndex(npc, OThread.GetActorPosition(ThreadID, npc), sceneId)
-        int[] ActionsAsTarget = OMetadata.FindActionsSuperloadCSVv2(sceneId, ParticipantPositionsAny=actorPosition, AnyCustomStringListRecord = ";cum")
-        int[] ActionsAsActor = OMetadata.FindActionsSuperloadCSVv2(sceneId, ParticipantPositionsAny=actorPosition, AnyCustomStringListRecord = "cum")
-        int i = 0
-
-        while(i < ActionsAsTarget.Length)
-            int ActionIndex = ActionsAsTarget[i]
-            Actor akTarget = OThread.GetActor(ThreadID, OMetadata.GetActionTarget(sceneId, ActionIndex))
-            BuildCumLocations(sceneId, ActionIndex, akTarget, true, npc)
-            i += 1
-        EndWhile
-
-        i = 0
-        while(i < ActionsAsActor.Length)
-            int ActionIndex = ActionsAsActor[i]
-            Actor akActor = OThread.GetActor(ThreadID, OMetadata.GetActionActor(sceneId, ActionIndex))
-            BuildCumLocations(sceneId, ActionIndex, akActor, false, npc)
-            i += 1
-        EndWhile
-
-        i = 0
-        Form[] actors = StorageUtil.FormListToArray(npc, "cumOnNpcs")
-        string locations = ""
-        while(i < actors.Length)
-            Actor cumOnActor = actors[i] as Actor
-            if(cumOnActor != npc)
-                String[] SlotsOn = StorageUtil.StringListToArray(cumOnActor, npcName+"_cumOnPlacesOn")
-                String[] SlotsIn = StorageUtil.StringListToArray(cumOnActor, npcName+"_cumOnPlacesIn")
-
-                if(SlotsOn.Length > 0)
-                    locations += "on " + GetActorName(cumOnActor) + "'s "
-                    hadLocations = true
-                    locations += OCSV.ToCSVList(SlotsOn)
-                    if(SlotsIn.Length > 0)
-                        locations += " and "
-                    endif
-                endif
-                if(SlotsIn.Length > 0)
-                    locations += "in " + GetActorName(cumOnActor) + "'s "
-                    hadLocations = true
-                    locations += OCSV.ToCSVList(SlotsIn)
-                endif
-                locations += "; "
-            endif
-
-            i += 1
-            StorageUtil.StringListClear(cumOnActor, npcName+"_cumOnPlacesOn")
-            StorageUtil.StringListClear(cumOnActor, npcName+"_cumOnPlacesIn")
-        endwhile
-
-        res += locations
-    endif
-
-    StorageUtil.FormListClear(npc, "cumOnNpcs")
-
-    if(!hadLocations)
-        return ""
-    endif
-
-    return res
-EndFunction
-
-Function BuildCumLocations(string sceneId, int ActionIndex, Actor cumTarget, bool isTarget, Actor cummingNpc) global
-    string npcName = GetActorName(cummingNpc)
-    String[] Slots
-    if(isTarget)
-        Slots = OMetadata.GetCustomActionTargetStringList(sceneId, ActionIndex, "cum")
-    else
-        Slots = OMetadata.GetCustomActionActorStringList(sceneId, ActionIndex, "cum")
-    endif
-    if(Slots.Length > 0)
-        StorageUtil.FormListAdd(cummingNpc, "cumOnNpcs", cumTarget, false)
-        int j = 0
-        while(j < Slots.Length)
-            string slot = Slots[j]
-            if(slot == "rectum" || slot == "mouth" || slot == "throat" || slot == "vagina")
-                StorageUtil.StringListAdd(cumTarget, npcName+"_cumOnPlacesIn", slot, false)
-            else
-                StorageUtil.StringListAdd(cumTarget, npcName+"_cumOnPlacesOn", slot, false)
-            endif
-            j += 1
-        endwhile
-    endif
-EndFunction
-
-bool Function ShowConfirmMessage(string msg, string type) global
-    if(!TTON_JData.GetMcmCheckbox(type, 1))
-        return true
-    endif
-    string result = SkyMessage.Show(msg, "Yes", "No")
-    if(result != "Yes" && result != "No")
-        Debug.Notification("Dynamic Message Box Not Found (Please install Papyrus MessageBox - SKSE NG plugin)")
-        return true
-    endif
-
-    return result == "Yes"
-EndFunction
-
-; if it's player only scene it will return none
-; assume that actors are only actors from scene
-actor Function GetWeightedRandomActorToSpeak(actor[] actors = none, form[] actorForms = none, int ThreadID = -1) global
-    if(TTON_JData.GetSpectatorsEnabled())
-        int chance = Utility.RandomInt(1, 100)
-        bool spectatorShouldTalk = chance <= TTON_JData.GetMcmSpectatorCommentWeight()
-        Form[] spectators = StorageUtil.FormListToArray(none, "TTON_AllSpectatorsForThread_" + ThreadID)
-        int availableSpectators = spectators.Length
-        int i = 0
-        while(i < spectators.Length)
-            Actor spectatorActor = spectators[i] as Actor
-            if(spectatorActor.IsInFaction(TTON_JData.GetSpectatorFleeFaction()))
-                availableSpectators -= 1
-            endif
-            i += 1
-        endwhile
-        if(spectatorShouldTalk && availableSpectators)
-            actorForms = spectators
-            actors = none
-        endif
-    endif
-    Actor player = TTON_JData.GetPlayer()
-    actor[] maleActors = PapyrusUtil.ActorArray(0)
-    actor[] femaleActors = PapyrusUtil.ActorArray(0)
-
-    int ArrLength = 0
-
-    if(actors && actors.Length > 0)
-        ArrLength = actors.Length
-    elseif(actorForms && actorForms.Length > 0)
-        ArrLength = actorForms.Length
-    endif
-
-    if(ArrLength == 0)
-        return none
-    endif
-
-    int count = 0
-    while count < ArrLength
-        actor currActor
-        if(actors && actors.Length > 0)
-            currActor = actors[count]
-        elseif(actorForms && actorForms.Length > 0)
-            currActor = actorForms[count] as Actor
-        endif
-        int currSex = GetGender(currActor)
-        bool isMuted = false
-
-        if(OActor.IsMuted(currActor))
-            isMuted = true
-        endif
-        if(currActor == player || isMuted)
-        ; player doesn't participate in llm talking :)
-        ; some actions in ostim prevents actors from talking, which makes sense
-        elseif(currSex == 0)
-            maleActors = PapyrusUtil.PushActor(maleActors, currActor)
-        else
-            femaleActors = PapyrusUtil.PushActor(femaleActors, currActor)
-        endif
-
-        count += 1
-    endwhile
-
-    ; if no female npc, just pick random male. Can be none though if it's player only scene
-    if(femaleActors.length == 0 && maleActors.Length > 0)
-        return getRandomActor(maleActors)
-    endif
-
-    ; if no male npc, just pick random female. Can be none though if it's player only scene
-    if(maleActors.length == 0 && femaleActors.Length > 0)
-        return getRandomActor(femaleActors)
-    endif
-
-    ; pick weighted type of npc who will talk
-    bool isFemale = Utility.RandomInt(1, 100) <= TTON_JData.GetMcmCommentsGenderWeight()
-
-    if(isFemale)
-        if(femaleActors.Length > 0)
-            return getRandomActor(femaleActors)
-        elseif(maleActors.Length > 0)
-            return getRandomActor(maleActors)
-        endif
-    else
-        if(maleActors.Length > 0)
-            return getRandomActor(maleActors)
-        elseif(femaleActors.Length > 0)
-            return getRandomActor(femaleActors)
-        endif
-    endif
-
-    return none
-EndFunction
-
-int Function GetGender(Actor akActor) global
-  if !akActor
-    return -1 ; Invalid actor
-  endif
-  return akActor.GetActorBase().GetSex()
-endfunction
-
-actor function getRandomActor(actor[] actors) global
-  int index = PO3_SKSEFunctions.GenerateRandomInt(0, actors.length - 1)
-
-  return actors[index]
-endfunction
-
-Actor[] Function GetAllActorsAfterJoin(int ThreadID, Actor[] newActors) global
-    actor[] originalActors = OThread.GetActors(ThreadID)
-    actor[] currentActors = originalActors
-    int totalActors = currentActors.Length + newActors.Length
-    Actor[] eligibleActors = PapyrusUtil.ActorArray(0)
-
-    if(totalActors > 5)
-        TTON_Debug.warn("AddActorsToActiveThread: New set of actors exceed 5 actors in one scene. New actors length: " + totalActors)
-        return originalActors
-    endif
-
+Function MakeParticipantsWalkToFurniture(Actor[] participants, ObjectReference furn) global
     int i = 0
-    while(i < newActors.Length)
-        if(newActors[i] && PapyrusUtil.CountActor(currentActors, newActors[i]) == 0 && IsActorEligibleToJoin(newActors[i], true))
-            currentActors = PapyrusUtil.PushActor(currentActors, newActors[i])
+    while i < participants.Length
+        Actor current = participants[i]
+        if(current && furn && current != TTON_JData.GetPlayer())
+            TTON_Debug.debug("Making " + current + " walk to furniture " + furn + " keyword: " + TTON_JData.GetParticipantFurnitureKeyword())
+            StorageUtil.SetFormValue(current, "TTON_WalkToFurniture", furn)
+            PO3_SKSEFunctions.SetLinkedRef(current, furn, TTON_JData.GetParticipantFurnitureKeyword())
+            ActorUtil.AddPackageOverride(current, TTON_JData.GetParticipantFollowPackage(), 60)
+            current.EvaluatePackage()
+            SetActorPending(current, true)
         endif
         i += 1
     endwhile
-
-    return currentActors
 EndFunction
 
-bool Function IsActorEligibleToJoin(Actor akActor, bool skipConsidering = false) global
-    bool isConsidering = StorageUtil.GetIntValue(akActor, "SexInviteConsidering") == 1
-    return !OActor.IsInOStim(akActor) && !IsInSexLab(akActor) && OThread.GetThreadCount() > 0 && TTON_Utils.IsOStimEligible(akActor) && (skipConsidering || !isConsidering)
+Function FreeParticipants(Actor[] participants) global
+    int i = 0
+    while i < participants.Length
+        Actor current = participants[i]
+        FreeParticipant(current)
+        i += 1
+    endwhile
 EndFunction
 
-Function Decline(string actionName, Actor initiator, bool playerInvited) global
-    TTON_JData.SetDeclineActionCooldown(initiator, actionName)
-    TTON_Events.RegisterDeclineEvent(actionName, initiator, playerInvited)
-EndFunction
-
-bool Function Ask(string type, Actor initiator, string question, bool playerInvited = false) global
-    bool yes = TTON_Utils.ShowConfirmMessage(question, type)
-    if(!yes)
-        Decline(type, initiator, playerInvited)
+Function FreeParticipant(Actor participant) global
+    ObjectReference furn = StorageUtil.GetFormValue(participant, "TTON_WalkToFurniture") as ObjectReference
+    if(participant && furn && participant != TTON_JData.GetPlayer())
+        TTON_Debug.debug("Freeing " + participant + " from furniture " + furn + " keyword: " + TTON_JData.GetParticipantFurnitureKeyword())
+        PO3_SKSEFunctions.SetLinkedRef(participant, furn, none)
+        StorageUtil.UnsetFormValue(participant, "TTON_WalkToFurniture")
+        ActorUtil.RemovePackageOverride(participant, TTON_JData.GetParticipantFollowPackage())
+        participant.EvaluatePackage()
     endif
-    return yes
 EndFunction
 
-bool Function ShouldPrioritizePlayerThreadComments(int ThreadID) global
-    bool playerThreadIsActive = OThread.IsRunning(0)
-    return TTON_JData.GetPrioritizePlayerThreadComments() && playerThreadIsActive && ThreadID != 0
+Function SetActorsPending(Actor[] actors, bool pending) global
+    int i = 0
+    Actor player = TTON_JData.GetPlayer()
+    Faction pendingFaction = TTON_JData.GetOStimPendingFaction()
+    while i < actors.Length
+        Actor current = actors[i]
+        if(current && current != player)
+            if(pending)
+                TTON_Debug.debug("Setting " + current + " as pending")
+                current.addToFaction(pendingFaction)
+                StorageUtil.FormListAdd(none, "TTON_PendingActors", current, false)
+            else
+                TTON_Debug.debug("Freeing " + current + " from pending")
+                current.removeFromFaction(pendingFaction)
+                StorageUtil.FormListRemove(none, "TTON_PendingActors", current)
+            endif
+        endif
+        i += 1
+    endwhile
+EndFunction
+
+Function SetActorPending(Actor npc, bool pending) global
+    Actor player = TTON_JData.GetPlayer()
+    Faction pendingFaction = TTON_JData.GetOStimPendingFaction()
+    if(npc && npc != player)
+        if(pending)
+            TTON_Debug.debug("Setting " + npc + " as pending")
+            npc.addToFaction(pendingFaction)
+            StorageUtil.FormListAdd(none, "TTON_PendingActors", npc, false)
+        else
+            TTON_Debug.debug("Freeing " + npc + " from pending")
+            npc.removeFromFaction(pendingFaction)
+            StorageUtil.FormListRemove(none, "TTON_PendingActors", npc)
+        endif
+    endif
+EndFunction
+
+bool Function IsActorPending(Actor npc) global
+    if(!npc)
+        return false
+    endif
+    return npc.IsInFaction(TTON_JData.GetOStimPendingFaction())
+EndFunction
+
+Function ClearPendingActorsOnLoad() global
+    Form[] pendingActors = StorageUtil.FormListToArray(none, "TTON_PendingActors")
+    Faction pendingFaction = TTON_JData.GetOStimPendingFaction()
+    TTON_Debug.debug("Clearing pending actors on load: " + pendingActors.Length)
+    int i = 0
+    while i < pendingActors.Length
+        Actor current = pendingActors[i] as Actor
+        if(current && current.IsInFaction(pendingFaction))
+            TTON_Debug.debug("Freeing " + current + " from pending on load")
+            current.removeFromFaction(pendingFaction)
+        endif
+        i += 1
+    endwhile
+    StorageUtil.FormListClear(none, "TTON_PendingActors")
 EndFunction

@@ -1,0 +1,6 @@
+{% set speakingNpc = decnpc(npc.UUID) %}
+
+{% set nearbyNPCsJson = get_nearby_actors_in_ostim(npc.UUID) %}
+{% set ostimPotentialParticipantsString = nearbyNPCsJson.actorsNameString %}
+
+{{speakingNpc.name}} decides to SPECTATE ongoing sex scene. Use when {{speakingNpc.name}} wants to watch/observe others having sex from close distance, NOT to join (use JoinOngoingSex). Possible targets: {{ostimPotentialParticipantsString}}. Select target based on {{speakingNpc.name}}'s relationships and likes/dislikes

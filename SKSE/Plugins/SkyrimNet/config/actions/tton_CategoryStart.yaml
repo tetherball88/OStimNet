@@ -1,0 +1,15 @@
+customCategory: TTON_CategoryStart
+name: StartIntimateScenes
+description: Intimate actions - start sex, start platonic or romantic care action(hugging, kissing){% if is_join_ongoing_sex_available(npc.UUID) == "available" %}, join ongoing sex(there should be real sex scene not flirting or touching){% endif %}
+enabled: true
+parameterMapping:
+  - type: dynamic
+    name: intent
+    description: What you intended to do when selected this action. Specify your intent and all potential participants including justification for your choice.
+eligibilityRules:
+  - conditions:
+      - decoratorName: is_start_new_sex_available
+        arguments:
+          - currentActor
+        comparisonOperator: ==
+        expectedValue: "available"

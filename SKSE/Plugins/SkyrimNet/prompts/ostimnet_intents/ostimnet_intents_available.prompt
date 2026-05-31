@@ -1,0 +1,4 @@
+{% set ostimNetSettings = ostimnet_settings(player.UUID) %}
+{% set enableAggressiveIntent = ostimNetSettings.enableAggressiveIntent %}
+{{ render_template("ostimnet_intents_definitions\\ostimnet_intent_romantic_description_short") }}; {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_lustful_description_short") }}; {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_transactional_description_short") }}; {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_dom_description_short") }}{% if enableAggressiveIntent %}; {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_aggressive_description_short") }}{% else %}NEVER SELECT aggressive{% endif %}.
+

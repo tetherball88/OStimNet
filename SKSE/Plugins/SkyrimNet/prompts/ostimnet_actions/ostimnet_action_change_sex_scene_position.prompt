@@ -1,0 +1,7 @@
+{% set speakingNpc = decnpc(npc.UUID) %}
+{{speakingNpc.name}} SWITCHES to different sex position or activity. Use when {{speakingNpc.name}} explicitly requesting or agreeing to SWITCH any of 2 parameters sexualActivity or sexualPosition at once, or just one or two of them (like just position while keeping same activity).
+{% set phaseInfo = ostimnet_thread_phase(npc.UUID) %}
+phaseInfo - {{phaseInfo}}
+phaseInfo.currentPhase - {{phaseInfo.currentPhase}}
+Available activities: {{ostimnet_available_sexual_actions(npc.UUID)}}
+Available positions: {{ostimnet_available_positions(npc.UUID)}}

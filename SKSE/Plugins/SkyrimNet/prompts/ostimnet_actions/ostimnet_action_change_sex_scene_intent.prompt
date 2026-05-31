@@ -1,0 +1,3 @@
+{% set speakingNpc = decnpc(npc.UUID) %}
+{{speakingNpc.name}} SWITCHES to different sex behavior. Use when {{speakingNpc.name}} explicitly requesting or agreeing to SWITCH intent.
+Available intents: {{ render_template("ostimnet_intents\\ostimnet_intents_available") }}

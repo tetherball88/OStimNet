@@ -1,0 +1,7 @@
+Include an actor only if they are willing to engage in the power dynamic specifically:
+- Willingness to have sex in general is not sufficient
+- The dynamic must either fit the actor naturally or be explicitly requested and accepted in recent dialogue
+- A dom dynamic requires sufficient trust or an established dynamic; with strangers or minimal intimacy, absence of objection is not enough
+- Disgust toward any participant, or strong incompatibility with the required role, excludes the actor
+
+If the most recent relevant `dialogue` or `npc_thoughts` from this participant clearly accepts the required power dynamic, treat willingness for this participant as fully satisfied and skip all remaining conditions.

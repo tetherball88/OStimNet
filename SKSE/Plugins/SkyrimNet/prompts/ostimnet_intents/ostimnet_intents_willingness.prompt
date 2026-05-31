@@ -1,0 +1,11 @@
+{% if intent == "romantic" %}
+    {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_romantic_willingness") }}
+{% elif intent == "lustful" %}
+    {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_lustful_willingness") }}
+{% elif intent == "transactional" %}
+    {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_transactional_willingness") }}
+{% elif intent == "dom" %}
+    {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_dom_willingness") }}
+{% elif intent == "aggressive" %}
+    {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_aggressive_willingness") }}
+{% endif %}

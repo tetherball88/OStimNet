@@ -4,7 +4,7 @@ description: "Reaction when a spectator fled the scene in OStim"
 eventCriteria:
   eventType: "tton_event"
   schemaConditions:
-    - fieldPath: "type"
+    - fieldPath: "tton_type"
       operator: "equals"
       value: "spectator_fled"
       caseSensitive: false
@@ -14,11 +14,11 @@ eventCriteria:
 
 response:
   type: "direct_narration"
-  content: "{{ event_json.msg }}"
+  content: "{{ decnpc(spectatorId).name }} flees from the ongoing intimate scene."
 
 audience: "nearby_npcs"
 
-enabled: true
+enabled: false
 probability: 1
 cooldownSeconds: 30
 priority: 1

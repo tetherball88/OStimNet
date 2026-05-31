@@ -1,0 +1,11 @@
+{% if intent == "romantic" %}
+    The scene intent is {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_romantic_description") }}
+{% elif intent == "lustful" %}
+    The scene intent is {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_lustful_description") }}
+{% elif intent == "transactional" %}
+    The scene intent is {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_transactional_description") }}
+{% elif intent == "dom" %}
+    The scene intent is {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_dom_description") }}
+{% elif intent == "aggressive" %}
+    The scene intent is {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_aggressive_description") }}
+{% endif %}

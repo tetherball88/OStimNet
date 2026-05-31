@@ -1,0 +1,8 @@
+{% if render_mode == "full" or render_mode == "thoughts" or render_mode == "transform" or render_mode == "dialogue_target" %}
+{% set description = ocum_description(actorUUID) %}
+{% if description != "" %}
+    {{ "### Cum covering" }}
+    {{description}}
+{% endif %}
+{% endif %}
+

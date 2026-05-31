@@ -1,23 +1,45 @@
 {% set npcData = decnpc(npc.UUID) %}
 {% if not npcData.isVirtual %}
-    {% set activeOstimThreads = papyrus_util("GetIntList", null, "TTONDec_ActiveOStimThreads")%}
-    {% if length(activeOstimThreads) > 0 %}
+    {% set scenes = ostimnet_active_scenes(npc.UUID).scenes %}
+    {% if length(scenes) > 0 %}
         {% set npcName = npcData.name %}
         ### Intimate Scenes Context
-        {% for threadID in activeOstimThreads %}
-            {% set sceneDescription = papyrus_util("GetStringValue", null, "TTONDec_Thread" + to_string(threadID) + "_SceneDescription") %}
-            {% set actors = papyrus_util("GetFormList", null, "TTONDec_Thread" + to_string(threadID) + "_Actors") %}
-            {% set spectators = papyrus_util("GetFormList", null, "TTON_AllSpectatorsForThread_" + to_string(threadID)) %}
-            {% if length(activeOstimThreads) > 1 %}
+        {% for scene in scenes %}
+            {% set sceneDescription = scene.description %}
+            {% set actors = scene.actors %}
+            {% set spectators = scene.spectators %}
+            {% if length(scenes) > 1 %}
                 #### Scene {{ loop.index }}:
             {% endif %}
 
-            {% if contains(spectators, to_string(npcData.formId)) %}
+            {% if contains(spectators, to_string(npc.UUID)) %}
                 - **{{npcName}}** is currently observing the scene as a spectator.
             {% endif %}
 
-            {% if contains(actors, to_string(npcData.formId)) %}
-                - **{{npcName}}** is directly participating in this intimate activity.
+            {% if contains(actors, to_string(npc.UUID)) %}
+                {% set participantRole = "" %}
+                {% if contains(scene.mainActorNames, to_string(npcData.name)) %}
+                    {% if scene.intent == "transactional" %}
+                        {% set participantRole = npcName + " is providing sex service in exchange for benefit." %}
+                    {% else if scene.intent == "dom" %}
+                        {% set participantRole = npcName + " is the dominant participant." %}
+                    {% else if scene.intent == "aggressive" %}
+                        {% set participantRole = npcName + " is the aggressor." %}
+                    {% else %}
+                        {% set participantRole = npcName + " initiated this encounter." %}
+                    {% endif %}
+                {% else %}
+                    {% if scene.intent == "transactional" %}
+                        {% set participantRole = npcName + " is receiving sex service in exchange for benefit." %}
+                    {% else if scene.intent == "dom" %}
+                        {% set participantRole = npcName + " is the submissive participant." %}
+                    {% else if scene.intent == "aggressive" %}
+                        {% set participantRole = npcName + " is the victim." %}
+                    {% else %}
+                        {% set participantRole = npcName + " was invited to have sex." %}
+                    {% endif %}
+                {% endif %}
+                - **{{npcName}}** is directly participating in this intimate activity. {{participantRole}}
             {% else %}
                 {% if has_line_of_sight(npc.UUID, at(actors, 0)) or distance_between(npc.UUID, at(actors, 0)) < 500 %}
                     {# NPC can see and hear the scene #}
@@ -34,8 +56,30 @@
             {% if responseTarget.UUID %}
                 {% set targetNpcData = decnpc(responseTarget.UUID) %}
                 {% set responseTargetName = targetNpcData.name %}
-                {% if contains(actors, to_string(targetNpcData.formId)) %}
-                    - **{{responseTargetName}}** is directly participating in this intimate activity.
+                {% if contains(actors, to_string(responseTarget.UUID)) %}
+                    {% set participantRole = "" %}
+                    {% if contains(scene.mainActorNames, targetNpcData.name) %}
+                        {% if scene.intent == "transactional" %}
+                            {% set participantRole = responseTargetName + " is providing sex service in exchange for benefit." %}
+                        {% else if scene.intent == "dom" %}
+                            {% set participantRole = responseTargetName + " is the dominant participant." %}
+                        {% else if scene.intent == "aggressive" %}
+                            {% set participantRole = responseTargetName + " is the aggressor." %}
+                        {% else %}
+                            {% set participantRole = responseTargetName + " initiated this encounter." %}
+                        {% endif %}
+                    {% else %}
+                        {% if scene.intent == "transactional" %}
+                            {% set participantRole = responseTargetName + " is receiving sex service in exchange for benefit." %}
+                        {% else if scene.intent == "dom" %}
+                            {% set participantRole = responseTargetName + " is the submissive participant." %}
+                        {% else if scene.intent == "aggressive" %}
+                            {% set participantRole = responseTargetName + " is the victim." %}
+                        {% else %}
+                            {% set participantRole = responseTargetName + " was invited to have sex." %}
+                        {% endif %}
+                    {% endif %}
+                    - **{{responseTargetName}}** is directly participating in this intimate activity. {{participantRole}}
                 {% else %}
                     {% if has_line_of_sight(responseTarget.UUID, npc.UUID) or distance_between(responseTarget.UUID, npc.UUID) < 500 %}
                         {# NPC can see and hear the scene #}
@@ -49,12 +93,38 @@
                     {% endif %}
                 {% endif %}
             {% endif %}
+            {% if intent == "platonic" %}
+                It is a friendly non-sexual encounter driven by companionship, kinship, or mutual trust between the participants.
+                {{scene.mainActorNames}} initiated this encounter and {{scene.secondaryActorNames}} joined in, with no romantic undertones present.
+            {% else if intent == "romantic" %}
+                {% if scene.isSexual %}
+                    It is a sexual encounter rooted in genuine romantic feelings and emotional connection.
+                    {{scene.mainActorNames}} initiated this encounter and {{scene.secondaryActorNames}} welcomed it, with emotional intimacy present throughout.
+                {% else %}
+                    It is a romantic non-sexual encounter driven by emotional attraction and affection between the participants.
+                    {{scene.mainActorNames}} initiated this encounter and {{scene.secondaryActorNames}} welcomed it, with tender feelings and mutual interest present throughout.
+                {% endif %}
+            {% else if intent == "lustful" %}
+                It is a sexual encounter driven purely by raw physical desire with no emotional undertones.
+                {{scene.mainActorNames}} initiated this encounter and {{scene.secondaryActorNames}} joined in, both consumed by urgent mutual need.
+            {% else if intent == "transactional" %}
+                It is a sexual encounter in exchange for goods, coin, or favors — detached and business-like with no expectation of emotional connection.
+                {{scene.mainActorNames}} provide sexual services in exchange for benefits from {{scene.secondaryActorNames}}.
+            {% else if intent == "dom" %}
+                It is a consensual sexual encounter defined by a clear dominant/submissive power dynamic throughout.
+                {{scene.mainActorNames}} are controlling, commanding, and set the pace, while {{scene.secondaryActorNames}} are obedient, yielding, and responsive to their dominant's lead.
+            {% else if intent == "aggressive" %}
+                It is a non-consensual sexual act where aggressors overpower and assault their victims.
+                {{scene.mainActorNames}} are the aggressors acting with force and dominance, {{scene.secondaryActorNames}} are the unwilling victims.
+            {% else %}
+                {{scene.mainActorNames}} initiated this encounter and {{scene.secondaryActorNames}} joined in.
+            {% endif %}
             {{ sceneDescription }}
             {% if not loop.is_last %}
                 ---
             {% endif %}
         {% endfor %}
-        {% if length(activeOstimThreads) > 1 %}
+        {% if length(scenes) > 1 %}
             Note: Multiple intimate scenes are occurring simultaneously. The dialogue should acknowledge this complex situation appropriately.
         {% endif %}
     {% endif %}

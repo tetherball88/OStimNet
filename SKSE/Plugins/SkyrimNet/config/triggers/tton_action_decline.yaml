@@ -4,7 +4,7 @@ description: "Reaction when player declines NPC's requests during OStim scenes."
 eventCriteria:
   eventType: "tton_event"
   schemaConditions:
-    - fieldPath: "type"
+    - fieldPath: "tton_type"
       operator: "equals"
       value: "action_decline"
       caseSensitive: false
@@ -14,7 +14,7 @@ eventCriteria:
 
 response:
   type: "direct_narration"
-  content: "Declining isn't bad on its own. Evaluate recent events and dialogues to make decision if decline has bad intetion or simply \"not right at this moment\". {{ target }} makes comment based on if decline was in bad faith or not."
+  content: "An action you just attempted was declined or didn't happen. Stay in the present moment — don't repeat the attempt, don't plan ahead. React honestly as yourself given everything you know about {{player.name}} and this moment. One beat. Then continue naturally."
 
 audience: "nearby_npcs"
 

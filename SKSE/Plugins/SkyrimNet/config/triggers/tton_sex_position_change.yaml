@@ -1,0 +1,25 @@
+name: "tton_sex_position_change"
+description: "Reaction when scene in OStim was changed"
+
+eventCriteria:
+  eventType: "tton_event"
+  schemaConditions:
+    - fieldPath: "tton_type"
+      operator: "regex"
+      value: "sex_change|sex_pace_change"
+      caseSensitive: false
+    - fieldPath: "skipTrigger"
+      operator: "equals"
+      value: false
+
+response:
+  type: "direct_narration"
+  content: "{% if event_json.tton_type == \"sex_change\" %}The position shift lands on {{ originator }} — they let slip their immediate, unfiltered reaction, colored by everything between them in this moment. The emotional thread carries forward.{% else if event_json.tton_type == \"sex_pace_change\" %}The pace shift lands on {{ originator }} — they let slip their immediate, unfiltered reaction, colored by everything between them in this moment. The emotional thread carries forward.{% endif %}"
+
+audience: "nearby_npcs"
+
+enabled: true
+interrupt: false
+probability: 1
+cooldownSeconds: 20
+priority: 1

@@ -1,0 +1,8 @@
+{% set speakingNpc = decnpc(npc.UUID) %}
+{% set nearbyNPCsJson = get_nearby_actors_not_in_ostim(npc.UUID) %}
+{% set ostimPotentialParticipantsString = nearbyNPCsJson.actorsNameString %}
+{{speakingNpc.name}} initiates non-sexual physical caring scene. Use when NPC explicitly INITIATES physical caring, NOT for affectionate talk or commentary during/after other scenes, NOT for intercourse (use StartNewSex).
+Available Partners: {{ostimPotentialParticipantsString}}.
+Available intents: romantic = affectionate/caring with romantic interest; platonic = affectionate/caring without romantic interest(like friends, parent-child).
+Available romantic activities: hugging|kissing
+Available platonic activities: hugging

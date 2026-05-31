@@ -1,5 +1,5 @@
 name: SpectatorOfSex
-description: "{{render_template(\"helpers/ostimnet_action_spectate_sex\")}}"
+description: "{{render_template(\"ostimnet_actions/ostimnet_action_spectate_sex\")}}"
 questEditorId: TTON_MainController
 scriptName: TTON_Actions
 executionFunctionName: SpectatorOfSexActionExecute
@@ -14,31 +14,8 @@ parameterMapping:
 enabled: true
 eligibilityRules:
   - conditions:
-      - decoratorName: get_global_value
-        arguments:
-          - TTON_IsOstimActive
-        comparisonOperator: ==
-        expectedValue: 1
-      - decoratorName: is_in_faction
-        arguments:
-          - currentActor
-          - OStimActorCountFaction
-        comparisonOperator: ==
-        expectedValue: false
-      - decoratorName: is_in_combat
+      - decoratorName: is_spectate_sex_available
         arguments:
           - currentActor
         comparisonOperator: ==
-        expectedValue: false
-      - decoratorName: is_in_faction
-        arguments:
-          - currentActor
-          - TTON_SpectatorFaction
-        comparisonOperator: ==
-        expectedValue: false
-      - decoratorName: decnpc
-        arguments:
-          - currentActor
-        comparisonOperator: ==
-        expectedValue: false
-        resultPath: isChild
+        expectedValue: "available"

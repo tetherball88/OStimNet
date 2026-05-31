@@ -1,0 +1,11 @@
+{% if intent == "romantic" %}
+    {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_romantic_roles") }}
+{% elif intent == "lustful" %}
+    {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_lustful_roles") }}
+{% elif intent == "transactional" %}
+    {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_transactional_roles") }}
+{% elif intent == "dom" %}
+    {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_dom_roles") }}
+{% elif intent == "aggressive" %}
+    {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_aggressive_roles") }}
+{% endif %}

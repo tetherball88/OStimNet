@@ -1,8 +1,8 @@
-name: ChangeSexPace
-description: "{{render_template(\"helpers/ostimnet_action_change_sex_pace\")}}"
+name: ChangeSexScenePace
+description: "{{render_template(\"ostimnet_actions/ostimnet_action_change_sex_scene_pace\")}}"
 questEditorId: TTON_MainController
 scriptName: TTON_Actions
-executionFunctionName: ChangeSexPaceActionExecute
+executionFunctionName: ChangeSexScenePaceActionExecute
 parameterMapping:
   - type: speaker
     name: akActor
@@ -10,18 +10,17 @@ parameterMapping:
   - type: dynamic
     name: speed
     description: increase|decrease
+customCategory: TTON_CategoryManage
 enabled: true
 eligibilityRules:
   - conditions:
-      - decoratorName: is_in_faction
+      - decoratorName: is_sex_scene_pace_change_available
         arguments:
           - currentActor
-          - OStimActorCountFaction
         comparisonOperator: ==
-        expectedValue: true
-      - decoratorName: has_magic_effect
-        arguments:
-          - currentActor
-          - TTON_DeclineChangeSexPaceEffect
+        expectedValue: available
+  - conditions:
+      - decoratorName: currentTime
         comparisonOperator: ==
-        expectedValue: false
+        expectedValue: ""
+    logicalOperator: OR

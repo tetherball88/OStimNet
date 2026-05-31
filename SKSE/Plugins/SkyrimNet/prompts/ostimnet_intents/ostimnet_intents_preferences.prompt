@@ -1,0 +1,11 @@
+{% if intent == "romantic" %}
+    {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_romantic_preferences") }}
+{% elif intent == "lustful" %}
+    {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_lustful_preferences") }}
+{% elif intent == "transactional" %}
+    {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_transactional_preferences") }}
+{% elif intent == "dom" %}
+    {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_dom_preferences") }}
+{% elif intent == "aggressive" %}
+    {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_aggressive_preferences") }}
+{% endif %}

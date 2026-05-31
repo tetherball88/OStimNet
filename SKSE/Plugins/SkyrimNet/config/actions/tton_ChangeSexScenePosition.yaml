@@ -1,0 +1,34 @@
+customCategory: TTON_CategoryManage
+name: ChangeSexScenePosition
+description: "{{render_template(\"ostimnet_actions/ostimnet_action_change_sex_scene_position\")}}"
+questEditorId: TTON_MainController
+scriptName: TTON_Actions
+executionFunctionName: ChangeSexScenePositionExecute
+parameterMapping:
+  - type: speaker
+    name: akActor
+    description: Speaker Actor parameter (triggering entity)
+  - type: dynamic
+    name: initiator
+    description: Actor's display name who actually initiated the action. For dom and aggressive intent, it should be one of dominant/aggressor actors, not submissive/victim.
+    useNearbyActors: false
+  - type: dynamic
+    name: sexualActivity
+    description: Sexual activity from Available activities, exact keyword match required. Leave empty to keep current activity.
+    optional: true
+  - type: dynamic
+    name: sexualPosition
+    description: Sexual position from Available positions, exact keyword match required. Leave empty to keep current position.
+    optional: true
+  - type: dynamic
+    name: reasoning
+    description: Explain why you selected parameters. 1-2 short sentences.
+enabled: true
+eligibilityRules:
+  - conditions:
+      - decoratorName: is_sex_scene_position_change_available
+        arguments:
+          - currentActor
+        comparisonOperator: ==
+        expectedValue: "available"
+

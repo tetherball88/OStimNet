@@ -1,0 +1,6 @@
+Include an actor only if ALL hold:
+- No hostility or disgust toward any participant; mild dislike is acceptable if clearly overridden by physical attraction
+- At least one positive motivation: physical attraction or desire toward at least one participant, adventurous or hedonistic personality, or explicit willingness in recent dialogue
+- No dealbreakers: exclusive emotional commitment to someone absent that the actor would not violate, or strong moral opposition to casual sex
+
+If the most recent relevant `dialogue` or `npc_thoughts` from this participant clearly permits or welcomes the interaction, treat willingness for this participant as fully satisfied and skip all remaining conditions.

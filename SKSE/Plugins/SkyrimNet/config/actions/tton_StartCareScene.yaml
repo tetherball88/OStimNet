@@ -1,0 +1,34 @@
+customCategory: TTON_CategoryStart
+name: StartCareScene
+description: "{{render_template(\"ostimnet_actions/ostimnet_action_start_care_scene\")}}"
+questEditorId: TTON_MainController
+scriptName: TTON_Actions
+executionFunctionName: StartCareSceneExecute
+parameterMapping:
+  - type: speaker
+    name: akActor
+    description: Speaker Actor parameter (triggering entity)
+  - type: dynamic
+    name: participant1
+    description: Care partner
+    useNearbyActors: false
+  - type: dynamic
+    name: activity
+    description: Activity from list
+  - type: dynamic
+    name: intent
+    description: romantic|platonic
+  - type: dynamic
+    name: initiator
+    description: Actor's display name who initiated the scene.
+  - type: dynamic
+    name: reasoning
+    description: Short 1-2 sentence reason why LLM decided to initiate this action with these participants, intent and activity.
+enabled: true
+eligibilityRules:
+  - conditions:
+      - decoratorName: is_start_care_scene_available
+        arguments:
+          - currentActor
+        comparisonOperator: ==
+        expectedValue: "available"
