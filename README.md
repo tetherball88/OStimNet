@@ -26,7 +26,7 @@ This integration mod creates a powerful bridge between **SkyrimNet** AI framewor
 
 - [SkyrimNet](https://github.com/MinLL/SkyrimNet-GamePlugin/tree/main) - Core LLM framework
 - [OStim Standalone](https://www.nexusmods.com/skyrimspecialedition/mods/98163) - Adult framework
-- [OStim Navigator v2.0.2+](https://github.com/tetherball88/OStimNavigator/releases/releases) - It became core for OStimNet to provide all OStim scenes related data(furniture, scenes, tags, actions, etc...) and scene description building.
+- [OStim Navigator v2.0.2+](https://github.com/tetherball88/OStimNavigator/releases/latest) - It became core for OStimNet to provide all OStim scenes related data(furniture, scenes, tags, actions, etc...) and scene description building.
 - [OStim Hot Swap](https://www.nexusmods.com/skyrimspecialedition/mods/174565) - for joining/inviting to scene.
 - [OCum Ascended](https://www.nexusmods.com/skyrimspecialedition/mods/77506) - Uses it to generate better female orgams descriptions, adds descriptions for cum overlay on npcs in their appearance description
 - [PapyrusUtil SE](https://www.nexusmods.com/skyrimspecialedition/mods/13048) - Modders Scripting Utility Functions
