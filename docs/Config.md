@@ -68,10 +68,6 @@ When this is on (the default), OStimNet only picks animations that make sense fo
 
 When enabled, the LLM can start or shift a scene to an aggressive dynamic — for example, if an NPC's personality and the current situation make a non-consensual encounter narratively plausible. **Disable this if you don't want any aggressive scenes under any circumstances.** It acts as a hard block regardless of what the LLM decides.
 
-### Show confirmation modal for actions with aggressive intent (default: off)
-
-If aggressive intent is enabled and aggressive action is performed player won't get confirmation modal. If you want to get confirmation modal for aggressive actions enable this setting. Gives you a chance to refuse even if the LLM decided it made sense.
-
 ---
 
 ## Comments
@@ -120,9 +116,57 @@ After an NPC takes an action — say, changing the scene or inviting someone to 
 
 When you decline an NPC's proposed action, a longer cooldown applies specifically to that NPC for that action. Setting this higher than the normal cooldown makes a refusal feel meaningful — the NPC backs off properly rather than immediately trying again. Default is 40 seconds.
 
+---
+
+## Action Confirmations
+
+OStimNet can show a popup before any NPC-initiated action takes effect, letting you accept, cancel, or decline and explain why. The confirmation system has three independent gates — **all must be open** for a modal to appear:
+
+1. **Per-action toggle** — is this specific action type set to show a modal?
+2. **NPC-only gate** — if the player isn't in the scene, is the NPC-only modal enabled?
+3. **Aggressive-intent gate** — if the action carries aggressive intent, is the aggressive modal enabled?
+
+If any gate is closed the action auto-accepts silently (return code 0). This means you can, for example, always skip confirmations for position changes while keeping them for new encounters.
+
 ### Confirmation modal for NPC-only scenes (default: off)
 
-When NPCs start a scene among themselves (no player involved), this controls whether you get a confirmation popup first. Off by default — NPC scenes just happen. Turn it on if you want the ability to veto NPC scenes before they start.
+When NPCs start a scene among themselves (no player involved), this controls whether you get a confirmation popup first. Off by default — NPC scenes just happen. Turn it on if you want the ability to veto NPC scenes before they start. Only applies to action types that also have their individual confirmation toggle enabled.
+
+### Show confirmation modal for actions with aggressive intent (default: off)
+
+If aggressive intent is enabled and an NPC takes an aggressive action, by default no confirmation modal appears. Enable this to get a popup for aggressive actions too, giving you a chance to refuse even if the LLM decided it made sense. Only applies to action types that also have their individual confirmation toggle enabled.
+
+### Confirm: Start new sex (default: on)
+
+Whether to show a confirmation modal when an NPC initiates a new sexual encounter with the player. Covers the pre-evaluation check (before participant roles are assigned) and the post-evaluation check (after the LLM may have adjusted the actor list). Disable to let new encounters begin without any prompt.
+
+### Confirm: Join ongoing sex (default: on)
+
+Whether to show a confirmation modal when an NPC wants to join a scene the player is already in. Disable if you're happy for other NPCs to join without asking.
+
+### Confirm: Invite to your sex (default: on)
+
+Whether to show a confirmation modal when an NPC in your current scene wants to invite additional actors. Disable to let the scene grow without prompting you.
+
+### Confirm: Change sex scene position (default: on)
+
+Whether to show a confirmation modal when an NPC wants to switch to a different position or activity mid-scene. Disable if you want scene changes to happen automatically without interruption.
+
+### Confirm: Change sex scene intent (default: on)
+
+Whether to show a confirmation modal when an NPC wants to change the intent of the current encounter (e.g. shifting from romantic to lustful). Disable to allow intent shifts without prompting.
+
+### Confirm: Change sex scene pace (default: on)
+
+Whether to show a confirmation modal when an NPC wants to change the pace of the scene. Disable to let pace changes happen silently.
+
+### Confirm: Stop sex (default: on)
+
+Whether to show a confirmation modal when an NPC wants to end the current sexual encounter. Disable to allow NPCs to stop scenes without asking first.
+
+### Confirm: Start care scene (default: on)
+
+Whether to show a confirmation modal when an NPC wants to start a non-sexual care scene (a hug, a kiss, comfort) with the player. Disable to let care scenes begin without prompting.
 
 ---
 
