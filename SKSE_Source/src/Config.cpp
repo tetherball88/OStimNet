@@ -150,7 +150,7 @@ int Config::ActionsDeclineCooldown() const {
 
 bool Config::ShowConfirmationModalForAggressiveIntent() const {
     std::string val = GetValue("tton.settings.showConfirmationModalForAggressiveIntent", "false");
-    return val == "false" || val == "0";
+    return val == "true" || val == "1";
 }
 
 bool Config::ShowConfirmationModalWithNoPlayer() const {
@@ -160,7 +160,7 @@ bool Config::ShowConfirmationModalWithNoPlayer() const {
 
 bool Config::EnableAggressiveIntent() const {
     std::string val = GetValue("tton.settings.enableAggressiveIntent", "false");
-    return val == "false" || val == "0";
+    return val == "true" || val == "1";
 }
 
 // -----------------------------------------------------------------------------
@@ -207,6 +207,50 @@ void Config::ApplyLogLevel() const {
 int Config::ToggleMuteHotkey() const {
     try { return std::stoi(GetValue("tton.controls.toggleMuteHotkey", "0")); }
     catch (...) { return 0; }
+}
+
+// -----------------------------------------------------------------------------
+// Action Confirmations
+// -----------------------------------------------------------------------------
+
+bool Config::ConfirmStartNewSex() const {
+    std::string val = GetValue("tton.confirmations.startNewSex", "true");
+    return val == "true" || val == "1";
+}
+
+bool Config::ConfirmJoinOngoingSex() const {
+    std::string val = GetValue("tton.confirmations.joinOngoingSex", "true");
+    return val == "true" || val == "1";
+}
+
+bool Config::ConfirmInviteToYourSex() const {
+    std::string val = GetValue("tton.confirmations.inviteToYourSex", "true");
+    return val == "true" || val == "1";
+}
+
+bool Config::ConfirmChangeSexScenePosition() const {
+    std::string val = GetValue("tton.confirmations.changeSexScenePosition", "true");
+    return val == "true" || val == "1";
+}
+
+bool Config::ConfirmChangeSexSceneIntent() const {
+    std::string val = GetValue("tton.confirmations.changeSexSceneIntent", "true");
+    return val == "true" || val == "1";
+}
+
+bool Config::ConfirmChangeSexScenePace() const {
+    std::string val = GetValue("tton.confirmations.changeSexScenePace", "true");
+    return val == "true" || val == "1";
+}
+
+bool Config::ConfirmStopSex() const {
+    std::string val = GetValue("tton.confirmations.stopSex", "true");
+    return val == "true" || val == "1";
+}
+
+bool Config::ConfirmStartCareScene() const {
+    std::string val = GetValue("tton.confirmations.startCareScene", "true");
+    return val == "true" || val == "1";
 }
 
 // -----------------------------------------------------------------------------

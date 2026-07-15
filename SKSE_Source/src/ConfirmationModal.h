@@ -195,6 +195,33 @@ public:
             SetCooldownAll(keys, normalSec); return ReturnNow(5);
         }
 
+        // Per-action confirmation check — auto-accept (code 0) if that action's modal is disabled.
+        {
+            bool confirmEnabled = true;
+            if (actionTypeLower == "startnewsexpreeval" || actionTypeLower == "startnewsexposteval" || actionTypeLower == "startnewsexafterscan")
+                confirmEnabled = Config::GetSingleton().ConfirmStartNewSex();
+            else if (actionTypeLower == "joinongoingsex")
+                confirmEnabled = Config::GetSingleton().ConfirmJoinOngoingSex();
+            else if (actionTypeLower == "invitetoyoursex")
+                confirmEnabled = Config::GetSingleton().ConfirmInviteToYourSex();
+            else if (actionTypeLower == "changesexsceneposition")
+                confirmEnabled = Config::GetSingleton().ConfirmChangeSexScenePosition();
+            else if (actionTypeLower == "changesexsceneintent")
+                confirmEnabled = Config::GetSingleton().ConfirmChangeSexSceneIntent();
+            else if (actionTypeLower == "changesexscenepace")
+                confirmEnabled = Config::GetSingleton().ConfirmChangeSexScenePace();
+            else if (actionTypeLower == "stopsex")
+                confirmEnabled = Config::GetSingleton().ConfirmStopSex();
+            else if (actionTypeLower == "startcarescene")
+                confirmEnabled = Config::GetSingleton().ConfirmStartCareScene();
+
+            if (!confirmEnabled) {
+                SKSE::log::info("ConfirmationModal::Show - auto-accepting '{}' (confirmation disabled in config)", actionTypeLower);
+                SetCooldownAll(keys, normalSec);
+                return ReturnNow(0);
+            }
+        }
+
         RE::Actor*  originator    = mainActors.empty() ? nullptr : mainActors[0];
         std::string actionTypeStr = actionType ? actionType : "";
         std::transform(actionTypeStr.begin(), actionTypeStr.end(), actionTypeStr.begin(),

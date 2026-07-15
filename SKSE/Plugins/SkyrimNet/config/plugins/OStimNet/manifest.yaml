@@ -133,12 +133,6 @@ schema:
       description: "If enabled, OStimNet will consider aggressive intent when selecting scenes."
       defaultValue: false
       category: "Intents"
-    - name: "Show confirmation modal for actions with aggressive intent"
-      path: "tton.settings.showConfirmationModalForAggressiveIntent"
-      type: "bool"
-      description: "If enabled, OStimNet will show a confirmation modal for actions with aggressive intent."
-      defaultValue: false
-      category: "Intents"
 
     # Comments
     - name: "Comments prioritize nearest thread"
@@ -203,12 +197,69 @@ schema:
       description: "Cooldown time in seconds per action per originator actor when the action is declined by player. Set it higher than \"Actions cooldown\" to make decline more meaningful."
       defaultValue: 40
       category: "Actions"
+
+
+    # Action Confirmations
     - name: "Confirmation modal for NPC-only scenes"
       path: "tton.settings.showConfirmationModalWithNoPlayer"
       type: "bool"
       description: "If enabled, OStimNet will show a confirmation modal for NPC-only scenes (scenes where the player character is not a participant). By default this is disabled and such scenes auto-accept."
       defaultValue: false
-      category: "Actions"
+      category: "Action Confirmations"
+    - name: "Show confirmation modal for actions with aggressive intent"
+      path: "tton.settings.showConfirmationModalForAggressiveIntent"
+      type: "bool"
+      description: "If enabled, OStimNet will show a confirmation modal for actions with aggressive intent."
+      defaultValue: false
+      category: "Action Confirmations"
+    - name: "Confirm: Start new sex"
+      path: "tton.confirmations.startNewSex"
+      type: "bool"
+      description: "When enabled, a confirmation modal is shown when an NPC initiates a new sexual encounter with the player. Disable to auto-accept without prompting."
+      defaultValue: true
+      category: "Action Confirmations"
+    - name: "Confirm: Join ongoing sex"
+      path: "tton.confirmations.joinOngoingSex"
+      type: "bool"
+      description: "When enabled, a confirmation modal is shown when an NPC wants to join an ongoing sexual scene the player is in. Disable to auto-accept without prompting."
+      defaultValue: true
+      category: "Action Confirmations"
+    - name: "Confirm: Invite to your sex"
+      path: "tton.confirmations.inviteToYourSex"
+      type: "bool"
+      description: "When enabled, a confirmation modal is shown when an NPC wants to invite additional actors to the player's current scene. Disable to auto-accept without prompting."
+      defaultValue: true
+      category: "Action Confirmations"
+    - name: "Confirm: Change sex scene position"
+      path: "tton.confirmations.changeSexScenePosition"
+      type: "bool"
+      description: "When enabled, a confirmation modal is shown when an NPC wants to change the current sexual position or activity. Disable to auto-accept without prompting."
+      defaultValue: true
+      category: "Action Confirmations"
+    - name: "Confirm: Change sex scene intent"
+      path: "tton.confirmations.changeSexSceneIntent"
+      type: "bool"
+      description: "When enabled, a confirmation modal is shown when an NPC wants to change the intent of the current sexual encounter. Disable to auto-accept without prompting."
+      defaultValue: true
+      category: "Action Confirmations"
+    - name: "Confirm: Change sex scene pace"
+      path: "tton.confirmations.changeSexScenePace"
+      type: "bool"
+      description: "When enabled, a confirmation modal is shown when an NPC wants to change the pace of the current sexual encounter. Disable to auto-accept without prompting."
+      defaultValue: true
+      category: "Action Confirmations"
+    - name: "Confirm: Stop sex"
+      path: "tton.confirmations.stopSex"
+      type: "bool"
+      description: "When enabled, a confirmation modal is shown when an NPC wants to stop the current sexual encounter. Disable to auto-accept without prompting."
+      defaultValue: true
+      category: "Action Confirmations"
+    - name: "Confirm: Start care scene"
+      path: "tton.confirmations.startCareScene"
+      type: "bool"
+      description: "When enabled, a confirmation modal is shown when an NPC wants to start a non-sexual care scene with the player. Disable to auto-accept without prompting."
+      defaultValue: true
+      category: "Action Confirmations"
 
     # Location Scan
     - name: "Enable location scan"

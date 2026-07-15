@@ -201,7 +201,7 @@ Function ChangeSexScenePositionExecute(Actor akActor, Actor initiator, string ac
     endif
 
     int ThreadID = OActor.GetSceneID(initiator)
-    
+
     if(OStimNet.GetThreadPhase(ThreadID) == "undressing")
         TTON_Debug.warn("ChangeSexScenePosition action: cannot change position during undressing.")
         return
@@ -263,7 +263,7 @@ Function ChangeSexSceneIntentExecute(Actor akActor, Actor initiator, string inte
         return
     endif
 
-    if(intent == "aggressive" && !SkyrimNetApi.GetConfigBool("Plugin_OStimNet", "tton.settings.enableAggressiveIntent", "true"))
+    if(intent == "aggressive" && !SkyrimNetApi.GetConfigBool("Plugin_OStimNet", "tton.settings.enableAggressiveIntent", "false"))
         intent = "dom"
     endif
 

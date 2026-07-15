@@ -72,6 +72,21 @@ struct Config {
     /// participant in the scene (NPC-only scenes). When false, such scenes auto-accept.
     bool ShowConfirmationModalWithNoPlayer() const;
 
+    // -------------------------------------------------------------------------
+    // Action Confirmations
+    // -------------------------------------------------------------------------
+    // Per-action toggles. When false, the confirmation modal is skipped for that
+    // action and it auto-accepts (returns code 0) as if the player approved it.
+
+    bool ConfirmStartNewSex() const;
+    bool ConfirmJoinOngoingSex() const;
+    bool ConfirmInviteToYourSex() const;
+    bool ConfirmChangeSexScenePosition() const;
+    bool ConfirmChangeSexSceneIntent() const;
+    bool ConfirmChangeSexScenePace() const;
+    bool ConfirmStopSex() const;
+    bool ConfirmStartCareScene() const;
+
     /// When true, OStimNet considers aggressive intent when selecting scenes.
     bool EnableAggressiveIntent() const;
 
