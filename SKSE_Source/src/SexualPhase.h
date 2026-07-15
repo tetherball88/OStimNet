@@ -92,8 +92,8 @@ inline std::optional<SexualPhase> DetectPhaseFromSceneID(const char* sceneID) {
 inline std::string SexualPhaseToActivityKeywordString(SexualPhase p) {
     switch (p) {
         case SexualPhase::Undressing: return "undressing";
-        case SexualPhase::Foreplay:   return "handjob,footjob,fingering,toying,foreplay";
-        case SexualPhase::Oral:       return "blowjob,cunnilingus,rimjob";
+        case SexualPhase::Foreplay:   return "foreplay";
+        case SexualPhase::Oral:       return "oral";
         case SexualPhase::Sex:        return "vaginalsex,analsex";
         default:                      return "";
     }

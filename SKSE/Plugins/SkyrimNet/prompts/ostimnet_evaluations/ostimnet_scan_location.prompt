@@ -104,7 +104,7 @@ Only complete this if the scene passed evaluation above.
 Match to intent, actors, and situation. Choose what fits best for these characters in this place.
 
 **Activities** — one keyword if appropriate, otherwise "":
-Available: foreplay, blowjob, cunnilingus, vaginalsex, analsex
+Available: foreplay, oral, vaginalsex, analsex
 
 {{ render_template("ostimnet_intents\\ostimnet_intents_preferences") }}
 

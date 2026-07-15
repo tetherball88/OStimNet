@@ -15,7 +15,7 @@ You are the GameMaster AI. Your task is to determine which actors will participa
     {% else %}
       {{ render_character_profile("tton_gm", actor) }}
     {% endif %}
-    
+
     ---
 {% endfor %}
 
@@ -56,7 +56,7 @@ Role assignment rules for included actors only:
 Match to intent and actors' personalities. Avoid defaulting to missionary/doggy unless it genuinely fits best.
 
 **Activities** — select specific activities if narratively appropriate. Leave empty for a generic scene.
-Available: `foreplay`, `blowjob`, `cunnilingus`, `vaginalsex`, `analsex`
+Available: `foreplay`, `oral`, `vaginalsex`, `analsex`
 {{ render_template("ostimnet_intents\\ostimnet_intents_preferences") }}
 
 ---

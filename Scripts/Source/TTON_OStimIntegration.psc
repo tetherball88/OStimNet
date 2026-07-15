@@ -36,10 +36,8 @@ int function StartOstimSex(Actor[] dom = none, Actor[] sub = none, string action
 
     if(actions == "foreplay")
         actions = "boobjob,breastsmothering,buttsmothering,footjob,handjob,lickingnipple,rubbingclitoris,suckingnipple,vaginalfingering"
-    elseif(actions == "blowjob")
-        actions = "blowjob,lickingpenis,lickingtesticles"
-    elseif(actions == "cunnilingus")
-        actions = "cunnilingus,lickingvagina"
+    elseif(actions == "oral")
+        actions = "blowjob,deepthroat,lickingpenis,lickingtesticles,cunnilingus,lickingvagina,anilingus"
     endif
 
     if(furn)

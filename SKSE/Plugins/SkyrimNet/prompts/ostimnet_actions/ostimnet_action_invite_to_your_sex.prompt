@@ -5,5 +5,4 @@
 
 Evaluate if thread should change intent while adding new participants.
 Available intents: {{ render_template("ostimnet_intents\\ostimnet_intents_available") }}.
-{% set ostimActions = "analfingering|analfisting|analsex|analtoying|anilingus|blowjob|boobjob|buttjob|cunnilingus|deepthroat|femalemasturbation|footjob|grindingobject|grindingpenis|grindingthigh|gropingtesticles|handjob|lickingnipple|lickingpenis|lickingtesticles|lickingvagina|malemasturbation|rimjob|rubbingclitoris|rubbingpenisagainstface|suckingnipple|thighjob|tribbing|vaginalfingering|vaginalfisting|vaginalsex|vaginaltoying" %}
 {{speakingNpc.name}} invites others to join their ongoing sex scene. Use when YOU invite others to YOUR ongoing sex as active participants not merely watcher or spectator, NOT for refusals. Partners: {{ostimPotentialParticipantsString}}
