@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.1.1 - 2026-07-16
+
+### Fixed
+
+- **Incorrect prompt variable in scene advance evaluation** — `ostimnet_evaluate_scene_advance.prompt` was calling `ostimnet_thread_phase(actors[0])` (passing the first actor object) instead of `ostimnet_thread_phase(0)`. This caused phase-aware scene advancement logic to fail at runtime.
+
+---
+
 ## v2.1.0 - 2026-07-15
 
 ### Added

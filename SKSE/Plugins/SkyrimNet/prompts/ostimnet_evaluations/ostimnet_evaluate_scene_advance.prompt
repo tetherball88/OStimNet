@@ -18,7 +18,7 @@ Only {{ actorNames }} are participants in this scene. Characters mentioned only 
 ## Current Scene
 {{ currentSceneDescription }}
 
-{% set phaseInfo = ostimnet_thread_phase(actors[0]) %}
+{% set phaseInfo = ostimnet_thread_phase(0) %}
 {% if phaseInfo and (phaseInfo.currentPhase == "foreplay" or phaseInfo.currentPhase == "oral") %}
     ## Encounter Phase
     Currently encounter is in {{ phaseInfo.currentPhase }} phase.
