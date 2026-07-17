@@ -99,6 +99,11 @@ inline std::vector<RE::Actor*> GetNearbyActors(
         if (target->GetCurrentScene()) return false;
         if (target->IsInCombat()) return false;
         if (target->IsChild()) return false;
+
+        // Reject non-humanoid actors (animals, creatures, etc.) by checking
+        // for the ActorTypeNPC keyword, which all humanoid races carry.
+        const auto* race = target->GetRace();
+        if (!race || !race->HasKeywordString("ActorTypeNPC")) return false;
         if (IsInFactionByEditorID(target, "SexLabAnimatingFaction")) return false;
         if (IsInFactionByEditorID(target, "TTON_OStimPending")) return false;
         if (ostimCondition != OStimCondition::Any) {
