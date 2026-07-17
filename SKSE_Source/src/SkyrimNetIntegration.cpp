@@ -1789,6 +1789,14 @@ bool EvaluateScheduledSceneAdvance(int threadID, std::function<void()> onDone) {
         return false;
     }
 
+    // Validate thread is still alive before we waste an LLM round-trip.
+    if (!g_ostimThreadInterface || !g_ostimThreadInterface->IsThreadValid(static_cast<uint32_t>(threadID)) ||
+        !ThreadDataStore::GetSingleton().IsOStimNet(threadID)) {
+        SKSE::log::info("EvaluateScheduledSceneAdvance: thread {} is no longer valid, skipping", threadID);
+        onDone();
+        return false;
+    }
+
     auto actors = ThreadDataStore::GetSingleton().GetActorPtrs(threadID);
     if (actors.empty()) {
         SKSE::log::warn("EvaluateScheduledSceneAdvance: thread {} has no actors", threadID);

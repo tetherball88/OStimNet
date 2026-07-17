@@ -270,6 +270,11 @@ private:
             _dq.Stop();
         }
 
+        // Always stop the scheduled eval timer when a thread physically ends —
+        // the timer is independent of continuation data and must not keep firing
+        // for a dead OStim thread.
+        ScheduledEvalService::GetSingleton().OnThreadEnd(threadID);
+
         if (ThreadDataStore::GetSingleton().IsContinuation(threadID)) {
             SKSE::log::info("OStimEventListener: thread {} end suppressed (continuation)", threadID);
             // Do not clear — data is preserved for CopyStateForContinuation in HandleStart.
@@ -277,7 +282,6 @@ private:
                 DebounceQueue::FireRemoveSpectatorEvent(specID, targetID, threadID);
         } else {
             SKSE::log::info("OStimEventListener: thread {} ended", threadID);
-            ScheduledEvalService::GetSingleton().OnThreadEnd(threadID);
             OnThreadEnd(threadID);
             ThreadDataStore::GetSingleton().ClearThread(threadID);
         }
