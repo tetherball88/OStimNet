@@ -126,6 +126,27 @@ private:
     /// Cell-enter events that do not change this fingerprint are silently
     /// suppressed (e.g. crossing outdoor tile boundaries in the wilderness).
     LocationFingerprint _lastFingerprint{};
+
+    // -------------------------------------------------------------------------
+    // Cached keyword pointers — resolved once at kDataLoaded via CacheKeywords().
+    // Using BGSKeyword* instead of HasKeywordString() avoids dereferencing the
+    // BSFixedString internal data pointer, which can be corrupted in SkyrimVR
+    // (root cause of the HasKeywordString AVX2 access-violation crash).
+    // -------------------------------------------------------------------------
+
+    /// Look up and cache all location-type keyword pointers.
+    /// Must be called on the game thread after kDataLoaded.
+    void CacheKeywords();
+
+    RE::BGSKeyword* _kwPlayerHouse{nullptr};
+    RE::BGSKeyword* _kwTown{nullptr};
+    RE::BGSKeyword* _kwCity{nullptr};
+    RE::BGSKeyword* _kwSettlement{nullptr};
+    RE::BGSKeyword* _kwInn{nullptr};
+    RE::BGSKeyword* _kwGuild{nullptr};
+    RE::BGSKeyword* _kwDwelling{nullptr};
+    RE::BGSKeyword* _kwHouse{nullptr};
+    RE::BGSKeyword* _kwDungeon{nullptr};
 };
 
 }  // namespace OStimNet

@@ -11,6 +11,8 @@
 namespace OStimNet {
 
 void LocationScanService::Register() {
+    CacheKeywords();  // resolve keyword pointers before we start receiving events
+
     auto* player = RE::PlayerCharacter::GetSingleton();
     if (!player) {
         SKSE::log::warn("LocationScanService: PlayerCharacter unavailable, could not register event sink");
@@ -253,6 +255,40 @@ void LocationScanService::RunScan(bool force) {
 // Context builder
 // -----------------------------------------------------------------------------
 
+// -----------------------------------------------------------------------------
+// Keyword cache
+// -----------------------------------------------------------------------------
+
+void LocationScanService::CacheKeywords() {
+    // Resolve each editor-ID once. LookupByEditorID returns nullptr if the
+    // keyword isn't loaded (e.g. modlist without the relevant .esm), which is
+    // safe — HasKeyword(nullptr) is always false.
+    auto Lookup = [](const char* editorID) -> RE::BGSKeyword* {
+        return RE::TESForm::LookupByEditorID<RE::BGSKeyword>(editorID);
+    };
+
+    _kwPlayerHouse = Lookup("LocTypePlayerHouse");
+    _kwTown        = Lookup("LocTypeTown");
+    _kwCity        = Lookup("LocTypeCity");
+    _kwSettlement  = Lookup("LocTypeSettlement");
+    _kwInn         = Lookup("LocTypeInn");
+    _kwGuild       = Lookup("LocTypeGuild");
+    _kwDwelling    = Lookup("LocTypeDwelling");
+    _kwHouse       = Lookup("LocTypeHouse");
+    _kwDungeon     = Lookup("LocTypeDungeon");
+
+    SKSE::log::info(
+        "LocationScanService: CacheKeywords — PlayerHouse={} Town={} City={} Settlement={} "
+        "Inn={} Guild={} Dwelling={} House={} Dungeon={}",
+        _kwPlayerHouse != nullptr, _kwTown != nullptr, _kwCity != nullptr,
+        _kwSettlement  != nullptr, _kwInn  != nullptr, _kwGuild != nullptr,
+        _kwDwelling    != nullptr, _kwHouse != nullptr, _kwDungeon != nullptr);
+}
+
+// -----------------------------------------------------------------------------
+// Location type filter
+// -----------------------------------------------------------------------------
+
 bool LocationScanService::IsLocationTypeAllowed() const {
     auto* player = RE::PlayerCharacter::GetSingleton();
     if (!player) return true;
@@ -264,47 +300,54 @@ bool LocationScanService::IsLocationTypeAllowed() const {
         return allow;
     }
 
+    // Use HasKeyword(BGSKeyword*) — a direct pointer comparison — rather than
+    // HasKeywordString(), which dereferences the BSFixedString editorID data
+    // and crashes in SkyrimVR when that pointer is stale or corrupted.
     const auto& cfg = Config::GetSingleton();
 
-    if (loc->HasKeywordString("LocTypePlayerHouse")) {
+    if (_kwPlayerHouse && loc->HasKeyword(_kwPlayerHouse)) {
         bool allow = cfg.LocationScanInPlayerHomes();
         SKSE::log::debug("LocationScanService: location is player home — scanInPlayerHomes={}", allow);
         return allow;
     }
 
-    if (loc->HasKeywordString("LocTypeTown") ||
-        loc->HasKeywordString("LocTypeCity") ||
-        loc->HasKeywordString("LocTypeSettlement")) {
+    if ((_kwTown       && loc->HasKeyword(_kwTown))  ||
+        (_kwCity       && loc->HasKeyword(_kwCity))  ||
+        (_kwSettlement && loc->HasKeyword(_kwSettlement))) {
         bool allow = cfg.LocationScanInSettlements();
         SKSE::log::debug("LocationScanService: location is settlement — scanInSettlements={}", allow);
         return allow;
     }
 
-    if (loc->HasKeywordString("LocTypeInn")) {
+    if (_kwInn && loc->HasKeyword(_kwInn)) {
         bool allow = cfg.LocationScanInInns();
         SKSE::log::debug("LocationScanService: location is inn — scanInInns={}", allow);
         return allow;
     }
 
-    if (loc->HasKeywordString("LocTypeGuild")) {
+    if (_kwGuild && loc->HasKeyword(_kwGuild)) {
         bool allow = cfg.LocationScanInGuilds();
         SKSE::log::debug("LocationScanService: location is guild — scanInGuilds={}", allow);
         return allow;
     }
 
-    if ((loc->HasKeywordString("LocTypeDwelling") || loc->HasKeywordString("LocTypeHouse")) &&
-        !loc->HasKeywordString("LocTypePlayerHouse") &&
-        !loc->HasKeywordString("LocTypeTown") &&
-        !loc->HasKeywordString("LocTypeCity") &&
-        !loc->HasKeywordString("LocTypeSettlement") &&
-        !loc->HasKeywordString("LocTypeInn") &&
-        !loc->HasKeywordString("LocTypeGuild")) {
+    const bool isDwelling =
+        (_kwDwelling && loc->HasKeyword(_kwDwelling)) ||
+        (_kwHouse    && loc->HasKeyword(_kwHouse));
+    const bool isExcluded =
+        (_kwPlayerHouse && loc->HasKeyword(_kwPlayerHouse)) ||
+        (_kwTown        && loc->HasKeyword(_kwTown))        ||
+        (_kwCity        && loc->HasKeyword(_kwCity))        ||
+        (_kwSettlement  && loc->HasKeyword(_kwSettlement))  ||
+        (_kwInn         && loc->HasKeyword(_kwInn))         ||
+        (_kwGuild       && loc->HasKeyword(_kwGuild));
+    if (isDwelling && !isExcluded) {
         bool allow = cfg.LocationScanInDwellings();
         SKSE::log::debug("LocationScanService: location is dwelling — scanInDwellings={}", allow);
         return allow;
     }
 
-    if (loc->HasKeywordString("LocTypeDungeon")) {
+    if (_kwDungeon && loc->HasKeyword(_kwDungeon)) {
         bool allow = cfg.LocationScanInDungeons();
         SKSE::log::debug("LocationScanService: location is dungeon — scanInDungeons={}", allow);
         return allow;
