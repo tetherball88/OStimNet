@@ -1,5 +1,19 @@
 # Changelog
 
+## v2.1.3 - 2026-07-18
+
+### Fixed
+
+- **VR crash in location scan (incomplete fix)** — The v2.1.2 fix replaced `HasKeywordString()` with `HasKeyword(BGSKeyword*)`, but both methods cause MSVC to emit a 32-byte AVX2 `vpcmpeqq` loop over the keyword array. In Skyrim VR the array buffer can sit at a page boundary, so the over-read crashes identically. `LocationScanService` now iterates `BGSKeywordForm::keywords` directly through a `volatile` pointer, forcing individual 8-byte scalar loads and making the over-read impossible.
+- **VR crash risk in nearby-actor race filter** — `GetNearbyActors` was calling `race->HasKeywordString("ActorTypeNPC")`, which has the same AVX2 page-boundary risk. The check now uses a one-time cached `BGSKeyword*` and the same volatile scalar loop.
+
+### Changed
+
+- **Proximity pause radius** — Minimum value lowered from 100 to 0, allowing the pause to be fully disabled via the config UI.
+- **Minor prompt tweaks.**
+
+---
+
 ## v2.1.2 - 2026-07-17
 
 ### Fixed

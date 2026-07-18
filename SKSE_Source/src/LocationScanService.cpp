@@ -10,6 +10,36 @@
 
 namespace OStimNet {
 
+// ---------------------------------------------------------------------------
+// VR-safe keyword check for BGSLocation
+//
+// NEVER call loc->HasKeyword() or HasKeywordString() in SkyrimVR.
+// Both cause MSVC to emit a 32-byte AVX2 vpcmpeqq loop over the keyword
+// array.  The game stores location keyword entries as a BSTArray<KEYWORD_DATA>
+// (BGSLocation::keywordData, offset 0xD0).  Reading each entry's keyword
+// pointer through a volatile variable forces individual 8-byte scalar loads,
+// making 32-byte over-reads into unmapped guard pages impossible.
+// ---------------------------------------------------------------------------
+static bool LocationHasKeyword(RE::BGSLocation* loc, RE::BGSKeyword* kw) {
+    if (!loc || !kw) return false;
+    SKSE::log::debug("LocationScanService: LocationHasKeyword(loc={}, kw={})", loc->GetFormEditorID(), kw->GetFormEditorID());
+    // LocType* keywords are stored in BGSKeywordForm::keywords (the KWDA array
+    // inherited at offset 0x38), NOT in BGSLocation::keywordData (0xD0) which
+    // holds weighted Radiant/NPC data.  Iterate through a volatile pointer to
+    // force scalar 8-byte loads and prevent AVX2 auto-vectorization.
+    RE::BGSKeyword* const volatile* kwds = loc->keywords;
+    const uint32_t count = loc->numKeywords;
+    if (!kwds) return false;
+    for (uint32_t i = 0; i < count; ++i) {
+        if (kwds[i] == kw){
+            SKSE::log::debug("LocationScanService: LocationHasKeyword(loc={}, kw={}, entry={}) - true", loc->GetFormEditorID(), kw->GetFormEditorID(), const_cast<const RE::BGSKeyword*>(kwds[i])->GetFormEditorID());
+            return true;
+        } else {
+            SKSE::log::debug("LocationScanService: LocationHasKeyword(loc={}, kw={}, entry={}) - false", loc->GetFormEditorID(), kw->GetFormEditorID(), const_cast<const RE::BGSKeyword*>(kwds[i])->GetFormEditorID());
+        }
+    }
+    return false;
+}
 void LocationScanService::Register() {
     CacheKeywords();  // resolve keyword pointers before we start receiving events
 
@@ -260,9 +290,6 @@ void LocationScanService::RunScan(bool force) {
 // -----------------------------------------------------------------------------
 
 void LocationScanService::CacheKeywords() {
-    // Resolve each editor-ID once. LookupByEditorID returns nullptr if the
-    // keyword isn't loaded (e.g. modlist without the relevant .esm), which is
-    // safe — HasKeyword(nullptr) is always false.
     auto Lookup = [](const char* editorID) -> RE::BGSKeyword* {
         return RE::TESForm::LookupByEditorID<RE::BGSKeyword>(editorID);
     };
@@ -300,54 +327,43 @@ bool LocationScanService::IsLocationTypeAllowed() const {
         return allow;
     }
 
-    // Use HasKeyword(BGSKeyword*) — a direct pointer comparison — rather than
-    // HasKeywordString(), which dereferences the BSFixedString editorID data
-    // and crashes in SkyrimVR when that pointer is stale or corrupted.
+    // LocationHasKeyword() uses volatile reads over BGSLocation::keywordData
+    // (the BSTArray<KEYWORD_DATA> at offset 0xD0) to avoid AVX2 vectorization.
     const auto& cfg = Config::GetSingleton();
 
-    if (_kwPlayerHouse && loc->HasKeyword(_kwPlayerHouse)) {
+    if (LocationHasKeyword(loc, _kwPlayerHouse)) {
         bool allow = cfg.LocationScanInPlayerHomes();
         SKSE::log::debug("LocationScanService: location is player home — scanInPlayerHomes={}", allow);
         return allow;
     }
 
-    if ((_kwTown       && loc->HasKeyword(_kwTown))  ||
-        (_kwCity       && loc->HasKeyword(_kwCity))  ||
-        (_kwSettlement && loc->HasKeyword(_kwSettlement))) {
+    if (LocationHasKeyword(loc, _kwTown)       ||
+        LocationHasKeyword(loc, _kwCity)       ||
+        LocationHasKeyword(loc, _kwSettlement)) {
         bool allow = cfg.LocationScanInSettlements();
         SKSE::log::debug("LocationScanService: location is settlement — scanInSettlements={}", allow);
         return allow;
     }
 
-    if (_kwInn && loc->HasKeyword(_kwInn)) {
+    if (LocationHasKeyword(loc, _kwInn)) {
         bool allow = cfg.LocationScanInInns();
         SKSE::log::debug("LocationScanService: location is inn — scanInInns={}", allow);
         return allow;
     }
 
-    if (_kwGuild && loc->HasKeyword(_kwGuild)) {
+    if (LocationHasKeyword(loc, _kwGuild)) {
         bool allow = cfg.LocationScanInGuilds();
         SKSE::log::debug("LocationScanService: location is guild — scanInGuilds={}", allow);
         return allow;
     }
 
-    const bool isDwelling =
-        (_kwDwelling && loc->HasKeyword(_kwDwelling)) ||
-        (_kwHouse    && loc->HasKeyword(_kwHouse));
-    const bool isExcluded =
-        (_kwPlayerHouse && loc->HasKeyword(_kwPlayerHouse)) ||
-        (_kwTown        && loc->HasKeyword(_kwTown))        ||
-        (_kwCity        && loc->HasKeyword(_kwCity))        ||
-        (_kwSettlement  && loc->HasKeyword(_kwSettlement))  ||
-        (_kwInn         && loc->HasKeyword(_kwInn))         ||
-        (_kwGuild       && loc->HasKeyword(_kwGuild));
-    if (isDwelling && !isExcluded) {
+    if (LocationHasKeyword(loc, _kwDwelling) || LocationHasKeyword(loc, _kwHouse)) {
         bool allow = cfg.LocationScanInDwellings();
         SKSE::log::debug("LocationScanService: location is dwelling — scanInDwellings={}", allow);
         return allow;
     }
 
-    if (_kwDungeon && loc->HasKeyword(_kwDungeon)) {
+    if (LocationHasKeyword(loc, _kwDungeon)) {
         bool allow = cfg.LocationScanInDungeons();
         SKSE::log::debug("LocationScanService: location is dungeon — scanInDungeons={}", allow);
         return allow;

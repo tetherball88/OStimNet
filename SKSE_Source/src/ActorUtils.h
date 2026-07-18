@@ -102,8 +102,29 @@ inline std::vector<RE::Actor*> GetNearbyActors(
 
         // Reject non-humanoid actors (animals, creatures, etc.) by checking
         // for the ActorTypeNPC keyword, which all humanoid races carry.
+        //
+        // Do NOT call race->HasKeywordString() or HasKeyword() in SkyrimVR:
+        // both cause MSVC to emit an AVX2 vpcmpeqq loop over the keyword array
+        // that can over-read into an unmapped guard page and crash.
+        // Instead, cache the BGSKeyword* once and iterate race->keywords[]
+        // through a volatile pointer, forcing individual 8-byte scalar loads.
         const auto* race = target->GetRace();
-        if (!race || !race->HasKeywordString("ActorTypeNPC")) return false;
+        if (!race) return false;
+        {
+            static RE::BGSKeyword* s_kwActorTypeNPC =
+                RE::TESForm::LookupByEditorID<RE::BGSKeyword>("ActorTypeNPC");
+            if (!s_kwActorTypeNPC) return false;
+            bool hasNPCKeyword = false;
+            // TESRace stores keywords in BGSKeywordForm::keywords (standard array).
+            RE::BGSKeyword* const volatile* kwds = race->keywords;
+            const uint32_t count = race->numKeywords;
+            if (kwds) {
+                for (uint32_t ki = 0; ki < count; ++ki) {
+                    if (kwds[ki] == s_kwActorTypeNPC) { hasNPCKeyword = true; break; }
+                }
+            }
+            if (!hasNPCKeyword) return false;
+        }
         if (IsInFactionByEditorID(target, "SexLabAnimatingFaction")) return false;
         if (IsInFactionByEditorID(target, "TTON_OStimPending")) return false;
         if (ostimCondition != OStimCondition::Any) {

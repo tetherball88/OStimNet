@@ -16,8 +16,7 @@ Time: {{ short_time(gameTime) }}
     {{ render_character_profile("tton_gm", candidate.UUID) }}
     ---
 {% endfor %}
-
-### Player Profile
+### Player Profile ({{ player.name }}, {{ player.gender }} {{ player.race }})
 {{ render_character_profile("tton_gm", player.UUID) }}
 
 ---

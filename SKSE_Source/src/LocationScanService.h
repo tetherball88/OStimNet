@@ -129,12 +129,20 @@ private:
 
     // -------------------------------------------------------------------------
     // Cached keyword pointers — resolved once at kDataLoaded via CacheKeywords().
-    // Using BGSKeyword* instead of HasKeywordString() avoids dereferencing the
-    // BSFixedString internal data pointer, which can be corrupted in SkyrimVR
-    // (root cause of the HasKeywordString AVX2 access-violation crash).
+    //
+    // VR crash root cause (Jul-17 and Jul-18):
+    //   Calling loc->HasKeyword() or HasKeywordString() causes MSVC to emit
+    //   a 32-byte AVX2 vpcmpeqq loop over the keyword array.  In SkyrimVR
+    //   the array buffer can sit right at a page boundary, so the over-read
+    //   crashes.  Both the vtable-dispatched HasKeyword AND HasKeywordString
+    //   share this problem.
+    //
+    // Fix: IsLocationTypeAllowed() uses LocationHasKeyword() (defined in the
+    // .cpp) which reads each keyword entry through a volatile pointer, forcing
+    // the compiler to emit individual 8-byte scalar loads — no AVX2 possible.
     // -------------------------------------------------------------------------
 
-    /// Look up and cache all location-type keyword pointers.
+    /// Resolve and cache all location-type keyword pointers.
     /// Must be called on the game thread after kDataLoaded.
     void CacheKeywords();
 

@@ -66,7 +66,7 @@ schema:
       path: "tton.settings.proximityPauseRadius"
       type: "float"
       description: "Units from an NPC thread actor at which scene advancement is paused. Set it to 0 never pause scenes. 1 game unit ≈ 14.3 mm. Default 200 ≈ 2.8 m."
-      min: 100
+      min: 0
       max: 1500
       defaultValue: 200
       category: "General"
