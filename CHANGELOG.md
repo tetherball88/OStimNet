@@ -1,5 +1,16 @@
 # Changelog
 
+## v2.1.2 - 2026-07-17
+
+### Fixed
+
+- **VR crash in location scan** — `LocationScanService` could crash in Skyrim VR due to unsafe form lookups during the location scan. The service now guards against VR-incompatible paths and caches results to avoid repeated unsafe calls.
+- **Stuck scene-advance evaluation on thread end** — When an OStim thread ended while a scheduled scene-advance evaluation was in flight, the evaluation loop would never terminate, leaving the scheduler permanently occupied. The event listener and integration layer now signal a clean cancellation when a thread ends.
+- **Animals included in nearby-actor results** — Non-humanoid actors (animals, creatures) were being returned by `GetNearbyActors`, causing them to appear as valid scene candidates. Humanoid filtering is now applied before any actor is added to the result list.
+- **Incorrect placeholder values in intent prompts** — `ostimnet_intent_dom_description_short.prompt` and `ostimnet_intent_transactional_description.prompt` contained wrong variable references that caused the wrong description text to be injected into the LLM context.
+
+---
+
 ## v2.1.1 - 2026-07-16
 
 ### Fixed
