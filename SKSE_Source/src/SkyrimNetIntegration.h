@@ -140,7 +140,8 @@ namespace OStimNet::SkyrimNetIntegration {
      * @return true if the LLM task was successfully queued.
      */
     bool EvaluateLocationScan(const std::string& contextJson,
-                              const std::map<std::string, RE::FormID>& nameToFormID);
+                              const std::map<std::string, RE::FormID>& nameToFormID,
+                              uint64_t scanGen);
 
     /**
      * Send the "ostimnet_evaluate_scene_advance" prompt to the LLM to choose the next

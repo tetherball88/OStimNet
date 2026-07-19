@@ -2,6 +2,7 @@
 
 #include "LocationScanService.h"
 #include "Config.h"
+#include "KeywordUtils.h"
 #include "ModEventDispatch.h"
 #include "SkyrimNetIntegration.h"
 #include "ThreadRegistry.h"
@@ -10,36 +11,6 @@
 
 namespace OStimNet {
 
-// ---------------------------------------------------------------------------
-// VR-safe keyword check for BGSLocation
-//
-// NEVER call loc->HasKeyword() or HasKeywordString() in SkyrimVR.
-// Both cause MSVC to emit a 32-byte AVX2 vpcmpeqq loop over the keyword
-// array.  The game stores location keyword entries as a BSTArray<KEYWORD_DATA>
-// (BGSLocation::keywordData, offset 0xD0).  Reading each entry's keyword
-// pointer through a volatile variable forces individual 8-byte scalar loads,
-// making 32-byte over-reads into unmapped guard pages impossible.
-// ---------------------------------------------------------------------------
-static bool LocationHasKeyword(RE::BGSLocation* loc, RE::BGSKeyword* kw) {
-    if (!loc || !kw) return false;
-    SKSE::log::debug("LocationScanService: LocationHasKeyword(loc={}, kw={})", loc->GetFormEditorID(), kw->GetFormEditorID());
-    // LocType* keywords are stored in BGSKeywordForm::keywords (the KWDA array
-    // inherited at offset 0x38), NOT in BGSLocation::keywordData (0xD0) which
-    // holds weighted Radiant/NPC data.  Iterate through a volatile pointer to
-    // force scalar 8-byte loads and prevent AVX2 auto-vectorization.
-    RE::BGSKeyword* const volatile* kwds = loc->keywords;
-    const uint32_t count = loc->numKeywords;
-    if (!kwds) return false;
-    for (uint32_t i = 0; i < count; ++i) {
-        if (kwds[i] == kw){
-            SKSE::log::debug("LocationScanService: LocationHasKeyword(loc={}, kw={}, entry={}) - true", loc->GetFormEditorID(), kw->GetFormEditorID(), const_cast<const RE::BGSKeyword*>(kwds[i])->GetFormEditorID());
-            return true;
-        } else {
-            SKSE::log::debug("LocationScanService: LocationHasKeyword(loc={}, kw={}, entry={}) - false", loc->GetFormEditorID(), kw->GetFormEditorID(), const_cast<const RE::BGSKeyword*>(kwds[i])->GetFormEditorID());
-        }
-    }
-    return false;
-}
 void LocationScanService::Register() {
     CacheKeywords();  // resolve keyword pointers before we start receiving events
 
@@ -126,10 +97,26 @@ RE::BSEventNotifyControl LocationScanService::ProcessEvent(
 
     SKSE::log::info(
         "LocationScanService: meaningful location change detected "
-        "(loc 0x{:08X}->0x{:08X}  ws 0x{:08X}->0x{:08X}  interior {}->{}), scheduling scan",
+        "(loc 0x{:08X}->0x{:08X}  ws 0x{:08X}->0x{:08X}  interior {}->{}) scheduling scan",
         _lastFingerprint.locationFormID, current.locationFormID,
         _lastFingerprint.worldspaceFormID, current.worldspaceFormID,
         _lastFingerprint.isInterior, current.isInterior);
+
+    // Advance the baseline NOW so that future cell events compare against the
+    // actual current location — not the one from the last *completed* scan.
+    // If the scan is later filtered out (e.g. settlement) or cancelled, the
+    // fingerprint is already correct and won't produce phantom "changes".
+    _lastFingerprint = current;
+
+    // Early-out: if the location type is already known to be excluded, skip
+    // scheduling the delay thread entirely. GetCurrentLocation() can be null
+    // or unresolved immediately after a cell transition, so RunScan() retains
+    // its own authoritative check to catch cases that resolve during the delay.
+    if (!IsLocationTypeAllowed()) {
+        SKSE::log::debug(
+            "LocationScanService: location type excluded at cell-enter, scan suppressed");
+        return RE::BSEventNotifyControl::kContinue;
+    }
 
     ScheduleScan();
     return RE::BSEventNotifyControl::kContinue;
@@ -204,8 +191,10 @@ LocationFingerprint LocationScanService::SnapshotFingerprint() const {
         fp.isInterior = cell->IsInteriorCell();
         // Exterior cells belong to a worldspace; interior cells do not.
         if (!fp.isInterior) {
-            if (auto* ws = player->GetWorldspace())
+            if (auto* ws = cell->GetRuntimeData().worldSpace)
                 fp.worldspaceFormID = ws->GetFormID();
+            else if (auto* pws = player->GetWorldspace())
+                fp.worldspaceFormID = pws->GetFormID();
         }
     }
 
@@ -271,14 +260,16 @@ void LocationScanService::RunScan(bool force) {
     }
     SKSE::log::info("LocationScanService: built name snapshot with {} actor(s)", nameToFormID.size());
 
-    // Capture fingerprint now (before the async LLM call) so that any cell
-    // events that fire while the scan is in-flight don't re-trigger unless
-    // the location changes again.
+    // Re-snapshot fingerprint immediately before the LLM call to pick up any
+    // location refinement that happened during the delay (e.g. GetCurrentLocation()
+    // returning a more-specific value after NPCs finish spawning).  In the normal
+    // case this is already up-to-date from ProcessEvent, but the manual scan path
+    // and any edge cases are covered here too.
     _lastFingerprint = SnapshotFingerprint();
 
     std::string contextJson = BuildContextJson();
     _lastScanTime = std::chrono::steady_clock::now();
-    SkyrimNetIntegration::EvaluateLocationScan(contextJson, nameToFormID);
+    SkyrimNetIntegration::EvaluateLocationScan(contextJson, nameToFormID, _generation.load(std::memory_order_relaxed));
 }
 
 // -----------------------------------------------------------------------------
@@ -327,43 +318,41 @@ bool LocationScanService::IsLocationTypeAllowed() const {
         return allow;
     }
 
-    // LocationHasKeyword() uses volatile reads over BGSLocation::keywordData
-    // (the BSTArray<KEYWORD_DATA> at offset 0xD0) to avoid AVX2 vectorization.
     const auto& cfg = Config::GetSingleton();
 
-    if (LocationHasKeyword(loc, _kwPlayerHouse)) {
+    if (KeywordUtils::FormHasKeyword(loc, _kwPlayerHouse)) {
         bool allow = cfg.LocationScanInPlayerHomes();
         SKSE::log::debug("LocationScanService: location is player home — scanInPlayerHomes={}", allow);
         return allow;
     }
 
-    if (LocationHasKeyword(loc, _kwTown)       ||
-        LocationHasKeyword(loc, _kwCity)       ||
-        LocationHasKeyword(loc, _kwSettlement)) {
+    if (KeywordUtils::FormHasKeyword(loc, _kwTown)       ||
+        KeywordUtils::FormHasKeyword(loc, _kwCity)       ||
+        KeywordUtils::FormHasKeyword(loc, _kwSettlement)) {
         bool allow = cfg.LocationScanInSettlements();
         SKSE::log::debug("LocationScanService: location is settlement — scanInSettlements={}", allow);
         return allow;
     }
 
-    if (LocationHasKeyword(loc, _kwInn)) {
+    if (KeywordUtils::FormHasKeyword(loc, _kwInn)) {
         bool allow = cfg.LocationScanInInns();
         SKSE::log::debug("LocationScanService: location is inn — scanInInns={}", allow);
         return allow;
     }
 
-    if (LocationHasKeyword(loc, _kwGuild)) {
+    if (KeywordUtils::FormHasKeyword(loc, _kwGuild)) {
         bool allow = cfg.LocationScanInGuilds();
         SKSE::log::debug("LocationScanService: location is guild — scanInGuilds={}", allow);
         return allow;
     }
 
-    if (LocationHasKeyword(loc, _kwDwelling) || LocationHasKeyword(loc, _kwHouse)) {
+    if (KeywordUtils::FormHasKeyword(loc, _kwDwelling) || KeywordUtils::FormHasKeyword(loc, _kwHouse)) {
         bool allow = cfg.LocationScanInDwellings();
         SKSE::log::debug("LocationScanService: location is dwelling — scanInDwellings={}", allow);
         return allow;
     }
 
-    if (LocationHasKeyword(loc, _kwDungeon)) {
+    if (KeywordUtils::FormHasKeyword(loc, _kwDungeon)) {
         bool allow = cfg.LocationScanInDungeons();
         SKSE::log::debug("LocationScanService: location is dungeon — scanInDungeons={}", allow);
         return allow;

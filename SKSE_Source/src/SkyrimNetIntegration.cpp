@@ -10,6 +10,7 @@
 #include "OStimEventHelpers.h"
 #include "OStimEventListener.h"
 #include "ActorUtils.h"
+#include "LocationScanService.h"
 
 #include <algorithm>
 #include <map>
@@ -1680,7 +1681,8 @@ bool EvaluateInviteToSex(RE::FormID inviterFormID,
 }
 
 bool EvaluateLocationScan(const std::string& contextJson,
-                          const std::map<std::string, RE::FormID>& nameToFormID) {
+                          const std::map<std::string, RE::FormID>& nameToFormID,
+                          uint64_t scanGen) {
     if (!PublicSendCustomPromptToLLM) {
         SKSE::log::warn("EvaluateLocationScan: PublicSendCustomPromptToLLM is null (SkyrimNet v8+ required), scan skipped");
         return false;
@@ -1693,7 +1695,16 @@ bool EvaluateLocationScan(const std::string& contextJson,
 
     auto callbackHolder = std::make_shared<std::function<void(const char*, int)>>();
 
-    *callbackHolder = [callbackHolder, nameToFormID, contextJson, promptName, llmVariant](const char* response, int success) {
+    *callbackHolder = [callbackHolder, nameToFormID, contextJson, promptName, llmVariant, scanGen](const char* response, int success) {
+        // Discard the result if the player moved to a new location while the
+        // LLM was processing — the generation counter was bumped by ScheduleScan.
+        if (OStimNet::LocationScanService::GetSingleton().GetGeneration() != scanGen) {
+            SKSE::log::info(
+                "EvaluateLocationScan callback: scan gen={} superseded (current={}), discarding result",
+                scanGen, OStimNet::LocationScanService::GetSingleton().GetGeneration());
+            return;
+        }
+
         SKSE::log::info("EvaluateLocationScan callback: success={}", success);
 
         auto retryAction = [callbackHolder, promptName, llmVariant, contextJson]() {
