@@ -208,6 +208,9 @@ Event OnSexEvaluationFinished(string eventName, string strArg, float numArg, For
     Actor[] secondary = OStimNet.JsonGetActorArray(strArg, "secondary")
     Actor[] excluded = OStimNet.JsonGetActorArray(strArg, "excluded")
 
+    if(main.Length == 0 || secondary.Length == 0)
+    endif
+
     if(excluded.Length > 0)
         TTON_Debug.debug("Sex evaluation finished: LLM excluded some participants: " + excluded)
         TTON_Utils.SetActorsPending(excluded, false)
@@ -343,6 +346,11 @@ Event OnLocationScanResult(string eventName, string strArg, float numArg, Form s
     if(numArg == 2.0)
         TTON_Debug.info("Location scan result finished: not enough willing participants.")
         Debug.Notification("After evaluation not enough willing participants for the proposed location scan.")
+        return
+    endif
+    if(numArg == 3.0)
+        TTON_Debug.info("Location scan result finished: failed to resolve one or more suggested actors.")
+        Debug.Notification("Location scan aborted: couldn't find all actors suggested by the LLM in the current area.")
         return
     endif
     string intent = OStimNet.JsonGetString(strArg, "intent")

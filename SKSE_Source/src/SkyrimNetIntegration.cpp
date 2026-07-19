@@ -1777,10 +1777,6 @@ bool EvaluateLocationScan(const std::string& contextJson,
             return JsonService::ResolveNamesToFormIDs(src, key, nameToFormID, "EvaluateLocationScan");
         };
 
-        bool hasParticipants = scene.contains("mainActors") &&
-                               scene["mainActors"].is_array() &&
-                               !scene["mainActors"].empty();
-
         nlohmann::json result;
         result["intent"]           = scene.value("intent", "");
         result["sexualPosition"]   = scene.value("sexualPosition", "");
@@ -1789,11 +1785,35 @@ bool EvaluateLocationScan(const std::string& contextJson,
         result["secondary"]        = resolveNames(scene, "secondaryActors");
         result["furniture"]        = scene.value("furniture", "bed");
 
+        // Guardrail: LLMs sometimes place all actors in mainActors and leave secondaryActors empty.
+        // If secondary is empty and main has more than one actor, move the last main actor to secondary.
+        if (result["secondary"].empty() && result["main"].size() > 1) {
+            SKSE::log::info("EvaluateLocationScan: secondary actors empty with {} main actors — moving last main actor to secondary.",
+                            result["main"].size());
+            result["secondary"].push_back(result["main"].back());
+            result["main"].erase(result["main"].size() - 1);
+        }
+
+        std::size_t totalActors = result["main"].size() + result["secondary"].size();
+        std::size_t suggestedActorsCount = 0;
+        if (scene.contains("mainActors") && scene["mainActors"].is_array()) suggestedActorsCount += scene["mainActors"].size();
+        if (scene.contains("secondaryActors") && scene["secondaryActors"].is_array()) suggestedActorsCount += scene["secondaryActors"].size();
+
         std::string jsonStr = result.dump();
-        float numArg = hasParticipants ? 1.0f : 2.0f;
-        SKSE::log::info("EvaluateLocationScan: result — {} | reason: {}",
-                        hasParticipants ? "participants found" : "no participants",
-                        result.value("reason", "(none)"));
+        float numArg;
+        if (totalActors < suggestedActorsCount) {
+            numArg = 3.0f;
+            SKSE::log::info("EvaluateLocationScan: result — missing participants (resolved {} of {} suggested) | reason: {}",
+                            totalActors, suggestedActorsCount, resp.value("reason", "(none)"));
+        } else if (totalActors >= 2) {
+            numArg = 1.0f;
+            SKSE::log::info("EvaluateLocationScan: result — participants found (resolved {}) | reason: {}",
+                            totalActors, resp.value("reason", "(none)"));
+        } else {
+            numArg = 2.0f;
+            SKSE::log::info("EvaluateLocationScan: result — not enough participants (resolved {}) | reason: {}",
+                            totalActors, resp.value("reason", "(none)"));
+        }
 
         FireModEvent("ostimnet_location_scan_result", jsonStr.c_str(), numArg);
     };

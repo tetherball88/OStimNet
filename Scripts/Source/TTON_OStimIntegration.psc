@@ -12,6 +12,7 @@ int function StartOstimSex(Actor[] dom = none, Actor[] sub = none, string action
     int i = 0
     bool hasPlayer = false
     ObjectReference furn = none
+    Cell firstActorCell = actors[0].GetParentCell()
     while(i < actors.Length)
         Actor current = actors[i]
         if(current == player)
@@ -19,6 +20,17 @@ int function StartOstimSex(Actor[] dom = none, Actor[] sub = none, string action
         endif
         if(TTON_Utils.IsActorBusyWithScenes(current, false))
             someActorsBusy = true
+        endif
+
+        if(i != 0)
+            Cell currenActorCell = current.GetParentCell()
+            if (currenActorCell != firstActorCell)
+                TTON_Utils.SetActorsPending(actors, false)
+                TTON_Utils.FreeParticipants(actors)
+                TTON_Debug.warn("StartOstim: actors are not in the same location. Aborting.")
+                TTON_Debug.warn("StartOstim: " + TTON_Utils.GetActorName(actors[0]) + " is in " + firstActorCell + ", " + TTON_Utils.GetActorName(current) + " is in " + currenActorCell)
+                return -1
+            endif
         endif
 
         Form actorFurniture = StorageUtil.GetFormValue(current, "TTON_FurnitureActor")
@@ -30,6 +42,8 @@ int function StartOstimSex(Actor[] dom = none, Actor[] sub = none, string action
         i += 1
     endwhile
     if(someActorsBusy)
+        TTON_Utils.SetActorsPending(actors, false)
+        TTON_Utils.FreeParticipants(actors)
         TTON_Debug.warn("StartOstim: tried to start new thread with actors who are busy in another thread.")
         return -1
     endif
@@ -105,12 +119,20 @@ int Function StartOStimCaring(Actor initiator, Actor participant, string actions
     int i = 0
     if(!initiator || !participant)
         TTON_Debug.warn("StartOStimCaring: invalid actors provided.")
+        TTON_Utils.SetActorsPending(actors, false)
+        return -1
+    endif
+    if(initiator.GetParentCell() != participant.GetParentCell())
+        TTON_Debug.warn("StartOStimCaring: actors are not in the same location. Aborting.")
+        TTON_Debug.warn("StartOStimCaring: " + TTON_Utils.GetActorName(initiator) + " is in " + initiator.GetParentCell() + ", " + TTON_Utils.GetActorName(participant) + " is in " + participant.GetParentCell())
+        TTON_Utils.SetActorsPending(actors, false)
         return -1
     endif
     bool hasPlayer = initiator == player || participant == player
     bool someActorsBusy = TTON_Utils.IsActorBusyWithScenes(initiator, false) || TTON_Utils.IsActorBusyWithScenes(participant, false)
     if(someActorsBusy)
         TTON_Debug.warn("StartOstim: tried to start new thread with actors who are busy in another thread.")
+        TTON_Utils.SetActorsPending(actors, false)
         return -1
     endif
 

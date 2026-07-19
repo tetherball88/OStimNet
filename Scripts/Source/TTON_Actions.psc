@@ -179,6 +179,7 @@ Function StartSexActionExecute(Actor akActor, Actor participant1, Actor particip
     ObjectReference finalFurniture = TTON_OStimIntegration.FindSuitableFurniture(akActor, furnitureType)
 
     if(finalFurniture)
+        TTON_Debug.info("Found suitable furniture for the sexual scene: " + finalFurniture)
         TTON_Utils.MakeParticipantsWalkToFurniture(actors, finalFurniture)
     endif
 
