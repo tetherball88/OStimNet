@@ -10,7 +10,7 @@
     {% else if intent == "lustful" %}
         {{mainActorNames}} initiated this sexual encounter driven purely by raw physical desire with no emotional undertones, and {{secondaryActorNames}} joined in, both consumed by urgent physical need.
     {% else if intent == "transactional" %}
-        {{mainActorNames}} is providing sexual services to {{secondaryActorNames}} in exchange for coin, goods, or favors. The encounter is transactional — detached, purposeful, with no emotional connection between them.
+        {{secondaryActorNames}} is providing sexual services to {{mainActorNames}} in exchange for coin, goods, or favors. The encounter is transactional — detached, purposeful, with no emotional connection between them.
     {% else if intent == "dom" %}
         {{mainActorNames}} started this sexual encounter where they are controlling, commanding, and set the pace, while {{secondaryActorNames}} are obedient, yielding, and responsive to their dominant's lead.
         It is a consensual sexual encounter defined by a clear dominant/submissive power dynamic throughout.

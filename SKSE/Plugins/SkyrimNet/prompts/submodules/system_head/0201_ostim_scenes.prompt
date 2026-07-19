@@ -20,7 +20,7 @@
                 {% set participantRole = "" %}
                 {% if contains(scene.mainActorNames, to_string(npcData.name)) %}
                     {% if scene.intent == "transactional" %}
-                        {% set participantRole = npcName + " is providing sex service in exchange for benefit." %}
+                        {% set participantRole = npcName + " is receiving sex service in exchange for benefit." %}
                     {% else if scene.intent == "dom" %}
                         {% set participantRole = npcName + " is the dominant participant." %}
                     {% else if scene.intent == "aggressive" %}
@@ -30,7 +30,7 @@
                     {% endif %}
                 {% else %}
                     {% if scene.intent == "transactional" %}
-                        {% set participantRole = npcName + " is receiving sex service in exchange for benefit." %}
+                        {% set participantRole = npcName + " is providing sex service in exchange for benefit." %}
                     {% else if scene.intent == "dom" %}
                         {% set participantRole = npcName + " is the submissive participant." %}
                     {% else if scene.intent == "aggressive" %}
