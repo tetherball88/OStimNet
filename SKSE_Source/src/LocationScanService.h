@@ -106,7 +106,7 @@ private:
 
     /// Snapshot the player's current semantic location into a fingerprint.
     /// Must be called on the game thread while PlayerCharacter is valid.
-    LocationFingerprint SnapshotFingerprint() const;
+    LocationFingerprint SnapshotFingerprint(RE::FormID cellID = 0) const;
 
     // -------------------------------------------------------------------------
     // Delay-thread synchronisation

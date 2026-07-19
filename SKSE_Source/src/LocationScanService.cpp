@@ -72,10 +72,11 @@ RE::BSEventNotifyControl LocationScanService::ProcessEvent(
     // changed; we capture the baseline fingerprint here instead).
     if (!_initialScanDone) {
         _initialScanDone = true;
-        _lastFingerprint = SnapshotFingerprint();
+        _lastFingerprint = SnapshotFingerprint(event->cellID);
         SKSE::log::info(
-            "LocationScanService: first post-load cell event — captured baseline "
+            "LocationScanService: first post-load cell (0x{:08X}) event — captured baseline "
             "(loc=0x{:08X} ws=0x{:08X} interior={})",
+            event->cellID,
             _lastFingerprint.locationFormID,
             _lastFingerprint.worldspaceFormID,
             _lastFingerprint.isInterior);
@@ -83,7 +84,7 @@ RE::BSEventNotifyControl LocationScanService::ProcessEvent(
     }
 
     // Snapshot current semantic location and compare to the last scan.
-    LocationFingerprint current = SnapshotFingerprint();
+    LocationFingerprint current = SnapshotFingerprint(event->cellID);
     if (!current.IsMeaningfullyDifferentFrom(_lastFingerprint)) {
         SKSE::log::debug(
             "LocationScanService: cell 0x{:08X} — fingerprint unchanged, scan suppressed "
@@ -96,8 +97,9 @@ RE::BSEventNotifyControl LocationScanService::ProcessEvent(
     }
 
     SKSE::log::info(
-        "LocationScanService: meaningful location change detected "
+        "LocationScanService: cell 0x{:08X} meaningful location change detected "
         "(loc 0x{:08X}->0x{:08X}  ws 0x{:08X}->0x{:08X}  interior {}->{}) scheduling scan",
+        event->cellID,
         _lastFingerprint.locationFormID, current.locationFormID,
         _lastFingerprint.worldspaceFormID, current.worldspaceFormID,
         _lastFingerprint.isInterior, current.isInterior);
@@ -177,25 +179,30 @@ void LocationScanService::CancelDelay() {
 // Fingerprint helper
 // -----------------------------------------------------------------------------
 
-LocationFingerprint LocationScanService::SnapshotFingerprint() const {
+LocationFingerprint LocationScanService::SnapshotFingerprint(RE::FormID cellID) const {
     LocationFingerprint fp;
-    auto* player = RE::PlayerCharacter::GetSingleton();
-    if (!player) return fp;
 
-    // Named location (city, dungeon, etc.) — null-safe.
-    if (auto* loc = player->GetCurrentLocation())
+    RE::TESObjectCELL* cell = nullptr;
+    if (cellID != 0) {
+        cell = RE::TESForm::LookupByID<RE::TESObjectCELL>(cellID);
+    }
+    
+    if (!cell) {
+        auto* player = RE::PlayerCharacter::GetSingleton();
+        if (player) {
+            cell = player->GetParentCell();
+        }
+    }
+
+    if (!cell) return fp;
+
+    if (auto* loc = cell->GetLocation())
         fp.locationFormID = loc->GetFormID();
 
-    // Parent cell — interior flag and worldspace.
-    if (auto* cell = player->GetParentCell()) {
-        fp.isInterior = cell->IsInteriorCell();
-        // Exterior cells belong to a worldspace; interior cells do not.
-        if (!fp.isInterior) {
-            if (auto* ws = cell->GetRuntimeData().worldSpace)
-                fp.worldspaceFormID = ws->GetFormID();
-            else if (auto* pws = player->GetWorldspace())
-                fp.worldspaceFormID = pws->GetFormID();
-        }
+    fp.isInterior = cell->IsInteriorCell();
+    if (!fp.isInterior) {
+        if (auto* ws = cell->GetRuntimeData().worldSpace)
+            fp.worldspaceFormID = ws->GetFormID();
     }
 
     return fp;
