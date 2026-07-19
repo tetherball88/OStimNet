@@ -8,6 +8,7 @@
 #include "src/JsonService.h"
 #include "src/ConfirmationModal.h"
 #include "src/EventPayloadBuilder.h"
+#include "src/LocationScanService.h"
 
 namespace OStimNet::Papyrus::PapyrusFunctions {
 
@@ -60,6 +61,11 @@ static void RegisterLatentFixed(RE::BSScript::IVirtualMachine* vm,
         std::string out(s ? s : "");
         std::transform(out.begin(), out.end(), out.begin(), [](unsigned char c) { return std::tolower(c); });
         return out;
+    }
+
+    // Papyrus native: int Function GetLocationGeneration() global native
+    int32_t GetLocationGeneration(RE::StaticFunctionTag*) {
+        return static_cast<int32_t>(OStimNet::LocationScanService::GetSingleton().GetGeneration());
     }
 
     // Papyrus native: string Function GetSceneDescription(int threadID) global
@@ -251,7 +257,7 @@ static void RegisterLatentFixed(RE::BSScript::IVirtualMachine* vm,
         listener->RegisterOcumSquirt(threadID, actorID, ToLower(sceneID.c_str()), ToLower(squirtType.c_str()));
     }
 
-    // Papyrus native: int Function EvaluatePreStartSexualScene(Actor[] akParticipants, string asIntent = "") global native
+    // Papyrus native: int Function EvaluatePreStartSexualScene(Actor[] akParticipants, string asIntent, string evalId) global native
     // Sends the "ostimnet_evaluate_prestart_sexual" prompt to the LLM before an OStim scene is created.
     // Returns 1 if the task was successfully queued, 0 on failure.
     // asIntent: optional intent hint for the LLM (e.g. "romantic", "dom"). Pass "" for no hint.
@@ -259,18 +265,19 @@ static void RegisterLatentFixed(RE::BSScript::IVirtualMachine* vm,
     //   numArg = 1.0 success, 2.0 insufficient participants, 0.0 error.
     int32_t EvaluatePreStartSexualScene(RE::StaticFunctionTag*,
                                         std::vector<RE::Actor*> participants,
-                                        RE::BSFixedString intent) {
+                                        RE::BSFixedString intent,
+                                        RE::BSFixedString evalId) {
         std::vector<RE::FormID> formIDs;
         formIDs.reserve(participants.size());
         for (RE::Actor* actor : participants) {
             if (actor) formIDs.push_back(actor->GetFormID());
         }
         bool queued = OStimNet::SkyrimNetIntegration::EvaluatePreStartSexualScene(
-            formIDs, ToLower(intent.c_str()));
+            formIDs, ToLower(intent.c_str()), evalId.c_str());
         return queued ? 1 : 0;
     }
 
-    // Papyrus native: int Function EvaluateNonSexualScene(Actor[] akParticipants, string asActivity = "", string asIntent = "", Actor akInitiator = None) global native
+    // Papyrus native: int Function EvaluateNonSexualScene(Actor[] akParticipants, string asActivity, string asIntent, Actor akInitiator, string evalId) global native
     // Sends the "ostimnet_evaluate_nonsexual_scene" prompt to the LLM before a non-sexual scene is started.
     // Returns 1 if the task was successfully queued, 0 on failure.
     // asActivity:   optional activity hint for the LLM (e.g. "spar", "meditate"). Pass "" for no hint.
@@ -284,7 +291,8 @@ static void RegisterLatentFixed(RE::BSScript::IVirtualMachine* vm,
                                    std::vector<RE::Actor*> participants,
                                    RE::BSFixedString activity,
                                    RE::BSFixedString intent,
-                                   RE::Actor* initiator) {
+                                   RE::Actor* initiator,
+                                   RE::BSFixedString evalId) {
         std::vector<RE::FormID> formIDs;
         formIDs.reserve(participants.size());
         for (RE::Actor* actor : participants) {
@@ -292,25 +300,27 @@ static void RegisterLatentFixed(RE::BSScript::IVirtualMachine* vm,
         }
         RE::FormID initiatorFormID = initiator ? initiator->GetFormID() : 0;
         bool queued = OStimNet::SkyrimNetIntegration::EvaluateNonSexualScene(
-            formIDs, ToLower(activity.c_str()), ToLower(intent.c_str()), initiatorFormID);
+            formIDs, ToLower(activity.c_str()), ToLower(intent.c_str()), initiatorFormID, evalId.c_str());
         return queued ? 1 : 0;
     }
 
-    // Papyrus native: int Function EvaluateJoinOngoingSex(Actor akJoiner, int threadID) global native
+    // Papyrus native: int Function EvaluateJoinOngoingSex(Actor akJoiner, int threadID, string evalId) global native
     int32_t EvaluateJoinOngoingSex(RE::StaticFunctionTag*,
                                    RE::Actor* joiner,
-                                   int32_t threadID) {
+                                   int32_t threadID,
+                                   RE::BSFixedString evalId) {
         if (!joiner) return 0;
         bool queued = OStimNet::SkyrimNetIntegration::EvaluateJoinOngoingSex(
-            joiner->GetFormID(), threadID);
+            joiner->GetFormID(), threadID, evalId.c_str());
         return queued ? 1 : 0;
     }
 
-    // Papyrus native: int Function EvaluateInviteToSex(Actor akInviter, Actor[] akInvitees, int threadID) global native
+    // Papyrus native: int Function EvaluateInviteToSex(Actor akInviter, Actor[] akInvitees, int threadID, string evalId) global native
     int32_t EvaluateInviteToSex(RE::StaticFunctionTag*,
                                 RE::Actor* inviter,
                                 std::vector<RE::Actor*> invitees,
-                                int32_t threadID) {
+                                int32_t threadID,
+                                RE::BSFixedString evalId) {
         if (!inviter) return 0;
         std::vector<RE::FormID> inviteeFormIDs;
         inviteeFormIDs.reserve(invitees.size());
@@ -318,7 +328,7 @@ static void RegisterLatentFixed(RE::BSScript::IVirtualMachine* vm,
             if (actor) inviteeFormIDs.push_back(actor->GetFormID());
         }
         bool queued = OStimNet::SkyrimNetIntegration::EvaluateInviteToSex(
-            inviter->GetFormID(), inviteeFormIDs, threadID);
+            inviter->GetFormID(), inviteeFormIDs, threadID, evalId.c_str());
         return queued ? 1 : 0;
     }
 
@@ -598,6 +608,7 @@ static void RegisterLatentFixed(RE::BSScript::IVirtualMachine* vm,
     }
 
     bool Register(RE::BSScript::IVirtualMachine* vm) {
+        vm->RegisterFunction("GetLocationGeneration", "OStimNet", GetLocationGeneration);
         vm->RegisterFunction("GetSceneDescription", "OStimNet", GetSceneDescription);
         vm->RegisterFunction("GetActorListString", "OStimNet", GetActorListString);
         vm->RegisterFunction("Log", "OStimNet", Log);

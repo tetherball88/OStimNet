@@ -47,7 +47,15 @@ int function StartOstimSex(Actor[] dom = none, Actor[] sub = none, string action
         if(target == player)
             target = actors[1]
         endif
+        int startGen = OStimNet.GetLocationGeneration()
         while (target.GetDistance(furn) > 160 && stucktimer <= 10)
+            if (startGen != OStimNet.GetLocationGeneration())
+                TTON_Debug.info("Player moved to another location while waiting for actors to reach furniture. Canceling scene.")
+                StorageUtil.FormListRemove(none, "TTON_FurnitureList", furn)
+                TTON_Utils.SetActorsPending(actors, false)
+                TTON_Utils.FreeParticipants(actors)
+                return -1
+            endif
             TTON_Debug.debug("StartOstim: actor " + target + " is not near furniture yet. Distance: " + target.GetDistance(furn) + ". Waiting...")
             stucktimer += 1
             Utility.Wait(5.0)

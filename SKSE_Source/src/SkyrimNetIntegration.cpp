@@ -805,7 +805,7 @@ void Register() {
 
 // SanitizeLLMJson is defined in JsonService.h and shared across all translation units.
 
-bool EvaluatePreStartSexualScene(const std::vector<RE::FormID>& participantFormIDs, const std::string& intent) {
+bool EvaluatePreStartSexualScene(const std::vector<RE::FormID>& participantFormIDs, const std::string& intent, const std::string& evalId) {
     if (!PublicSendCustomPromptToLLM) {
         SKSE::log::warn("EvaluatePreStartSexualScene: PublicSendCustomPromptToLLM unavailable (SkyrimNet v8+ required).");
         return false;
@@ -867,7 +867,7 @@ bool EvaluatePreStartSexualScene(const std::vector<RE::FormID>& participantFormI
 
     auto callbackHolder = std::make_shared<std::function<void(const char*, int)>>();
 
-    *callbackHolder = [callbackHolder, nameToFormID, originalParticipants, intent,
+    *callbackHolder = [callbackHolder, nameToFormID, originalParticipants, intent, evalId,
                        contextJson, promptName, llmVariant](const char* response, int success) {
         SKSE::log::info("EvaluatePreStartSexualScene callback: success={}", success);
 
@@ -878,10 +878,11 @@ bool EvaluatePreStartSexualScene(const std::vector<RE::FormID>& participantFormI
                     promptName.c_str(), llmVariant.c_str(),
                     contextJson.c_str(), *callbackHolder);
         };
-        auto ignoreAction = [originalParticipants]() {
+        auto ignoreAction = [originalParticipants, evalId]() {
             SKSE::log::info("EvaluatePreStartSexualScene: player chose to ignore failed evaluation.");
             nlohmann::json ignoreResult;
             ignoreResult["originalParticipants"] = originalParticipants;
+            ignoreResult["evalId"]               = evalId;
             OStimNet::FireModEvent("ostimnet_sexual_evaluation_finished", ignoreResult.dump().c_str(), 0.0f);
         };
 
@@ -940,6 +941,7 @@ bool EvaluatePreStartSexualScene(const std::vector<RE::FormID>& participantFormI
         nlohmann::json result;
         result["originalParticipants"] = originalParticipants;
         result["intent"]               = intent;
+        result["evalId"]               = evalId;
         result["sexualPosition"]       = scene.value("sexualPosition", "");
         result["sexualActivities"]     = scene.value("sexualActivity", "");
         result["main"]                 = resolveNames(scene, "mainActors");
@@ -1174,7 +1176,7 @@ bool EvaluateExternalSexualThread(const std::vector<RE::FormID>& participantForm
     return queued;
 }
 
-bool EvaluateNonSexualScene(const std::vector<RE::FormID>& participantFormIDs, const std::string& activity, const std::string& intent, RE::FormID initiatorFormID) {
+bool EvaluateNonSexualScene(const std::vector<RE::FormID>& participantFormIDs, const std::string& activity, const std::string& intent, RE::FormID initiatorFormID, const std::string& evalId) {
     if (!PublicSendCustomPromptToLLM) {
         SKSE::log::warn("EvaluateNonSexualScene: PublicSendCustomPromptToLLM unavailable (SkyrimNet v8+ required).");
         return false;
@@ -1236,7 +1238,7 @@ bool EvaluateNonSexualScene(const std::vector<RE::FormID>& participantFormIDs, c
 
     auto callbackHolder = std::make_shared<std::function<void(const char*, int)>>();
 
-    *callbackHolder = [callbackHolder, initiatorFormID, participantFormIDs, intent, activity,
+    *callbackHolder = [callbackHolder, initiatorFormID, participantFormIDs, intent, activity, evalId,
                        contextJson, promptName, llmVariant](const char* response, int success) {
         SKSE::log::info("EvaluateNonSexualScene callback: success={}", success);
 
@@ -1247,7 +1249,7 @@ bool EvaluateNonSexualScene(const std::vector<RE::FormID>& participantFormIDs, c
                     promptName.c_str(), llmVariant.c_str(),
                     contextJson.c_str(), *callbackHolder);
         };
-        auto ignoreAction = [participantFormIDs, initiatorFormID, intent, activity]() {
+        auto ignoreAction = [participantFormIDs, initiatorFormID, intent, activity, evalId]() {
             SKSE::log::info("EvaluateNonSexualScene: player chose to ignore failed evaluation.");
             nlohmann::json ignoreResult;
             auto origArr = nlohmann::json::array();
@@ -1256,6 +1258,7 @@ bool EvaluateNonSexualScene(const std::vector<RE::FormID>& participantFormIDs, c
             ignoreResult["originalParticipants"] = std::move(origArr);
             ignoreResult["initiator"]            = static_cast<uint32_t>(initiatorFormID);
             ignoreResult["intent"]               = intent;
+            ignoreResult["evalId"]               = evalId;
             ignoreResult["activity"]             = activity;
             OStimNet::FireModEvent("ostimnet_nonsexual_evaluation_finished", ignoreResult.dump().c_str(), 0.0f);
         };
@@ -1298,6 +1301,7 @@ bool EvaluateNonSexualScene(const std::vector<RE::FormID>& participantFormIDs, c
             nlohmann::json noStartResult;
             noStartResult["start"]                = false;
             noStartResult["intent"]               = intent;
+            noStartResult["evalId"]               = evalId;
             noStartResult["activity"]             = activity;
             noStartResult["originalParticipants"] = origParticipants;
             noStartResult["initiator"]            = static_cast<uint32_t>(initiatorFormID);
@@ -1319,6 +1323,7 @@ bool EvaluateNonSexualScene(const std::vector<RE::FormID>& participantFormIDs, c
         nlohmann::json result;
         result["start"]                = true;
         result["intent"]               = intent;
+        result["evalId"]               = evalId;
         result["activity"]             = activity;
         result["main"]                 = std::move(mainArr);
         result["secondary"]            = std::move(secondaryArr);
@@ -1339,7 +1344,8 @@ bool EvaluateNonSexualScene(const std::vector<RE::FormID>& participantFormIDs, c
 }
 
 bool EvaluateJoinOngoingSex(RE::FormID joinerFormID,
-                            int threadID) {
+                            int threadID,
+                            const std::string& evalId) {
     if (!PublicSendCustomPromptToLLM) {
         SKSE::log::warn("EvaluateJoinOngoingSex: PublicSendCustomPromptToLLM unavailable (SkyrimNet v8+ required).");
         return false;
@@ -1402,7 +1408,7 @@ bool EvaluateJoinOngoingSex(RE::FormID joinerFormID,
 
     auto callbackHolder = std::make_shared<std::function<void(const char*, int)>>();
 
-    *callbackHolder = [callbackHolder, nameToFormID, threadID, joinerFormID, currentParticipantFormIDs,
+    *callbackHolder = [callbackHolder, nameToFormID, threadID, joinerFormID, currentParticipantFormIDs, evalId,
                        contextJson, promptName, llmVariant](const char* response, int success) {
         SKSE::log::info("EvaluateJoinOngoingSex callback: success={}", success);
 
@@ -1413,11 +1419,12 @@ bool EvaluateJoinOngoingSex(RE::FormID joinerFormID,
                     promptName.c_str(), llmVariant.c_str(),
                     contextJson.c_str(), *callbackHolder);
         };
-        auto ignoreAction = [threadID, joinerFormID, currentParticipantFormIDs]() {
+        auto ignoreAction = [threadID, joinerFormID, currentParticipantFormIDs, evalId]() {
             SKSE::log::info("EvaluateJoinOngoingSex: player chose to ignore failed evaluation.");
             nlohmann::json ignoreResult;
             ignoreResult["threadID"] = threadID;
             ignoreResult["joiner"]   = static_cast<uint32_t>(joinerFormID);
+            ignoreResult["evalId"]   = evalId;
             auto curArr = nlohmann::json::array();
             for (RE::FormID fid : currentParticipantFormIDs)
                 curArr.push_back(static_cast<uint32_t>(fid));
@@ -1464,6 +1471,7 @@ bool EvaluateJoinOngoingSex(RE::FormID joinerFormID,
             nlohmann::json noJoinResult;
             noJoinResult["threadID"]           = threadID;
             noJoinResult["joiner"]             = static_cast<uint32_t>(joinerFormID);
+            noJoinResult["evalId"]             = evalId;
             noJoinResult["currentParticipants"] = joinCurArr;
             OStimNet::FireModEvent("ostimnet_join_sex_evaluation_finished", noJoinResult.dump().c_str(), 2.0f);
             return;
@@ -1473,6 +1481,7 @@ bool EvaluateJoinOngoingSex(RE::FormID joinerFormID,
         nlohmann::json result;
         result["threadID"]           = threadID;
         result["joiner"]             = static_cast<uint32_t>(joinerFormID);
+        result["evalId"]             = evalId;
         result["currentParticipants"] = std::move(joinCurArr);
         result["intent"]             = scene.value("intent", "");
         result["main"]               = resolveNames(scene, "mainActors");
@@ -1502,7 +1511,8 @@ bool EvaluateJoinOngoingSex(RE::FormID joinerFormID,
 
 bool EvaluateInviteToSex(RE::FormID inviterFormID,
                          const std::vector<RE::FormID>& inviteeFormIDs,
-                         int threadID) {
+                         int threadID,
+                         const std::string& evalId) {
     if (!PublicSendCustomPromptToLLM) {
         SKSE::log::warn("EvaluateInviteToSex: PublicSendCustomPromptToLLM unavailable (SkyrimNet v8+ required).");
         return false;
@@ -1580,7 +1590,7 @@ bool EvaluateInviteToSex(RE::FormID inviterFormID,
 
     auto callbackHolder = std::make_shared<std::function<void(const char*, int)>>();
 
-    *callbackHolder = [callbackHolder, nameToFormID, threadID, inviterFormID, inviteeFormIDs, currentParticipantFormIDs,
+    *callbackHolder = [callbackHolder, nameToFormID, threadID, inviterFormID, inviteeFormIDs, currentParticipantFormIDs, evalId,
                        contextJson, promptName, llmVariant](const char* response, int success) {
 
         auto retryAction = [callbackHolder, promptName, llmVariant, contextJson]() {
@@ -1590,11 +1600,12 @@ bool EvaluateInviteToSex(RE::FormID inviterFormID,
                     promptName.c_str(), llmVariant.c_str(),
                     contextJson.c_str(), *callbackHolder);
         };
-        auto ignoreAction = [threadID, inviterFormID, inviteeFormIDs, currentParticipantFormIDs]() {
+        auto ignoreAction = [threadID, inviterFormID, inviteeFormIDs, currentParticipantFormIDs, evalId]() {
             SKSE::log::info("EvaluateInviteToSex: player chose to ignore failed evaluation.");
             nlohmann::json ignoreResult;
             ignoreResult["threadID"] = threadID;
             ignoreResult["inviter"]  = static_cast<uint32_t>(inviterFormID);
+            ignoreResult["evalId"]   = evalId;
             nlohmann::json inviteesArr = nlohmann::json::array();
             for (RE::FormID fid : inviteeFormIDs)
                 inviteesArr.push_back(static_cast<uint32_t>(fid));
@@ -1645,6 +1656,7 @@ bool EvaluateInviteToSex(RE::FormID inviterFormID,
             nlohmann::json noInviteResult;
             noInviteResult["threadID"] = threadID;
             noInviteResult["inviter"]  = static_cast<uint32_t>(inviterFormID);
+            noInviteResult["evalId"]   = evalId;
             nlohmann::json inviteesArrNo = nlohmann::json::array();
             for (RE::FormID fid : inviteeFormIDs)
                 inviteesArrNo.push_back(static_cast<uint32_t>(fid));
@@ -1658,6 +1670,7 @@ bool EvaluateInviteToSex(RE::FormID inviterFormID,
         nlohmann::json result;
         result["threadID"]            = threadID;
         result["inviter"]             = static_cast<uint32_t>(inviterFormID);
+        result["evalId"]              = evalId;
         result["currentParticipants"] = std::move(invCurArr);
         nlohmann::json inviteesArr = nlohmann::json::array();
         for (RE::FormID fid : inviteeFormIDs)

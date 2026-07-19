@@ -182,6 +182,13 @@ EndEvent
 
 Event OnSexEvaluationFinished(string eventName, string strArg, float numArg, Form sender)
     TTON_Debug.debug("Received sex evaluation finished event with data: " + strArg)
+    string evalId = OStimNet.JsonGetString(strArg, "evalId")
+    int startGen = StorageUtil.GetIntValue(none, "TTON_EvalGen_" + evalId, -1)
+    if (startGen != -1 && startGen != OStimNet.GetLocationGeneration())
+        TTON_Debug.info("Player moved to another location before sex evaluation finished. Canceling scene.")
+        FreeParticipantsOnCancelOrReject(strArg)
+        return
+    endif
     if(numArg == 0.0)
         TTON_Debug.warn("Sex evaluation finished with error.")
         Debug.Notification("An error occurred while evaluating the sexual scene. Please check the logs for details.")
@@ -237,6 +244,13 @@ EndEvent
 
 Event OnNonSexEvaluationFinished(string eventName, string strArg, float numArg, Form sender)
     TTON_Debug.debug("Received non-sex evaluation finished event with data: " + strArg)
+    string evalId = OStimNet.JsonGetString(strArg, "evalId")
+    int startGen = StorageUtil.GetIntValue(none, "TTON_EvalGen_" + evalId, -1)
+    if (startGen != -1 && startGen != OStimNet.GetLocationGeneration())
+        TTON_Debug.info("Player moved to another location before non-sex evaluation finished. Canceling scene.")
+        FreeParticipantsOnCancelOrReject(strArg)
+        return
+    endif
     if(numArg == 0.0)
         Debug.Notification("An error occurred while evaluating the non-sexual scene. Please check the logs for details.")
         TTON_Debug.warn("Non-sex evaluation finished with error.")
@@ -261,6 +275,13 @@ EndEvent
 
 Event OnJoinSexEvaluationFinished(string eventName, string strArg, float numArg, Form sender)
     TTON_Debug.debug("Received join sex evaluation finished event with data: " + strArg)
+    string evalId = OStimNet.JsonGetString(strArg, "evalId")
+    int startGen = StorageUtil.GetIntValue(none, "TTON_EvalGen_" + evalId, -1)
+    if (startGen != -1 && startGen != OStimNet.GetLocationGeneration())
+        TTON_Debug.info("Player moved to another location before join sex evaluation finished. Canceling scene.")
+        FreeParticipantsOnCancelOrReject(strArg, "joiner")
+        return
+    endif
     if(numArg == 0.0)
         TTON_Debug.warn("Join sex evaluation finished with error.")
         Debug.Notification("An error occurred while evaluating the joining sexual scene. Please check the logs for details.")
@@ -284,6 +305,13 @@ EndEvent
 
 Event OnInviteSexEvaluationFinished(string eventName, string strArg, float numArg, Form sender)
     TTON_Debug.debug("Received invite sex evaluation finished event with data: " + strArg)
+    string evalId = OStimNet.JsonGetString(strArg, "evalId")
+    int startGen = StorageUtil.GetIntValue(none, "TTON_EvalGen_" + evalId, -1)
+    if (startGen != -1 && startGen != OStimNet.GetLocationGeneration())
+        TTON_Debug.info("Player moved to another location before invite sex evaluation finished. Canceling scene.")
+        FreeParticipantsOnCancelOrReject(strArg, "invitees")
+        return
+    endif
     if(numArg == 0.0)
         TTON_Debug.warn("Invite sex evaluation finished with error.")
         Debug.Notification("An error occurred while evaluating the invite sexual scene. Please check the logs for details.")

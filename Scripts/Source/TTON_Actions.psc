@@ -89,7 +89,10 @@ Function StartCareSceneExecute(Actor akActor, Actor participant1, string activit
         TTON_OStimIntegration.StartOStimCaring(main, secondary, activity, intent)
     else
         Debug.Notification("Finalizing care scene details before starting the scene...")
-        OStimNet.EvaluateNonSexualScene(actors, activity, intent, initiator)
+        string evalId = "eval_" + Utility.RandomInt(0, 999999)
+        int startGen = OStimNet.GetLocationGeneration()
+        StorageUtil.SetIntValue(none, "TTON_EvalGen_" + evalId, startGen)
+        OStimNet.EvaluateNonSexualScene(actors, activity, intent, initiator, evalId)
     endif
 EndFunction
 
@@ -180,7 +183,10 @@ Function StartSexActionExecute(Actor akActor, Actor participant1, Actor particip
     endif
 
     Debug.Notification("Finalizing sexual scene details before starting the scene...")
-    OStimNet.EvaluatePreStartSexualScene(actors, intent)
+    string evalId = "eval_" + Utility.RandomInt(0, 999999)
+    int startGen = OStimNet.GetLocationGeneration()
+    StorageUtil.SetIntValue(none, "TTON_EvalGen_" + evalId, startGen)
+    OStimNet.EvaluatePreStartSexualScene(actors, intent, evalId)
 EndFunction
 
 ;==========================================================================
@@ -374,7 +380,10 @@ Bool Function InviteToYourSexExecute(Actor akActor, Actor participant1, Actor pa
         return false
     endif
 
-    OStimNet.EvaluateInviteToSex(akActor, newParticipants, ThreadID)
+    string evalId = "eval_" + Utility.RandomInt(0, 999999)
+    int startGen = OStimNet.GetLocationGeneration()
+    StorageUtil.SetIntValue(none, "TTON_EvalGen_" + evalId, startGen)
+    OStimNet.EvaluateInviteToSex(akActor, newParticipants, ThreadID, evalId)
 EndFunction
 
 ;==========================================================================
@@ -425,7 +434,10 @@ Bool Function JoinOngoingSexActionExecute(Actor akActor, Actor participant1, str
         return false
     endif
 
-    OStimNet.EvaluateJoinOngoingSex(akActor, ThreadID)
+    string evalId = "eval_" + Utility.RandomInt(0, 999999)
+    int startGen = OStimNet.GetLocationGeneration()
+    StorageUtil.SetIntValue(none, "TTON_EvalGen_" + evalId, startGen)
+    OStimNet.EvaluateJoinOngoingSex(akActor, ThreadID, evalId)
 EndFunction
 
 ;==========================================================================

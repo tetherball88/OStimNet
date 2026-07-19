@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.2.0 - 2026-07-19
+
+### Fixed
+
+- **Scenes starting in abandoned cells** — Fixed an issue where scenes would still initiate or actors would continue attempting to reach furniture if the player changed locations during asynchronous LLM evaluations. OStimNet now tracks location generations via `StorageUtil` and safely aborts asynchronous actions if the player leaves the area before the evaluation or furniture walk finishes.
+
+---
+
 ## v2.1.3 - 2026-07-18
 
 ### Fixed

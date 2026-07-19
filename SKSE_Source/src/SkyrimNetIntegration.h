@@ -57,7 +57,7 @@ namespace OStimNet::SkyrimNetIntegration {
      * @param intent              Optional hint for the LLM (e.g. "romantic", "dom"). Empty string = no hint.
      * @return true if the LLM task was successfully queued.
      */
-    bool EvaluatePreStartSexualScene(const std::vector<RE::FormID>& participantFormIDs, const std::string& intent = "");
+    bool EvaluatePreStartSexualScene(const std::vector<RE::FormID>& participantFormIDs, const std::string& intent = "", const std::string& evalId = "");
 
     /**
      * Send the "ostimnet_evaluate_external_sexual_thread" prompt to the LLM for an OStim
@@ -90,7 +90,7 @@ namespace OStimNet::SkyrimNetIntegration {
      * @param initiatorFormID     Optional FormID of the actor who initiated the scene. 0 = no initiator.
      * @return true if the LLM task was successfully queued.
      */
-    bool EvaluateNonSexualScene(const std::vector<RE::FormID>& participantFormIDs, const std::string& activity = "", const std::string& intent = "", RE::FormID initiatorFormID = 0);
+    bool EvaluateNonSexualScene(const std::vector<RE::FormID>& participantFormIDs, const std::string& activity = "", const std::string& intent = "", RE::FormID initiatorFormID = 0, const std::string& evalId = "");
 
     /**
      * Send the "ostimnet_evaluate_join_ongoing_sex" prompt to the LLM when an actor outside
@@ -108,7 +108,8 @@ namespace OStimNet::SkyrimNetIntegration {
      * @return true if the LLM task was successfully queued.
      */
     bool EvaluateJoinOngoingSex(RE::FormID joinerFormID,
-                                int threadID);
+                                int threadID,
+                                const std::string& evalId = "");
 
     /**
      * Send the "ostimnet_evaluate_invite_to_sex" prompt to the LLM when an actor in a
@@ -128,7 +129,8 @@ namespace OStimNet::SkyrimNetIntegration {
      */
     bool EvaluateInviteToSex(RE::FormID inviterFormID,
                              const std::vector<RE::FormID>& inviteeFormIDs,
-                             int threadID);
+                             int threadID,
+                             const std::string& evalId = "");
 
     /**
      * Send the "ostimnet_scan_location" prompt to the LLM.
