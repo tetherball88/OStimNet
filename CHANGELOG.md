@@ -2,9 +2,16 @@
 
 ## v2.2.0 - 2026-07-19
 
+### Changed
+
+- **Location change events** — Improved logic to check meaningful location change events by utilizing the cell from the event instead of the player's current cell.
+- **Scene starting guardrails** — Improved guardrails for starting OStim scenes to ensure all NPCs are still in the same location.
+
 ### Fixed
 
-- **Scenes starting in abandoned cells** — Fixed an issue where scenes would still initiate or actors would continue attempting to reach furniture if the player changed locations during asynchronous LLM evaluations. OStimNet now tracks location generations via `StorageUtil` and safely aborts asynchronous actions if the player leaves the area before the evaluation or furniture walk finishes.
+- **Scenes starting in abandoned cells** — Improved handling of scenes in the preparation phase when the player changes locations. Fixed an issue where scenes would still initiate or actors would continue attempting to reach furniture if the player changed locations during asynchronous LLM evaluations. OStimNet now safely aborts asynchronous actions if the player leaves the area before the evaluation or furniture walk finishes.
+- **VR crash in location scan** — Attempt #3 to fix Skyrim VR crashes during location scans.
+- **Transactional intent prompts** — Fixed an issue with transactional prompt roles.
 
 ---
 
