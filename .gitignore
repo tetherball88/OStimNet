@@ -9,3 +9,5 @@ script*.js
 .claude/settings.local.json
 tag-push.bat
 /SKSE_Source/build
+crash-*.log
+/debug_history
