@@ -255,7 +255,7 @@ public:
                 msgData->buttonText.push_back(RE::BSString("Accept"));
                 msgData->buttonText.push_back(RE::BSString("Cancel"));
                 msgData->buttonText.push_back(RE::BSString("Decline (Explain)"));
-                msgData->cancelOptionIndex = 1;
+                msgData->cancelButtonIndex = 1;
                 msgData->callback = RE::make_smart<ModalCallback>(vm, stackID, this, keys, normalSec, declineSec,
                     actionTypeStr, originatorID, intent, isSexual, activityStr,
                     mainActorList, secondaryActorList);
@@ -297,7 +297,7 @@ private:
               _intent(intent), _isSexual(isSexual), _activity(std::move(activity)),
               _mainActorList(std::move(mainActorList)), _secondaryActorList(std::move(secondaryActorList)) {}
 
-        void Run(Message a_msg) override {
+        void Run(std::uint8_t a_msg) override {
             int result = static_cast<int>(a_msg);
             SKSE::log::info("ConfirmationModal::ModalCallback::Run - result={}", result);
             if      (result == 0) _owner->SetCooldownAll(_keys, _normalSec);

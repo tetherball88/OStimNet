@@ -1,5 +1,18 @@
 # Changelog
 
+## v2.2.1 - 2026-07-21
+
+### Fixed
+
+- **Skyrim VR startup & location scan crash** — Resolved the root cause of `EXCEPTION_ACCESS_VIOLATION` crashes (`vpcmpeqq` instruction) in Skyrim VR during plugin load / location scan registration. Fixed the `CommonLibSSE-NG` event source offset for `BSTEventSource<BGSActorCellEvent>` in VR (`0x2D0` -> `0x2E8`), preventing `AddEventSink` from misinterpreting `SkyrimVR.exe` vtables as an array of listeners.
+- **Hotkey input sink unregistering after load** — Re-registered `HotkeyInputSink` on game load (`kPostLoadGame` / `kNewGame`) so hotkeys (e.g. location scan, mute toggle) remain active after loading a save file.
+
+### Changed
+
+- **Actor name sanitization** — Trimmed accidental leading and trailing whitespace from actor display names.
+
+---
+
 ## v2.2.0 - 2026-07-19
 
 ### Changed

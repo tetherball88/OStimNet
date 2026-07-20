@@ -19,7 +19,16 @@ void LocationScanService::Register() {
         SKSE::log::warn("LocationScanService: PlayerCharacter unavailable, could not register event sink");
         return;
     }
-    if (auto* source = player->AsBGSActorCellEventSource()) {
+
+    RE::BSTEventSource<RE::BGSActorCellEvent>* source = nullptr;
+    if (REL::Module::IsVR()) {
+        source = reinterpret_cast<RE::BSTEventSource<RE::BGSActorCellEvent>*>(
+            reinterpret_cast<uintptr_t>(player) + 0x2E8);
+    } else {
+        source = player->AsBGSActorCellEventSource();
+    }
+
+    if (source) {
         source->AddEventSink(this);
         SKSE::log::info("LocationScanService: registered for BGSActorCellEvent");
     } else {
@@ -289,7 +298,19 @@ void LocationScanService::RunScan(bool force) {
 
 void LocationScanService::CacheKeywords() {
     auto Lookup = [](const char* editorID) -> RE::BGSKeyword* {
-        return RE::TESForm::LookupByEditorID<RE::BGSKeyword>(editorID);
+        try {
+            auto* kw = RE::TESForm::LookupByEditorID<RE::BGSKeyword>(editorID);
+            if (!kw) {
+                SKSE::log::warn("LocationScanService: Keyword '{}' not found via EditorID lookup.", editorID);
+            }
+            return kw;
+        } catch (const std::exception& e) {
+            SKSE::log::error("LocationScanService: Exception looking up '{}': {}", editorID, e.what());
+            return nullptr;
+        } catch (...) {
+            SKSE::log::error("LocationScanService: Unknown exception looking up '{}'", editorID);
+            return nullptr;
+        }
     };
 
     _kwPlayerHouse = Lookup("LocTypePlayerHouse");

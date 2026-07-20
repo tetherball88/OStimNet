@@ -134,24 +134,6 @@ private:
 
     // -------------------------------------------------------------------------
     // Cached keyword pointers — resolved once at kDataLoaded via CacheKeywords().
-    //
-    // VR crash root cause (Jul-17):
-    //   Calling loc->HasKeyword() or HasKeywordString() causes MSVC to emit
-    //   a 32-byte AVX2 vpcmpeqq loop over the keyword array.  In SkyrimVR
-    //   the array buffer can sit right at a page boundary, so the over-read
-    //   crashes.  Both the vtable-dispatched HasKeyword AND HasKeywordString
-    //   share this problem.
-    //
-    // Fix attempt (Jul-18): volatile pointer — FAILED.
-    //   volatile on RE::BGSKeyword* const volatile* prevents the compiler from
-    //   caching the base pointer, but MSVC still vectorizes the loop body
-    //   (kwds[i] == kw comparisons) with AVX2 vpcmpeqq — still crashes.
-    //
-    // Correct fix (Jul-19): #pragma optimize("", off) on LocationHasKeyword().
-    //   Disables all optimization for that function, guaranteeing only scalar
-    //   8-byte QWORD loads are emitted.  No AVX2 is possible under /Od.
-    //   The pragma is restored immediately after so the rest of the .cpp is
-    //   unaffected by the optimization disable.
     // -------------------------------------------------------------------------
 
     /// Resolve and cache all location-type keyword pointers.

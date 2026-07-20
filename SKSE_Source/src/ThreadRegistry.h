@@ -480,7 +480,13 @@ public:
     static std::string GetActorDisplayName(RE::Actor* actor, const std::string& fallback = "someone") {
         if (actor) {
             const char* n = actor->GetDisplayFullName();
-            if (n && n[0]) return n;
+            if (n && n[0]) {
+                std::string name = n;
+                size_t first = name.find_first_not_of(" \t\n\r");
+                if (first == std::string::npos) return fallback;
+                size_t last = name.find_last_not_of(" \t\n\r");
+                return name.substr(first, (last - first + 1));
+            }
         }
         return fallback;
     }

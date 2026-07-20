@@ -160,7 +160,7 @@ struct LLMRetryCallback : RE::IMessageBoxCallback {
     std::function<void()> ignore;
     LLMRetryCallback(std::function<void()> r, std::function<void()> i)
         : retry(std::move(r)), ignore(std::move(i)) {}
-    void Run(Message a_msg) override {
+    void Run(std::uint8_t a_msg) override {
         if (static_cast<int>(a_msg) == 0) retry();
         else                               ignore();
     }
@@ -201,7 +201,7 @@ void ShowLLMRetryModal(const std::string& evaluationType,
         msgData->bodyText       = body.c_str();
         msgData->buttonText.push_back(RE::BSString("Retry"));
         msgData->buttonText.push_back(RE::BSString("Ignore"));
-        msgData->cancelOptionIndex = 1;
+        msgData->cancelButtonIndex = 1;
         msgData->callback =
             RE::make_smart<LLMRetryCallback>(std::move(onRetry), std::move(onIgnore));
         RE::MessageBoxMenu::QueueMessage(msgData);

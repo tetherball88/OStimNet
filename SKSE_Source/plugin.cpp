@@ -70,26 +70,19 @@ public:
             auto* btn = event->AsButtonEvent();
             if (!btn || !btn->IsDown()) continue;
 
-            // SKSE::log::info("OStimNet: toggleMuteHotkey={}, locationScanHotkey={}",
-            //                 OStimNet::Config::GetSingleton().ToggleMuteHotkey(),
-            //                 OStimNet::Config::GetSingleton().LocationScanHotkey());
-
-            int hotkey = OStimNet::Config::GetSingleton().ToggleMuteHotkey();
-            // SKSE::log::debug("HotkeyInputSink: button event detected (device={}, code={}, isDown={}), toggleMuteHotkey={}",
-            //                 event->GetDevice(), btn->GetIDCode(), btn->IsDown(), hotkey);
-            if (hotkey <= 0) continue;
-
-            uint32_t diCode = MapVirtualKeyA(static_cast<uint32_t>(hotkey), MAPVK_VK_TO_VSC);
-            if (btn->GetIDCode() == diCode) {
-                SKSE::log::info("OStimNet: toggleMuteHotkey fired (key={})", hotkey);
-                OStimNet::Config::GetSingleton().ToggleMuteSession();
+            int muteHotkey = OStimNet::Config::GetSingleton().ToggleMuteHotkey();
+            if (muteHotkey > 0) {
+                uint32_t diCode = MapVirtualKeyA(static_cast<uint32_t>(muteHotkey), MAPVK_VK_TO_VSC);
+                if (btn->GetIDCode() == diCode) {
+                    SKSE::log::info("OStimNet: toggleMuteHotkey fired (key={})", muteHotkey);
+                    OStimNet::Config::GetSingleton().ToggleMuteSession();
+                }
             }
 
             int scanHotkey = OStimNet::Config::GetSingleton().LocationScanHotkey();
             if (scanHotkey > 0) {
                 uint32_t scanDiCode = MapVirtualKeyA(static_cast<uint32_t>(scanHotkey), MAPVK_VK_TO_VSC);
                 if (btn->GetIDCode() == scanDiCode) {
-                    SKSE::log::info("OStimNet: locationScanHotkey fired (key={})", scanHotkey);
                     OStimNet::LocationScanService::GetSingleton().TriggerManualScan();
                 }
             }

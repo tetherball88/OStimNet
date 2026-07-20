@@ -61,9 +61,6 @@ enum class OStimCondition {
 /// @return               Vector of raw Actor* pointers for actors within the radius.
 ///                       The center actor itself is never included.
 ///                       The player is included if they are within radius and pass all filters.
-//
-// VR crash guard: keyword checks use KeywordUtils::FormHasKeyword, which
-// prevents MSVC AVX2 vpcmpeqq vectorization. See KeywordUtils.h for rationale.
 inline std::vector<RE::Actor*> GetNearbyActors(
     RE::Actor*      center,
     float           radius,
