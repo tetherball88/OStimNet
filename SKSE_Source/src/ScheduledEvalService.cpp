@@ -138,7 +138,10 @@ void ScheduledEvalService::RunLoop() {
                 // Slide the timer forward on every paused tick so the interval only
                 // measures active gameplay time.
                 auto* mainSingleton = RE::Main::GetSingleton();
-                if (mainSingleton && !mainSingleton->GetRuntimeData().gameActive) {
+                auto* uiSingleton   = RE::UI::GetSingleton();
+                bool isGamePaused   = (uiSingleton && uiSingleton->GameIsPaused()) ||
+                                      (mainSingleton && !mainSingleton->GetRuntimeData().gameActive);
+                if (isGamePaused) {
                     auto overlapStart = std::max(m_lastSceneChange[threadID], lastCheckTime);
                     if (now > overlapStart) {
                         m_lastSceneChange[threadID] += (now - overlapStart);

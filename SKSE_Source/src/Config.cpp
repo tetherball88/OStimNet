@@ -59,6 +59,11 @@ float Config::NearbyActorsRadius() const {
     catch (...) { return 2000.f; }
 }
 
+bool Config::NearbyActorsHumanoidOnly() const {
+    std::string val = GetValue("tton.nearbyActors.humanoidOnly", "true");
+    return val == "true" || val == "1";
+}
+
 
 // -----------------------------------------------------------------------------
 // Settings

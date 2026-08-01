@@ -3,6 +3,7 @@
 #include <vector>
 #include "RE/Skyrim.h"
 #include "KeywordUtils.h"
+#include "Config.h"
 
 
 namespace OStimNet::ActorUtils {
@@ -102,10 +103,10 @@ inline std::vector<RE::Actor*> GetNearbyActors(
         if (target->IsChild()) return false;
 
         // Reject non-humanoid actors (animals, creatures, etc.) by checking
-        // for the ActorTypeNPC keyword, which all humanoid races carry.
-        const auto* race = target->GetRace();
-        if (!race) return false;
-        {
+        // for the ActorTypeNPC keyword, which all humanoid races carry, unless disabled in config.
+        if (Config::GetSingleton().NearbyActorsHumanoidOnly()) {
+            const auto* race = target->GetRace();
+            if (!race) return false;
             static RE::BGSKeyword* s_kwActorTypeNPC =
                 RE::TESForm::LookupByEditorID<RE::BGSKeyword>("ActorTypeNPC");
             if (!KeywordUtils::FormHasKeyword(race, s_kwActorTypeNPC)) return false;

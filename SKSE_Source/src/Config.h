@@ -152,6 +152,10 @@ struct Config {
     /// Default: 2000 units (≈ 28 m in Skyrim scale).
     float NearbyActorsRadius() const;
 
+    /// When true, GetNearbyActors only returns humanoid actors (with ActorTypeNPC keyword).
+    /// When false, non-humanoid actors (animals, creatures) are also included.
+    bool NearbyActorsHumanoidOnly() const;
+
     // -------------------------------------------------------------------------
     // Game Master
     // -------------------------------------------------------------------------

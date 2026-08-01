@@ -50,7 +50,7 @@ GlobalVariable Function GetSexLabOStimPlayerGlobal() global
         return none
     endif
 
-    return Game.GetFormFromFile(0x001FC803, "SkyrimNet_Sexlab.esp") as GlobalVariable
+    return Game.GetFormFromFile(0x808, "SkyrimNet_Sexlab.esp") as GlobalVariable
 EndFunction
 
 int Function GetSexLabOStimPlayerMode() global

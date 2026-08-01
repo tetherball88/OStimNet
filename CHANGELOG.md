@@ -1,5 +1,18 @@
 # Changelog
 
+## v2.2.2 - 2026-08-01
+
+### Added
+
+- **Humanoid filtering toggle for nearby actors** — Added `Nearby actors humanoid only` (`tton.nearbyActors.humanoidOnly`) config setting (defaults to `true`) under General settings. When disabled, non-humanoid actors (animals, creatures) are included when retrieving nearby actors.
+
+### Fixed
+
+- **SexLab integration global lookup** — Fixed SexLab player mode detection by correcting the Form ID for the SexLab OStim player global variable (`0x001FC803` -> `0x808` in `SkyrimNet_Sexlab.esp`).
+- **Game paused detection in scheduled evaluations** — Scheduled evaluation service now checks `UI::GameIsPaused()` in addition to `Main::gameActive`. This ensures timers slide forward accurately while game menus are open and prevents scheduled evaluations from triggering while paused.
+
+---
+
 ## v2.2.1 - 2026-07-21
 
 ### Fixed
