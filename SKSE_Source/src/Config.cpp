@@ -267,6 +267,10 @@ bool Config::LocationScanEnabled() const {
     return val == "true" || val == "1";
 }
 
+std::string Config::LocationScanPlayerSelectionChance() const {
+    return GetValue("tton.locationScan.playerSelectionChance", "reduced");
+}
+
 int Config::LocationScanDelay() const {
     try { return std::stoi(GetValue("tton.locationScan.delaySeconds", "8")); }
     catch (...) { return 8; }

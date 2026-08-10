@@ -727,10 +727,11 @@ void Register() {
     RegisterDecorator(
         "ostimnet_settings",
         "JSON object containing current OStimNet settings relevant to scene behaviour. "
-        "Fields: enableAggressiveIntent (bool).",
+        "Fields: enableAggressiveIntent (bool), playerSelectionChance (string: 'regular', 'reduced', 'never').",
         [](RE::Actor*) -> std::string {
             nlohmann::json j;
             j["enableAggressiveIntent"] = OStimNet::Config::GetSingleton().EnableAggressiveIntent();
+            j["playerSelectionChance"]  = OStimNet::Config::GetSingleton().LocationScanPlayerSelectionChance();
             return j.dump();
         });
 

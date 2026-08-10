@@ -122,6 +122,9 @@ struct Config {
     /// every location change and fires ostimnet_location_scan_result.
     bool LocationScanEnabled() const;
 
+    /// Player selection mode in location scan evaluation ("regular", "reduced", "never").
+    std::string LocationScanPlayerSelectionChance() const;
+
     /// Seconds to wait after a loading screen closes before running the scan.
     /// Allows time for NPCs to fully spawn and AI to initialise.
     int LocationScanDelay() const;

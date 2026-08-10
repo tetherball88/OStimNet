@@ -178,6 +178,13 @@ Every time you pass through a loading screen into a new area, OStimNet can scan 
 
 Master switch. Disable if you only want scenes to start through direct NPC actions, not from automatic location-entry suggestions.
 
+### Player selection mode (default: reduced)
+
+Controls how the player character is evaluated during location scans:
+- **`regular`**: Player is treated as a regular candidate alongside NPCs.
+- **`reduced`**: NPC selection chances are elevated over the player. The player is only selected if an NPC has explicit/overwhelming justification (e.g. spouse/lover) and no valid NPC-NPC scene can be formed.
+- **`never`**: Player character is strictly excluded from being selected as a candidate in location scans.
+
 ### Location scan delay (seconds) (default: 8s)
 
 After the loading screen closes, OStimNet waits this many seconds before scanning. This exists because NPCs take a moment to fully spawn and settle into their routines — scanning too early can miss half the room. Increase it (up to 60s) if you're on a slow machine or in a heavily scripted area where NPCs are late to load.
