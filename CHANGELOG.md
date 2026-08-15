@@ -1,5 +1,21 @@
 # Changelog
 
+## v2.3.0 - 2026-08-14
+
+### Added
+
+- **Player selection mode in location scans** — Added `Player selection mode` (`tton.locationScan.playerSelectionChance`) config setting (defaults to `reduced`) under **Location Scan** settings. Allows configuring player involvement during automatic location scans:
+  - `regular`: Player is treated as a regular candidate alongside NPCs.
+  - `reduced` (default): NPC selection chances are elevated over the player, prioritizing NPC-NPC interactions and evaluating the player last.
+  - `never`: Completely excludes the player character from location scans and omits the player profile from the scan prompt context.
+- **Dedicated pace change trigger** — Added separate `tton_sex_pace_change.yaml` trigger to handle `sex_pace_change` events independently from position changes.
+
+### Changed
+
+- **Position change trigger cleanup** — Streamlined `tton_sex_position_change.yaml` to strictly handle `sex_change` position shifts now that pace changes have a dedicated trigger.
+
+---
+
 ## v2.2.2 - 2026-08-01
 
 ### Added
