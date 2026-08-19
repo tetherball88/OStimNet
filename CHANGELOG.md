@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.3.1 - 2026-08-19
+
+### Fixed
+
+- **Player selection mode in location scans** — Fixed a template syntax issue in `ostimnet_scan_location.prompt` where an invalid fallback filter prevented the configured `Player selection mode` setting (`never` / `regular`) from being respected during automatic location scans.
+
+---
+
 ## v2.3.0 - 2026-08-14
 
 ### Added
