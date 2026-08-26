@@ -22,6 +22,7 @@ public:
     void ClearInFlight(int threadID);
     void PauseThread(int threadID);
     void ResumeThread(int threadID);
+    bool TriggerPlayerAdvance();
 
 private:
     ScheduledEvalService() = default;

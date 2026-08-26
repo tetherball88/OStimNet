@@ -81,7 +81,7 @@ Event OStimNetStart(string eventName, string strArg, float numArg, Form akSpeake
     TTON_IsOstimActive.SetValue(1.0)
     int ThreadID = numArg as int
     TTON_Debug.debug("Received OStimNet start event, thread id: " + ThreadID + ", data: " + strArg + ", Speaker: " + akSpeaker)
-    SkyrimNetApi.RegisterEvent("tton_event", strArg, akSpeaker as Actor, none)
+    TTON_Events.SendSkyrimNetEvent(strArg, akSpeaker)
 
     string phase = OStimNet.GetThreadPhase(ThreadID)
     Actor[] actors = OThread.GetActors(ThreadID)
@@ -96,43 +96,43 @@ EndEvent
 
 Event OStimNetContinueThread(string eventName, string strArg, float numArg, Form akSpeaker)
     TTON_Debug.debug("Received OStimNet continue thread event, thread id: " + numArg + ", data: " + strArg)
-    SkyrimNetApi.RegisterEvent("tton_event", strArg, akSpeaker as Actor, none)
+    TTON_Events.SendSkyrimNetEvent(strArg, akSpeaker)
 EndEvent
 
 Event OStimNetStop(string eventName, string strArg, float numArg, Form akSpeaker)
     int ThreadID = numArg as int
     TTON_Debug.debug("Received OStimNet stop event, thread id: " + ThreadID)
-    SkyrimNetApi.RegisterEvent("tton_event", strArg, akSpeaker as Actor, none)
+    TTON_Events.SendSkyrimNetEvent(strArg, akSpeaker)
 EndEvent
 
 ; Custom OStimNet event for scene changes, fires on scene change already have debounce mechanism.
 Event OStimNetSceneChange(string eventName, string strArg, float numArg, Form akSpeaker)
     TTON_Debug.debug("Received OStimNet scene change event with new scene: " + strArg + ", thread id: " + numArg)
-    SkyrimNetApi.RegisterEvent("tton_event", strArg, akSpeaker as Actor, none)
+    TTON_Events.SendSkyrimNetEvent(strArg, akSpeaker)
 EndEvent
 
 ; Custom OStimNet event for intent changes, fires on intent change already have debounce mechanism.
 Event OStimNetIntentChanged(string eventName, string strArg, float numArg, Form akSpeaker)
     TTON_Debug.debug("Received OStimNet intent change event with new intent: " + strArg + ", thread id: " + numArg)
-    SkyrimNetApi.RegisterEvent("tton_event", strArg, akSpeaker as Actor, none)
+    TTON_Events.SendSkyrimNetEvent(strArg, akSpeaker)
 EndEvent
 
 ; Custom OStimNet event for speed changes, fires on speed change already have debounce mechanism.
 Event OStimNetSpeedChange(string eventName, string strArg, float numArg, Form akSpeaker)
     TTON_Debug.debug("Received OStimNet speed change event with new speed: " + strArg + ", thread id: " + numArg)
-    SkyrimNetApi.RegisterEvent("tton_event", strArg, akSpeaker as Actor, none)
+    TTON_Events.SendSkyrimNetEvent(strArg, akSpeaker)
 EndEvent
 
 ; Custom OStimNet event for climax. It has 2 seconds window to collect all ostim orgams events per thread and fire them in batch.
 Event OStimNetClimax(string eventName, string strArg, float numArg, Form akSpeaker)
     TTON_Debug.debug("Received OStimNet climax event with data: " + strArg + ", thread id: " + numArg)
-    SkyrimNetApi.RegisterEvent("tton_event", strArg, akSpeaker as Actor, none)
+    TTON_Events.SendSkyrimNetEvent(strArg, akSpeaker)
 EndEvent
 
 ; Bridges the C++ ostimnet_decline mod event to SkyrimNet.
 Event OStimNetDecline(string eventName, string strArg, float numArg, Form akSpeaker)
     TTON_Debug.debug("Received OStimNet decline event: " + strArg)
-    SkyrimNetApi.RegisterEvent("tton_event", strArg, akSpeaker as Actor, none)
+    TTON_Events.SendSkyrimNetEvent(strArg, akSpeaker)
 EndEvent
 
 Event OStimStart(string eventName, string strArg, float numArg, Form sender)

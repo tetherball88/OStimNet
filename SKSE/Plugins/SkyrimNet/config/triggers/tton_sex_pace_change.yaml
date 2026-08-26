@@ -1,25 +1,21 @@
-name: "tton_sex_pace_change"
-description: "Reaction when speed in OStim was changed"
-
+name: tton_sex_pace_change
+description: Reaction when speed in OStim was changed
 eventCriteria:
-  eventType: "tton_event"
+  eventType: tton_event
   schemaConditions:
-    - fieldPath: "tton_type"
-      operator: "equals"
-      value: "sex_pace_change"
+    - fieldPath: tton_type
+      operator: equals
+      value: sex_pace_change
       caseSensitive: false
-    - fieldPath: "skipTrigger"
-      operator: "equals"
+    - fieldPath: skipTrigger
+      operator: equals
       value: false
-
+    - fieldPath: speaker
+      operator: not_equals
+      value: ""
+audience: nearby_npcs
 response:
-  type: "direct_narration"
-  content: "The pace shift lands on {{ originator }} — they let slip their immediate, unfiltered reaction, colored by everything between them in this moment. The emotional thread carries forward."
-
-audience: "nearby_npcs"
-
-enabled: true
-interrupt: false
-probability: 1
+  type: direct_narration
+  content: The pace shift lands on {{ originator }} — they let slip their immediate, unfiltered reaction, colored by everything between them in this moment. The emotional thread carries forward.
+enabled: false
 cooldownSeconds: 20
-priority: 1

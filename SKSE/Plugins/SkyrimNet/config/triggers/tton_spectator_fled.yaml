@@ -1,24 +1,21 @@
-name: "tton_spectator_fled"
-description: "Reaction when a spectator fled the scene in OStim"
-
+name: tton_spectator_fled
+description: Reaction when a spectator fled the scene in OStim
 eventCriteria:
-  eventType: "tton_event"
+  eventType: tton_event
   schemaConditions:
-    - fieldPath: "tton_type"
-      operator: "equals"
-      value: "spectator_fled"
+    - fieldPath: tton_type
+      operator: equals
+      value: spectator_fled
       caseSensitive: false
-    - fieldPath: "skipTrigger"
-      operator: "equals"
+    - fieldPath: skipTrigger
+      operator: equals
       value: false
-
+    - fieldPath: speaker
+      operator: not_equals
+      value: ""
+audience: nearby_npcs
 response:
-  type: "direct_narration"
+  type: direct_narration
   content: "{{ decnpc(spectatorId).name }} flees from the ongoing intimate scene."
-
-audience: "nearby_npcs"
-
 enabled: false
-probability: 1
 cooldownSeconds: 30
-priority: 1

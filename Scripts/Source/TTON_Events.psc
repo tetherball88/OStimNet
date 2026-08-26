@@ -39,6 +39,7 @@ Function RegisterEventSchema() global
         + "{\"name\": \"secondaryActorNames\", \"type\": 0, \"required\": true, \"description\": \"Secondary actors in thread, their role based on intent: accepting, service receivers, sub, victims\"}," \
         + "{\"name\": \"isSexual\", \"type\": 2, \"required\": true, \"description\": \"Indicates if the scene is sexual.\"}," \
         + "{\"name\": \"skipTrigger\", \"type\": 2, \"required\": false, \"description\": \"If trigger should be skipped.\"}," \
+        + "{\"name\": \"speaker\", \"type\": 0, \"required\": false, \"description\": \"Speaker actor name.\"}," \
         + "{\"name\": \"threadID\", \"type\": 1, \"required\": true, \"description\": \"OStim Thread ID.\"}" \
         +"]"
         string renderTemplateCompact = "\"{{render_template(\\\"helpers/ostimnet_event_compact\\\")}}\""
@@ -47,16 +48,6 @@ Function RegisterEventSchema() global
     SkyrimnetApi.RegisterEventSchema("tton_event", name, description, jsonParams, renderParams, false, 0)
 EndFunction
 
-Function GameMasterMatchMakerEvent(string msg, Actor initiator) global
-    string jsonData = "{"
-    jsonData += "\"tton_type\": \"matchmaker_event\""
-    jsonData += ",\"msg\": \"" + msg + "\""
-    jsonData += ",\"threadID\": 0"
-    jsonData += ",\"intent\": \"\""
-    jsonData += ",\"mainActorNames\": \"\""
-    jsonData += ",\"secondaryActorNames\": \"\""
-    jsonData += ",\"skipTrigger\": false"
-    jsonData += ",\"isSexual\": false"
-    jsonData += "}"
-    SkyrimNetApi.RegisterEvent("tton_event", jsonData, initiator, none)
+Function SendSkyrimNetEvent(string msg, Form akSpeaker, Form akTarget = none, string eventType = "tton_event") global
+    SkyrimNetApi.RegisterEvent(eventType, msg, akSpeaker as Actor, akTarget as Actor)
 EndFunction

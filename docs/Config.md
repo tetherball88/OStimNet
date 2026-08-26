@@ -54,6 +54,10 @@ A hotkey to silence all NPC comments mid-session. Useful if you want a quiet mom
 
 Manually fires a location participant scan at any time. Handy if you fast-travelled somewhere and the automatic scan already fired before the NPCs you wanted were in range. Manual scans always bypass the cooldown.
 
+### Advance player scene hotkey
+
+Manually triggers the Game Master LLM to evaluate and advance the player's active scene immediately, without waiting for the scheduled advancement timer or an NPC action.
+
 ---
 
 ## Intents

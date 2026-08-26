@@ -214,6 +214,11 @@ int Config::ToggleMuteHotkey() const {
     catch (...) { return 0; }
 }
 
+int Config::AdvancePlayerSceneHotkey() const {
+    try { return std::stoi(GetValue("tton.controls.advancePlayerSceneHotkey", "0")); }
+    catch (...) { return 0; }
+}
+
 // -----------------------------------------------------------------------------
 // Action Confirmations
 // -----------------------------------------------------------------------------

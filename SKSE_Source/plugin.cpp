@@ -10,6 +10,7 @@
 #include "src/Papyrus/PapyrusFunctions.h"
 #include "src/OStimEventListener.h"
 #include "src/LocationScanService.h"
+#include "src/ScheduledEvalService.h"
 
 using namespace SKSE;
 
@@ -84,6 +85,15 @@ public:
                 uint32_t scanDiCode = MapVirtualKeyA(static_cast<uint32_t>(scanHotkey), MAPVK_VK_TO_VSC);
                 if (btn->GetIDCode() == scanDiCode) {
                     OStimNet::LocationScanService::GetSingleton().TriggerManualScan();
+                }
+            }
+
+            int advanceHotkey = OStimNet::Config::GetSingleton().AdvancePlayerSceneHotkey();
+            if (advanceHotkey > 0) {
+                uint32_t advanceDiCode = MapVirtualKeyA(static_cast<uint32_t>(advanceHotkey), MAPVK_VK_TO_VSC);
+                if (btn->GetIDCode() == advanceDiCode) {
+                    SKSE::log::info("OStimNet: advancePlayerSceneHotkey fired (key={})", advanceHotkey);
+                    OStimNet::ScheduledEvalService::GetSingleton().TriggerPlayerAdvance();
                 }
             }
         }

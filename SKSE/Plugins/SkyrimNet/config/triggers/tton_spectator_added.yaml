@@ -1,25 +1,21 @@
-name: "tton_spectator_added"
-description: "Reaction when a spectator was added to a scene in OStim"
-
+name: tton_spectator_added
+description: Reaction when a spectator was added to a scene in OStim
 eventCriteria:
-  eventType: "tton_event"
+  eventType: tton_event
   schemaConditions:
-    - fieldPath: "tton_type"
-      operator: "equals"
-      value: "spectator_added"
+    - fieldPath: tton_type
+      operator: equals
+      value: spectator_added
       caseSensitive: false
-    - fieldPath: "skipTrigger"
-      operator: "equals"
+    - fieldPath: skipTrigger
+      operator: equals
       value: false
-
+    - fieldPath: speaker
+      operator: not_equals
+      value: ""
+audience: nearby_npcs
 response:
-  type: "direct_narration"
+  type: direct_narration
   content: "{{ originator }} reacts to ongoing intimate scene."
-
-audience: "nearby_npcs"
-
 enabled: true
-interrupt: false
-probability: 1
 cooldownSeconds: 30
-priority: 1

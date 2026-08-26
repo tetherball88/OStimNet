@@ -337,6 +337,7 @@ private:
 
 
         // Build start event — use approach-specific description when opening with undressing.
+        RE::Actor* speaker = SelectSpeakerActor(threadID, Config::GetSingleton().CommentGenderPriority());
         std::string startJson;
         if (startsWithUndressing) {
             const auto& actorPtrs = ThreadRegistry::GetSingleton().GetActorPtrs(threadID);
@@ -354,12 +355,11 @@ private:
                 msg = name0 + " undresses " + name1 + " and " + name1 + " undresses " + name0 + ". Both actors are standing.";
             SKSE::log::info("OStimEventListener: thread {} undressing start msg (approach={}): {}",
                 threadID, isOStimApproach ? "OStim" : "non-OStim", msg);
-            startJson = EventPayloadBuilder::BuildStart(threadID, msg);
+            startJson = EventPayloadBuilder::BuildStart(threadID, msg, speaker);
         } else {
-            startJson = EventPayloadBuilder::BuildStart(threadID);
+            startJson = EventPayloadBuilder::BuildStart(threadID, speaker);
         }
 
-        RE::Actor* speaker = SelectSpeakerActor(threadID, Config::GetSingleton().CommentGenderPriority());
         FireModEvent("ostimnet_start", startJson.c_str(), static_cast<float>(threadID), speaker);
     }
 
@@ -370,7 +370,7 @@ private:
     void OnThreadContinued(int oldThreadID, int newThreadID) {
         SKSE::log::info("OStimEventListener: thread {} continued as {}, firing ostimnet_continue_thread", oldThreadID, newThreadID);
         RE::Actor* speaker = SelectSpeakerActor(newThreadID, Config::GetSingleton().CommentGenderPriority());
-        std::string json = EventPayloadBuilder::BuildContinueThread(oldThreadID, newThreadID);
+        std::string json = EventPayloadBuilder::BuildContinueThread(oldThreadID, newThreadID, speaker);
         FireModEvent("ostimnet_continue_thread", json.c_str(), static_cast<float>(newThreadID), speaker);
     }
 
@@ -428,7 +428,7 @@ private:
 
         // Speaker selection: pick actor based on gender priority config.
         RE::Actor* speaker = SelectSpeakerActor(threadID, Config::GetSingleton().CommentGenderPriority());
-        std::string json = EventPayloadBuilder::BuildSceneChange(threadID, sceneID, skipTrigger);
+        std::string json = EventPayloadBuilder::BuildSceneChange(threadID, sceneID, skipTrigger, speaker);
         FireModEvent("ostimnet_scene_change", json.c_str(), static_cast<float>(threadID), speaker);
     }
 
@@ -463,7 +463,7 @@ private:
         }
 
         RE::Actor* speaker = SelectSpeakerActor(threadID, Config::GetSingleton().CommentGenderPriority());
-        auto json = EventPayloadBuilder::BuildSpeedChange(threadID, oldSpeed, speed, skipTrigger);
+        auto json = EventPayloadBuilder::BuildSpeedChange(threadID, oldSpeed, speed, skipTrigger, speaker);
         if (!json.has_value()) {
             SKSE::log::info("OStimEventListener: thread {} speed change ignored (no direction change)", threadID);
             return;
@@ -499,7 +499,7 @@ private:
         SKSE::log::info("OStimEventListener: thread {} climax batch fired ({} climax, {} cum applied, {} squirts)",
                         threadID, data.climaxEvents.size(), data.cumApplied.size(), data.squirts.size());
         RE::Actor* speaker = SelectClimaxSpeakerActor(threadID, data);
-        std::string json = EventPayloadBuilder::BuildClimax(threadID, data);
+        std::string json = EventPayloadBuilder::BuildClimax(threadID, data, speaker);
         FireModEvent("ostimnet_climax", json.c_str(), static_cast<float>(threadID), speaker);
     }
 
@@ -517,7 +517,7 @@ private:
         for (auto [specID, targetID] : ThreadRegistry::GetSingleton().TakeSpectators(threadID))
             DebounceQueue::FireRemoveSpectatorEvent(specID, targetID, threadID);
         RE::Actor* speaker = SelectSpeakerActor(threadID, Config::GetSingleton().CommentGenderPriority());
-        std::string json = EventPayloadBuilder::BuildStop(threadID);
+        std::string json = EventPayloadBuilder::BuildStop(threadID, speaker);
         FireModEvent("ostimnet_stop", json.c_str(), static_cast<float>(threadID), speaker);
     }
 };

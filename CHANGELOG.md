@@ -1,5 +1,22 @@
 # Changelog
 
+## v2.4.0 - 2026-08-26
+
+### Added
+
+- **Manual player scene advance hotkey** — Added `Advance scene (player thread)` (`tton.controls.advancePlayerSceneHotkey`) hotkey setting under **Hot Keys**. Allows manually triggering an immediate Game Master LLM evaluation to advance the player's active scene without waiting for scheduled timers or NPC actions.
+- **Dedicated solo/masturbation scene descriptions** — Added specialized prompt phrasing and context handling for solo intimate encounters (1-actor scenes / masturbation) across event notifications (`ostimnet_event_compact.prompt`, `ostimnet_event_verbose.prompt`) and system context (`0201_ostim_scenes.prompt`), cleanly handling start, position change, and stop events without fictitious secondary participants.
+- **Metadata for solo animations** — Added animation and node metadata support for solo/masturbation scenes.
+
+### Changed
+
+- **CommonLibSSE-NG update** — Updated `CommonLibSSE-NG` submodule to support newer versions of Skyrim 1.7.99.
+- **Furniture travel package (ESP)** — Updated the participant follow-to-furniture AI package in `TT_OstimNet.esp` to allow actors to open doors while walking to beds/furniture when scenes start.
+- **Actor formatting fallback** — Updated `FormatActorList` in SKSE source to support custom fallbacks rather than hardcoding `"someone"`, preventing solo scenes from erroneously reporting non-existent secondary actors.
+- **Pace change trigger updates** — Adjusted `tton_sex_pace_change.yaml` trigger conditions for smoother event handling.
+
+---
+
 ## v2.3.1 - 2026-08-19
 
 ### Fixed

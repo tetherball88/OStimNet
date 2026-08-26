@@ -17608,6 +17608,18 @@
             "idle"
         ]
     },
+    "ostim2pdoggystyleholdingarmsmf": {
+        "intent": "",
+        "positions": [
+            "doggystyle"
+        ]
+    },
+    "ostim2pdoggystyleholdingarmspullupmf": {
+        "intent": "",
+        "positions": [
+            "doggystyle"
+        ]
+    },
     "ostim2pdoggystylelowholdingarmmf": {
         "intent": "",
         "positions": [
@@ -17632,6 +17644,12 @@
             "doggystyle"
         ]
     },
+    "ostim2pdoggystylenohandsmf": {
+        "intent": "",
+        "positions": [
+            "doggystyle"
+        ]
+    },
     "ostim2pdoggystylepressingdownmf": {
         "intent": "",
         "positions": [
@@ -17648,6 +17666,18 @@
         "intent": "",
         "positions": [
             "doggystyle"
+        ]
+    },
+    "ostim2pfaceridingmf": {
+        "intent": "",
+        "positions": [
+            "facesitting"
+        ]
+    },
+    "ostim2pfacesittingmf": {
+        "intent": "",
+        "positions": [
+            "facesitting"
         ]
     },
     "ostim2pkneelinglyingff": {
@@ -17696,6 +17726,12 @@
         "intent": "",
         "positions": [
             "idle"
+        ]
+    },
+    "ostim2pmissionaryjerktopussymf": {
+        "intent": "",
+        "positions": [
+            "missionary"
         ]
     },
     "ostim2pmissionarykissfootmf": {
@@ -17754,7 +17790,25 @@
             "prone"
         ]
     },
+    "ostim2ppronejerktobuttmf": {
+        "intent": "",
+        "positions": [
+            "prone"
+        ]
+    },
     "ostim2ppronelegsspreadmf": {
+        "intent": "",
+        "positions": [
+            "prone"
+        ]
+    },
+    "ostim2ppronemalemountedcrackfuckmf": {
+        "intent": "",
+        "positions": [
+            "prone"
+        ]
+    },
+    "ostim2ppronemalemountedmf": {
         "intent": "",
         "positions": [
             "prone"
@@ -17766,16 +17820,40 @@
             "prone"
         ]
     },
+    "ostim2preversecowgirlarchbackmf": {
+        "intent": "",
+        "positions": [
+            "reversecowgirl"
+        ]
+    },
+    "ostim2preversecowgirlbuttjobmf": {
+        "intent": "",
+        "positions": [
+            "reversecowgirl"
+        ]
+    },
     "ostim2preversecowgirlidlemf": {
         "intent": "",
         "positions": [
             "idle"
         ]
     },
+    "ostim2preversecowgirlmf": {
+        "intent": "",
+        "positions": [
+            "reversecowgirl"
+        ]
+    },
     "ostim2psidewaysidlemf": {
         "intent": "",
         "positions": [
             "idle"
+        ]
+    },
+    "ostim2psittingdoggyjerktobuttmf": {
+        "intent": "",
+        "positions": [
+            "doggystyle"
         ]
     },
     "ostim2psittingfemaleinmf": {

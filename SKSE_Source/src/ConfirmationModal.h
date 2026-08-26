@@ -360,9 +360,11 @@ private:
                                              const std::string& secondaryActorList,
                                              bool skipTrigger = false) {
             std::string msg = BuildDeclineMsg(actionType, mainActorList, secondaryActorList, activity);
+            std::string speakerName = ThreadDataStore::GetActorDisplayName(RE::PlayerCharacter::GetSingleton(), "Player");
             return BuildBaseEventJson("action_decline", msg, 0, skipTrigger, actionType,
                                       intent, isSexual,
-                                      mainActorList, secondaryActorList).dump();
+                                      mainActorList, secondaryActorList,
+                                      speakerName).dump();
         }
 
         static void FireTriggerTextInput() {

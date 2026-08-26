@@ -535,10 +535,11 @@ static void RegisterLatentFixed(RE::BSScript::IVirtualMachine* vm,
         }
 
         // Build and fire ostimnet_intent_changed mod event
+        RE::Actor* speaker = SelectSpeakerActor(threadID, Config::GetSingleton().CommentGenderPriority());
         const std::string json = OStimNet::EventPayloadBuilder::BuildIntentChanged(
-            threadID, oldIntentStr, intentLower, mainActorsSame);
+            threadID, oldIntentStr, intentLower, mainActorsSame, speaker);
         if (auto* source = SKSE::GetModCallbackEventSource()) {
-            SKSE::ModCallbackEvent e{"ostimnet_intent_changed", json.c_str(), static_cast<float>(threadID), nullptr};
+            SKSE::ModCallbackEvent e{"ostimnet_intent_changed", json.c_str(), static_cast<float>(threadID), speaker};
             source->SendEvent(&e);
         }
         SKSE::log::info("PapyrusFunctions: SetThreadIntent fired ostimnet_intent_changed: {}", json);

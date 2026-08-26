@@ -11,7 +11,8 @@ inline nlohmann::json BuildBaseEventJson(const std::string& type, const std::str
                                          const std::string& declinedAction,
                                          Intent intent, std::optional<bool> isSexual,
                                          const std::string& mainActorNames,
-                                         const std::string& secondaryActorNames) {
+                                         const std::string& secondaryActorNames,
+                                         const std::string& speaker = "") {
     nlohmann::json j;
     j["tton_type"]           = type;
     j["declinedAction"]      = declinedAction;
@@ -22,17 +23,20 @@ inline nlohmann::json BuildBaseEventJson(const std::string& type, const std::str
     j["isSexual"]            = isSexual.value_or(false);
     j["mainActorNames"]      = mainActorNames;
     j["secondaryActorNames"] = secondaryActorNames;
+    j["speaker"]             = speaker;
     return j;
 }
 
 // Convenience wrapper: reads intent/isSexual/actor-names from ThreadDataStore.
 inline nlohmann::json BuildBaseEventJson(const std::string& type, const std::string& msg,
-                                         int threadID, bool skipTrigger = false) {
+                                         int threadID, bool skipTrigger = false,
+                                         const std::string& speaker = "") {
     auto& store = ThreadDataStore::GetSingleton();
     return BuildBaseEventJson(type, msg, threadID, skipTrigger, "",
                               store.GetIntent(threadID), store.GetSexual(threadID),
                               store.GetFormattedMainActorNames(threadID),
-                              store.GetFormattedSecondaryActorNames(threadID));
+                              store.GetFormattedSecondaryActorNames(threadID),
+                              speaker);
 }
 
 }  // namespace OStimNet
@@ -45,21 +49,23 @@ namespace OStimNet::EventPayloadBuilder {
 
 // --- ostimnet_start ---------------------------------------------------------
 
-inline std::string BuildStart(int threadID) {
+inline std::string BuildStart(int threadID, RE::Actor* speaker = nullptr) {
     std::string msg = GetSceneDescription(static_cast<uint32_t>(threadID));
-    return BuildBaseEventJson("sex_start", msg, threadID, Config::GetSingleton().IsMuted()).dump();
+    std::string speakerName = ThreadDataStore::GetActorDisplayName(speaker, "");
+    return BuildBaseEventJson("sex_start", msg, threadID, Config::GetSingleton().IsMuted(), speakerName).dump();
 }
 
 // Overload used when the caller supplies an explicit description (e.g. undressing phase).
-inline std::string BuildStart(int threadID, const std::string& overrideMsg) {
-    return BuildBaseEventJson("sex_start", overrideMsg, threadID, Config::GetSingleton().IsMuted()).dump();
+inline std::string BuildStart(int threadID, const std::string& overrideMsg, RE::Actor* speaker = nullptr) {
+    std::string speakerName = ThreadDataStore::GetActorDisplayName(speaker, "");
+    return BuildBaseEventJson("sex_start", overrideMsg, threadID, Config::GetSingleton().IsMuted(), speakerName).dump();
 }
 
 // --- ostimnet_continue_thread -----------------------------------------------
 
 // oldThreadID: the thread that just ended — provides intent, actors ("main").
 // newThreadID: the replacement thread — newly joined actors appear as "secondary".
-inline std::string BuildContinueThread(int oldThreadID, int newThreadID) {
+inline std::string BuildContinueThread(int oldThreadID, int newThreadID, RE::Actor* speaker = nullptr) {
     auto& store = ThreadDataStore::GetSingleton();
 
     const auto& oldPtrs = store.GetActorPtrs(oldThreadID);
@@ -74,21 +80,24 @@ inline std::string BuildContinueThread(int oldThreadID, int newThreadID) {
             joinedActors.push_back(a);
 
     std::string msg = GetSceneDescription(static_cast<uint32_t>(newThreadID));
+    std::string speakerName = ThreadDataStore::GetActorDisplayName(speaker, "");
     return BuildBaseEventJson("sex_continue_thread", msg, newThreadID,
                               Config::GetSingleton().IsMuted(), "",
                               store.GetIntent(oldThreadID), store.GetSexual(oldThreadID),
                               ThreadDataStore::FormatActorNames(oldPtrs),
-                              ThreadDataStore::FormatActorNames(joinedActors)).dump();
+                              ThreadDataStore::FormatActorNames(joinedActors),
+                              speakerName).dump();
 }
 
 // --- ostimnet_scene_change --------------------------------------------------
 
 // skipTrigger: caller owns this decision — thread priority filter may set it
 // to true for non-priority threads regardless of Config::IsMuted.
-inline std::string BuildSceneChange(int threadID, const std::string& sceneID, bool skipTrigger) {
+inline std::string BuildSceneChange(int threadID, const std::string& sceneID, bool skipTrigger, RE::Actor* speaker = nullptr) {
     auto& store = ThreadDataStore::GetSingleton();
     std::string sceneDesc = GetSceneDescription(static_cast<uint32_t>(threadID), sceneID);
-    nlohmann::json j = BuildBaseEventJson("sex_change", sceneDesc, threadID, skipTrigger);
+    std::string speakerName = ThreadDataStore::GetActorDisplayName(speaker, "");
+    nlohmann::json j = BuildBaseEventJson("sex_change", sceneDesc, threadID, skipTrigger, speakerName);
     const std::string& position = store.GetCurrentPosition(threadID);
     if (!position.empty()) j["currentPosition"] = position;
     return j.dump();
@@ -101,7 +110,7 @@ inline std::string BuildSceneChange(int threadID, const std::string& sceneID, bo
 // skipTrigger: caller owns this decision — same priority-thread filter as BuildSceneChange.
 // direction is derived from the two values; "changed" is the fallback when
 // oldSpeed is unknown.
-inline std::optional<std::string> BuildSpeedChange(int threadID, int32_t oldSpeed, int32_t newSpeed, bool skipTrigger) {
+inline std::optional<std::string> BuildSpeedChange(int threadID, int32_t oldSpeed, int32_t newSpeed, bool skipTrigger, RE::Actor* speaker = nullptr) {
     if (newSpeed == oldSpeed)
         return std::nullopt;
 
@@ -125,7 +134,8 @@ inline std::optional<std::string> BuildSpeedChange(int threadID, int32_t oldSpee
     else
         msg = allNames + "'s pace " + direction + ".";
 
-    nlohmann::json j = BuildBaseEventJson("sex_pace_change", msg, threadID, skipTrigger);
+    std::string speakerName = ThreadDataStore::GetActorDisplayName(speaker, "");
+    nlohmann::json j = BuildBaseEventJson("sex_pace_change", msg, threadID, skipTrigger, speakerName);
     j["speed"]     = newSpeed;
     j["direction"] = direction;
     return j.dump();
@@ -133,7 +143,7 @@ inline std::optional<std::string> BuildSpeedChange(int threadID, int32_t oldSpee
 
 // --- ostimnet_climax --------------------------------------------------------
 
-inline std::string BuildClimax(int threadID, const DebounceQueue::ClimaxBatchData& data) {
+inline std::string BuildClimax(int threadID, const DebounceQueue::ClimaxBatchData& data, RE::Actor* speaker = nullptr) {
     ClimaxActorSnapshot snapshot;
     if (g_ostimThreadInterface)
         snapshot.count = g_ostimThreadInterface->GetActors(
@@ -142,7 +152,8 @@ inline std::string BuildClimax(int threadID, const DebounceQueue::ClimaxBatchDat
     auto actorResults = BuildClimaxActorData(data, snapshot);
     std::string humanMsg = FormatClimaxMessage(threadID, actorResults, snapshot);
 
-    nlohmann::json j = BuildBaseEventJson("climax", humanMsg, threadID, Config::GetSingleton().IsMuted());
+    std::string speakerName = ThreadDataStore::GetActorDisplayName(speaker, "");
+    nlohmann::json j = BuildBaseEventJson("climax", humanMsg, threadID, Config::GetSingleton().IsMuted(), speakerName);
 
     auto climaxActors = nlohmann::json::array();
     for (auto& result : actorResults) {
@@ -166,8 +177,9 @@ inline std::string BuildClimax(int threadID, const DebounceQueue::ClimaxBatchDat
 
 // --- ostimnet_stop ----------------------------------------------------------
 
-inline std::string BuildStop(int threadID) {
-    return BuildBaseEventJson("sex_stop", "", threadID, Config::GetSingleton().IsMuted()).dump();
+inline std::string BuildStop(int threadID, RE::Actor* speaker = nullptr) {
+    std::string speakerName = ThreadDataStore::GetActorDisplayName(speaker, "");
+    return BuildBaseEventJson("sex_stop", "", threadID, Config::GetSingleton().IsMuted(), speakerName).dump();
 }
 
 // --- ostimnet_spectator_added -----------------------------------------------
@@ -183,7 +195,7 @@ inline std::string BuildSpectatorAdded(int threadID, RE::Actor* spectator, RE::A
         ? ThreadDataStore::GetActorDisplayName(target, "")
         : ThreadDataStore::FormatActorNames(store.GetActorPtrs(threadID));
     const std::string msg = spectatorName + " is now watching " + watchedName + " engage in an intimate encounter.";
-    nlohmann::json j = BuildBaseEventJson("spectator_added", msg, threadID, Config::GetSingleton().IsMuted());
+    nlohmann::json j = BuildBaseEventJson("spectator_added", msg, threadID, Config::GetSingleton().IsMuted(), spectatorName);
     if (spectator) j["spectatorFormID"] = spectator->GetFormID();
     return j.dump();
 }
@@ -202,7 +214,8 @@ inline std::string BuildSpectatorFled(int threadID, RE::Actor* spectator) {
         const std::string actorNames = ThreadDataStore::FormatActorNames(store.GetActorPtrs(threadID));
         msg = spectatorName + " was watching " + actorNames + " having an intimate encounter but fled the scene.";
     }
-    nlohmann::json j = BuildBaseEventJson("spectator_fled", msg, threadID, Config::GetSingleton().IsMuted());
+    const std::string speakerName = ThreadDataStore::GetActorDisplayName(spectator, "");
+    nlohmann::json j = BuildBaseEventJson("spectator_fled", msg, threadID, Config::GetSingleton().IsMuted(), speakerName);
     if (spectator) j["spectatorFormID"] = spectator->GetFormID();
     return j.dump();
 }
@@ -214,11 +227,13 @@ inline std::string BuildSpectatorFled(int threadID, RE::Actor* spectator) {
 inline std::string BuildIntentChanged(int threadID,
                                        const std::string& oldIntent,
                                        const std::string& newIntent,
-                                       bool mainActorsSame) {
+                                       bool mainActorsSame,
+                                       RE::Actor* speaker = nullptr) {
     auto& store = ThreadDataStore::GetSingleton();
-    const std::string mainNames = store.GetFormattedMainActorNames(threadID);
-    const std::string msg       = mainNames + "'s intent changed from " + oldIntent + " to " + newIntent + ".";
-    nlohmann::json j = BuildBaseEventJson("intent_changed", msg, threadID, Config::GetSingleton().IsMuted());
+    const std::string mainNames   = store.GetFormattedMainActorNames(threadID);
+    const std::string msg         = mainNames + "'s intent changed from " + oldIntent + " to " + newIntent + ".";
+    const std::string speakerName = ThreadDataStore::GetActorDisplayName(speaker, "");
+    nlohmann::json j = BuildBaseEventJson("intent_changed", msg, threadID, Config::GetSingleton().IsMuted(), speakerName);
     j["oldIntent"]      = oldIntent;
     j["mainActorsSame"] = mainActorsSame;
     return j.dump();

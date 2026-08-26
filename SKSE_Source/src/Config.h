@@ -100,6 +100,9 @@ struct Config {
     /// VK code for the toggle-mute hotkey. 0 means not configured.
     int ToggleMuteHotkey() const;
 
+    /// VK code for the manual player scene advance hotkey. 0 means not configured.
+    int AdvancePlayerSceneHotkey() const;
+
     /// Toggles the session-level mute override based on the current effective mute state.
     /// Persists until ResetMuteOverride() is called (e.g., on game reload).
     void ToggleMuteSession();

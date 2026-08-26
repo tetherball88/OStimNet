@@ -18,7 +18,9 @@
 
             {% if contains(actors, to_string(npc.UUID)) %}
                 {% set participantRole = "" %}
-                {% if contains(scene.mainActorNames, to_string(npcData.name)) %}
+                {% if length(actors) == 1 %}
+                    {% set participantRole = npcName + " is engaging in solo intimate activity (masturbation)." %}
+                {% else if contains(scene.mainActorNames, to_string(npcData.name)) %}
                     {% if scene.intent == "transactional" %}
                         {% set participantRole = npcName + " is receiving sex service in exchange for benefit." %}
                     {% else if scene.intent == "dom" %}
@@ -58,7 +60,9 @@
                 {% set responseTargetName = targetNpcData.name %}
                 {% if contains(actors, to_string(responseTarget.UUID)) %}
                     {% set participantRole = "" %}
-                    {% if contains(scene.mainActorNames, targetNpcData.name) %}
+                    {% if length(actors) == 1 %}
+                        {% set participantRole = responseTargetName + " is engaging in solo intimate activity (masturbation)." %}
+                    {% else if contains(scene.mainActorNames, targetNpcData.name) %}
                         {% if scene.intent == "transactional" %}
                             {% set participantRole = responseTargetName + " is providing sex service in exchange for benefit." %}
                         {% else if scene.intent == "dom" %}
@@ -93,10 +97,13 @@
                     {% endif %}
                 {% endif %}
             {% endif %}
-            {% if intent == "platonic" %}
+            {% if length(actors) == 1 or not scene.secondaryActorNames or scene.secondaryActorNames == "" or scene.secondaryActorNames == "someone" %}
+                It is a solo intimate encounter (masturbation).
+                {{scene.mainActorNames}} is engaging in solo sexual pleasure.
+            {% else if scene.intent == "platonic" or intent == "platonic" %}
                 It is a friendly non-sexual encounter driven by companionship, kinship, or mutual trust between the participants.
                 {{scene.mainActorNames}} initiated this encounter and {{scene.secondaryActorNames}} joined in, with no romantic undertones present.
-            {% else if intent == "romantic" %}
+            {% else if scene.intent == "romantic" or intent == "romantic" %}
                 {% if scene.isSexual %}
                     It is a sexual encounter rooted in genuine romantic feelings and emotional connection.
                     {{scene.mainActorNames}} initiated this encounter and {{scene.secondaryActorNames}} welcomed it, with emotional intimacy present throughout.
@@ -104,16 +111,16 @@
                     It is a romantic non-sexual encounter driven by emotional attraction and affection between the participants.
                     {{scene.mainActorNames}} initiated this encounter and {{scene.secondaryActorNames}} welcomed it, with tender feelings and mutual interest present throughout.
                 {% endif %}
-            {% else if intent == "lustful" %}
+            {% else if scene.intent == "lustful" or intent == "lustful" %}
                 It is a sexual encounter driven purely by raw physical desire with no emotional undertones.
                 {{scene.mainActorNames}} initiated this encounter and {{scene.secondaryActorNames}} joined in, both consumed by urgent mutual need.
-            {% else if intent == "transactional" %}
+            {% else if scene.intent == "transactional" or intent == "transactional" %}
                 It is a sexual encounter in exchange for goods, coin, or favors — detached and business-like with no expectation of emotional connection.
                 {{scene.mainActorNames}} provide sexual services in exchange for benefits from {{scene.secondaryActorNames}}.
-            {% else if intent == "dom" %}
+            {% else if scene.intent == "dom" or intent == "dom" %}
                 It is a consensual sexual encounter defined by a clear dominant/submissive power dynamic throughout.
                 {{scene.mainActorNames}} are controlling, commanding, and set the pace, while {{scene.secondaryActorNames}} are obedient, yielding, and responsive to their dominant's lead.
-            {% else if intent == "aggressive" %}
+            {% else if scene.intent == "aggressive" or intent == "aggressive" %}
                 It is a non-consensual sexual act where aggressors overpower and assault their victims.
                 {{scene.mainActorNames}} are the aggressors acting with force and dominance, {{scene.secondaryActorNames}} are the unwilling victims.
             {% else %}

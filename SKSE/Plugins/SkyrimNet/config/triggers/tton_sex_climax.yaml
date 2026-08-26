@@ -1,25 +1,23 @@
-name: "tton_sex_climax"
-description: "NPC's reaction when climaxed"
-
+name: tton_sex_climax
+description: NPC's reaction when climaxed
 eventCriteria:
-  eventType: "tton_event"
+  eventType: tton_event
   schemaConditions:
-    - fieldPath: "tton_type"
-      operator: "equals"
-      value: "climax"
+    - fieldPath: tton_type
+      operator: equals
+      value: climax
       caseSensitive: false
-    - fieldPath: "skipTrigger"
-      operator: "equals"
+    - fieldPath: skipTrigger
+      operator: equals
       value: false
-
+    - fieldPath: speaker
+      operator: not_equals
+      value: ""
+audience: nearby_npcs
 response:
-  type: "direct_narration"
+  type: direct_narration
   content: "{{ originator }} reacts appropriately to climax event. It can be as they climaxed or someone else climaxed on or in them or both."
-
-audience: "nearby_npcs"
-
 enabled: true
-interrupt: true
-probability: 1
 cooldownSeconds: 30
 priority: 10
+interrupt: true

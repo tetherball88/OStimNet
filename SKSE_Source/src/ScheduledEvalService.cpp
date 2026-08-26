@@ -72,6 +72,54 @@ void ScheduledEvalService::ResumeThread(int threadID) {
     SKSE::log::info("ScheduledEvalService: thread {} resumed, timer reset", threadID);
 }
 
+bool ScheduledEvalService::TriggerPlayerAdvance() {
+    auto playerThreadOpt = ThreadDataStore::GetSingleton().GetPlayerThreadID();
+    if (!playerThreadOpt.has_value()) {
+        SKSE::log::info("ScheduledEvalService: manual advance skipped - player is not in an active thread");
+        return false;
+    }
+
+    int threadID = *playerThreadOpt;
+
+    if (g_ostimThreadInterface && !g_ostimThreadInterface->IsThreadValid(static_cast<uint32_t>(threadID))) {
+        SKSE::log::info("ScheduledEvalService: manual advance skipped - thread {} is not valid in OStim", threadID);
+        return false;
+    }
+
+    auto& store = ThreadDataStore::GetSingleton();
+    if (!store.IsOStimNet(threadID)) {
+        SKSE::log::info("ScheduledEvalService: manual advance skipped - thread {} is not an OStimNet thread", threadID);
+        return false;
+    }
+
+    auto sexual = store.GetSexual(threadID);
+    if (!sexual.value_or(false)) {
+        SKSE::log::info("ScheduledEvalService: manual advance skipped - thread {} is not sexual", threadID);
+        return false;
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        if (m_evaluationInFlight.contains(threadID)) {
+            SKSE::log::info("ScheduledEvalService: manual advance skipped - evaluation already in flight for thread {}", threadID);
+            return false;
+        }
+        m_evaluationInFlight.insert(threadID);
+    }
+
+    SKSE::log::info("ScheduledEvalService: manual advance triggered for player thread {}", threadID);
+    bool queued = SkyrimNetIntegration::EvaluateScheduledSceneAdvance(threadID, [this, threadID]() {
+        ClearInFlight(threadID);
+    });
+
+    if (!queued) {
+        SKSE::log::warn("ScheduledEvalService: manual advance failed to queue for thread {}", threadID);
+        return false;
+    }
+
+    return true;
+}
+
 void ScheduledEvalService::StartLoop() {
     if (m_running) return;
 

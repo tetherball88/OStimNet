@@ -1,5 +1,13 @@
 {% if tton_type == "sex_start" %}
-    {% if intent == "platonic" %}
+    {% if not secondaryActorNames or secondaryActorNames == "" or secondaryActorNames == "someone" %}
+        {% if intent == "platonic" %}
+            {{mainActorNames}} is engaging in a solo intimate moment of comfort and relaxation.
+        {% else if intent == "romantic" %}
+            {{mainActorNames}} is engaging in a private intimate moment while lost in romantic thoughts.
+        {% else %}
+            {{mainActorNames}} is engaging in solo sexual pleasure (masturbation).
+        {% endif %}
+    {% else if intent == "platonic" %}
         {{mainActorNames}} initiated this intimate but non-sexual encounter — driven by companionship and mutual trust — and {{secondaryActorNames}} joined in warmly, the connection between them purely platonic.
     {% else if intent == "romantic" %}
         {% if isSexual %}
@@ -20,7 +28,9 @@
         {{mainActorNames}} initiated this encounter and {{secondaryActorNames}} joined in.
     {% endif %}
 {% else if tton_type == "sex_change" %}
-    {% if intent == "dom" %}
+    {% if not secondaryActorNames or secondaryActorNames == "" or secondaryActorNames == "someone" %}
+        {{mainActorNames}} shifts to a new position.
+    {% else if intent == "dom" %}
         {{mainActorNames}} dictate the next position, {{secondaryActorNames}} obediently adjust.
     {% else if intent == "aggressive" %}
         {{mainActorNames}} force a change current position, {{secondaryActorNames}} have no choice but to yield.
@@ -32,7 +42,13 @@
 {% else if tton_type == "climax" %}
     {{msg}}
 {% else if tton_type == "sex_stop" %}
-    {% if isSexual %}
+    {% if not secondaryActorNames or secondaryActorNames == "" or secondaryActorNames == "someone" %}
+        {% if isSexual %}
+            Solo sexual activity of {{mainActorNames}} has finished. Participant returned to their state before encounter, they don't participate in any sexual activities at this moment. Their dressed state returned to initial state.
+        {% else %}
+            Intimate activity of {{mainActorNames}} has finished. Participant returned to their state before encounter.
+        {% endif %}
+    {% else if isSexual %}
       Sexual encounter between {{mainActorNames}} and {{secondaryActorNames}} has finished. Participants returned to their state before encounter, they don't participate in any sexualactivities at this moment. Their dressed state returned to initial state.
       {% if intent == "dom" %}
         The dominance and submission between {{mainActorNames}} and {{secondaryActorNames}} existed within that encounter and ended with it. They return to themselves now, as equals.

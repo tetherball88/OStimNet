@@ -1,24 +1,22 @@
-name: "tton_sex_stop_comment"
-description: "Reaction when OStim Ended"
-
+name: tton_sex_stop_comment
+description: Reaction when OStim Ended
 eventCriteria:
-  eventType: "tton_event"
+  eventType: tton_event
   schemaConditions:
-    - fieldPath: "tton_type"
-      operator: "equals"
-      value: "sex_stop"
+    - fieldPath: tton_type
+      operator: equals
+      value: sex_stop
       caseSensitive: false
-    - fieldPath: "skipTrigger"
-      operator: "equals"
+    - fieldPath: skipTrigger
+      operator: equals
       value: false
-
+    - fieldPath: speaker
+      operator: not_equals
+      value: ""
+audience: nearby_npcs
 response:
-  type: "direct_narration"
+  type: direct_narration
   content: "{{ originator }} surfaces from it — body settling, mind returning — one honest unguarded thought about how this ended and where they are now."
-
-audience: "nearby_npcs"
-
 enabled: false
-probability: 1
 cooldownSeconds: 30
 priority: 2

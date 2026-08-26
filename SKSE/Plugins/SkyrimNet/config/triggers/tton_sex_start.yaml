@@ -1,25 +1,22 @@
-name: "tton_sex_start"
-description: "Reaction when OStim started"
-
+name: tton_sex_start
+description: Reaction when OStim started
 eventCriteria:
-  eventType: "tton_event"
+  eventType: tton_event
   schemaConditions:
-    - fieldPath: "tton_type"
-      operator: "equals"
-      value: "sex_start"
+    - fieldPath: tton_type
+      operator: equals
+      value: sex_start
       caseSensitive: false
-    - fieldPath: "skipTrigger"
-      operator: "equals"
+    - fieldPath: skipTrigger
+      operator: equals
       value: false
-
+    - fieldPath: speaker
+      operator: not_equals
+      value: ""
+audience: nearby_npcs
 response:
-  type: "direct_narration"
-  content: "The encounter begins — {{originator}} reacts, unfiltered, carrying everything that came before."
-
-audience: "nearby_npcs"
-
+  type: direct_narration
+  content: The encounter begins — {{originator}} reacts, unfiltered, carrying everything that came before.
 enabled: true
-interrupt: false
-probability: 1
 cooldownSeconds: 30
 priority: 2

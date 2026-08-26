@@ -1,25 +1,22 @@
-name: "tton_action_decline"
-description: "Reaction when player declines NPC's requests during OStim scenes."
-
+name: tton_action_decline
+description: Reaction when player declines NPC's requests during OStim scenes.
 eventCriteria:
-  eventType: "tton_event"
+  eventType: tton_event
   schemaConditions:
-    - fieldPath: "tton_type"
-      operator: "equals"
-      value: "action_decline"
+    - fieldPath: tton_type
+      operator: equals
+      value: action_decline
       caseSensitive: false
-    - fieldPath: "skipTrigger"
-      operator: "equals"
+    - fieldPath: skipTrigger
+      operator: equals
       value: false
-
+    - fieldPath: speaker
+      operator: not_equals
+      value: ""
+audience: nearby_npcs
 response:
-  type: "direct_narration"
-  content: "An action you just attempted was declined or didn't happen. Stay in the present moment — don't repeat the attempt, don't plan ahead. React honestly as yourself given everything you know about {{player.name}} and this moment. One beat. Then continue naturally."
-
-audience: "nearby_npcs"
-
+  type: direct_narration
+  content: An action you just attempted was declined or didn't happen. Stay in the present moment — don't repeat the attempt, don't plan ahead. React honestly as yourself given everything you know about {{player.name}} and this moment. One beat. Then continue naturally.
 enabled: true
-interrupt: false
-probability: 1
 cooldownSeconds: 30
 priority: 3

@@ -113,6 +113,15 @@ schema:
       required: false
       category: "Hot Keys"
       supportsOverride: false
+    - name: "Advance scene (player thread)"
+      path: "tton.controls.advancePlayerSceneHotkey"
+      type: "hotkey"
+      description: "Hotkey to manually invoke LLM scene advancement for the player's active scene."
+      min: 1
+      max: 255
+      required: false
+      category: "Hot Keys"
+      supportsOverride: false
 
     # Intents
     - name: OStim scenes intent rule

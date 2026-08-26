@@ -439,13 +439,13 @@ inline std::string FormatClimaxMessage(
         // Inside areas: one sentence each (templates are too specific to merge).
         for (const auto* e : insideAreas) {
             if (!msg.empty()) msg += ' ';
-            msg += FormatAreaSentence(FormatActorList(e->actorNames), targetName, targetMale, e->area);
+            msg += FormatAreaSentence(FormatActorList(e->actorNames, "someone"), targetName, targetMale, e->area);
         }
 
         // Outside areas: group by actor-list string to merge same-actor-group areas.
         std::vector<std::pair<std::string, std::vector<std::string>>> outsideGroups;
         for (const auto* e : outsideAreas) {
-            std::string actorListStr = FormatActorList(e->actorNames);
+            std::string actorListStr = FormatActorList(e->actorNames, "someone");
             auto it = std::find_if(outsideGroups.begin(), outsideGroups.end(),
                                    [&](const auto& g) { return g.first == actorListStr; });
             if (it != outsideGroups.end())

@@ -20,11 +20,11 @@ using OStimNavigatorAPI::IntentFromString;
 using OStimNavigatorAPI::IntentToString;
 
 // Joins actor/label names into natural English:
-//   {}  → "someone"  |  {"Lydia"} → "Lydia"
+//   {}  → fallback ("" by default)  |  {"Lydia"} → "Lydia"
 //   {"Lydia","Farengar"} → "Lydia and Farengar"
 //   {"Lydia","Farengar","Ulfric"} → "Lydia, Farengar and Ulfric"
-inline std::string FormatActorList(const std::vector<std::string>& names) {
-    if (names.empty()) return "someone";
+inline std::string FormatActorList(const std::vector<std::string>& names, const std::string& fallback = "") {
+    if (names.empty()) return fallback;
     if (names.size() == 1) return names[0];
     std::string result;
     for (size_t i = 0; i + 1 < names.size(); ++i) {
@@ -252,6 +252,22 @@ public:
         for (auto* actor : GetActorPtrs(threadID))
             if (actor == static_cast<RE::Actor*>(player)) return true;
         return false;
+    }
+
+    // Returns the threadID of the thread containing the player character, or nullopt if none.
+    std::optional<int> GetPlayerThreadID() const {
+        if (g_ostimThreadInterface) {
+            uint32_t tid = g_ostimThreadInterface->GetPlayerThreadID();
+            if (tid != 0 && g_ostimThreadInterface->IsThreadValid(tid)) {
+                return static_cast<int>(tid);
+            }
+        }
+        auto* player = RE::PlayerCharacter::GetSingleton();
+        if (player) {
+            int tid = GetActorThreadID(player->GetFormID());
+            if (tid != -1) return tid;
+        }
+        return std::nullopt;
     }
 
     // Computes the starting sexual phase for a newly-started thread, applying all
@@ -498,6 +514,7 @@ public:
             std::string name = GetActorDisplayName(actor, "");
             if (!name.empty()) names.push_back(std::move(name));
         }
+        if (names.empty()) return "";
         return FormatActorList(names);
     }
 

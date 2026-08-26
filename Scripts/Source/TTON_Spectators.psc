@@ -11,7 +11,7 @@ Function TryMakeSpectator(Actor spectator, Actor target) global
         ActorUtil.AddPackageOverride(spectator, TTON_JData.GetSpectatorFollowPackage(), 60)
         spectator.AddToFaction(TTON_JData.GetSpectatorFaction())
         spectator.EvaluatePackage()
-        SkyrimNetApi.RegisterEvent("tton_event", OStimNet.BuildSpectatorAddedEventJson(spectator), spectator, target)
+        TTON_Events.SendSkyrimNetEvent(OStimNet.BuildSpectatorAddedEventJson(spectator), spectator, target)
     endif
 EndFunction
 
@@ -24,7 +24,7 @@ EndFunction
 Function MakeSpectatorFlee(Actor spectator) global
     TTON_Debug.debug("MakeSpectatorFlee: " + TTON_Utils.GetActorName(spectator))
     if(!spectator.IsInFaction(TTON_JData.GetSpectatorFleeFaction()))
-        SkyrimNetApi.RegisterEvent("tton_event", OStimNet.BuildSpectatorFledEventJson(spectator), spectator, none)
+        TTON_Events.SendSkyrimNetEvent(OStimNet.BuildSpectatorFledEventJson(spectator), spectator, none)
         spectator.AddToFaction(TTON_JData.GetSpectatorFleeFaction())
         ActorUtil.RemovePackageOverride(spectator, TTON_JData.GetSpectatorFollowPackage())
         ActorUtil.AddPackageOverride(spectator, GetFleePackageForSpectator(spectator), 70)
