@@ -248,37 +248,28 @@ function AddActorsToActiveThread(int ThreadID, actor[] newActors, string newInte
 endfunction
 
 ObjectReference Function ScanBestBeds(ObjectReference centerRef, float radius = 1200.0) global
-    ObjectReference[] beds = OSANative.FindBed(centerRef, radius)
-    TTON_Debug.debug("Found " + beds.length + " pieces of furniture near actors for potential use in OStim scene.")
+    ; clean up deprecated StorageUtil sotrages
+    StorageUtil.ClearFormListPrefix("TTON_DoubleBeds")
+    StorageUtil.ClearFormListPrefix("TTON_SingleBeds")
+    StorageUtil.ClearFormListPrefix("TTON_Bedrolls")
+    StorageUtil.ClearFormListPrefix("TTON_OtherBeds")
 
-    int i = 0
-    while(i < beds.Length)
-        string furnType = OFurniture.GetFurnitureType(beds[i])
-        bool isBed = OFurniture.IsChildOf("bed", furnType)
-        TTON_Debug.debug("Checking furniture " + beds[i] + " of type " + furnType + " for suitability in OStim scene, isBed: " + isBed)
-        if(isBed && Storageutil.FormListCountValue(none, "TTON_FurnitureList", beds[i]) == 0)
-            if(furnType == "doublebed")
-                StorageUtil.FormListAdd(none, "TTON_DoubleBeds", beds[i])
-            elseif(furnType == "singlebed")
-                StorageUtil.FormListAdd(none, "TTON_SingleBeds", beds[i])
-            elseif(furnType == "bedroll")
-                StorageUtil.FormListAdd(none, "TTON_Bedrolls", beds[i])
-            else
-                StorageUtil.FormListAdd(none, "TTON_OtherBeds", beds[i])
-            endif
-        endif
-        i += 1
-    endwhile
-
-    if(StorageUtil.FormListCount(none, "TTON_DoubleBeds") > 0)
-        return StorageUtil.FormListGet(none, "TTON_DoubleBeds", 0) as ObjectReference
-    elseif(StorageUtil.FormListCount(none, "TTON_SingleBeds") > 0)
-        return StorageUtil.FormListGet(none, "TTON_SingleBeds", 0) as ObjectReference
-    elseif(StorageUtil.FormListCount(none, "TTON_Bedrolls") > 0)
-        return StorageUtil.FormListGet(none, "TTON_Bedrolls", 0) as ObjectReference
-    elseif(StorageUtil.FormListCount(none, "TTON_OtherBeds") > 0)
-        return StorageUtil.FormListGet(none, "TTON_OtherBeds", 0) as ObjectReference
+    ObjectReference doublebed = OFurniture.FindFurnitureOfType("doublebed", centerRef, radius)
+    if(doublebed)
+        return doublebed
     endif
+
+
+    ObjectReference singlebed = OFurniture.FindFurnitureOfType("singlebed", centerRef, radius)
+    if(singlebed)
+        return singlebed
+    endif
+    ObjectReference bedroll = OFurniture.FindFurnitureOfType("bedroll", centerRef, radius)
+    if(bedroll)
+        return bedroll
+    endif
+
+    return none
 EndFunction
 
 ObjectReference Function FindSuitableFurniture(Actor akActor, string furnitureType, float radius = 1200.0) global
@@ -289,7 +280,7 @@ ObjectReference Function FindSuitableFurniture(Actor akActor, string furnitureTy
     elseif(furnitureType && furnitureType != "bed")
         finalFurniture = OFurniture.FindFurnitureOfType(furnitureType, akActor, radius)
     else
-        finalFurniture = TTON_OStimIntegration.ScanBestBeds(akActor)
+        finalFurniture = TTON_OStimIntegration.ScanBestBeds(akActor, radius)
     endif
 
     if(finalFurniture)

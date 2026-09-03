@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.4.1 - 2026-09-03
+
+### Fixed
+
+- **Bed search logic** — Replaced legacy `OSANative.FindBed` in `ScanBestBeds` with `OFurniture.FindFurnitureOfType` (`doublebed` > `singlebed` > `bedroll` priority). This ensures beds currently in use, reserved by NPCs, or engaged in active OStim scenes are properly skipped.
+
+---
+
 ## v2.4.0 - 2026-08-26
 
 ### Added
