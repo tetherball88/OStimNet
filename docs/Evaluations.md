@@ -21,7 +21,7 @@ Evaluated during `ChangeSexScenePace`. The LLM decides whether to "increase" or 
 
 ## 2. Custom Game Master Evaluations
 
-Once an action is initiated or an event occurs, OStimNet's Game Master takes over. The Game Master uses a set of specialized custom prompts (located in `SKSE/Plugins/SkyrimNet/prompts/ostimnet_evaluations`) to manage the granular details of the encounter.
+Once an action is initiated or an event occurs, OStimNet's Game Master takes over. The Game Master uses a set of specialized custom prompts (located in `SKSE/Plugins/SkyrimNet/external/tetherball88.ostimnet/prompts/ostimnet_evaluations`) to manage the granular details of the encounter.
 
 ### Pre-Start Sexual Evaluation (`ostimnet_evaluate_prestart_sexual`)
 When a sexual scene is initiated by an AI action (e.g. `StartNewSex`), this evaluation runs before the scene actually begins.

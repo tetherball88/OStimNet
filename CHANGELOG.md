@@ -1,5 +1,17 @@
 # Changelog
 
+## v2.4.2 - 2026-09-11
+
+### Changed
+
+- **SkyrimNet Beta 25 folder structure migration** — Migrated content delivery to SkyrimNet Beta 25's external plugin package structure:
+  - **External layer package** — Content is now delivered as an external plugin bundle located at `Data/SKSE/Plugins/SkyrimNet/external/tetherball88.ostimnet/` with its own `manifest.json`.
+  - **Action filenames** — Renamed all action YAML files to match their internal `name` field directly (`ManageIntimateScenes.yaml`, `StartIntimateScenes.yaml`, `StartNewSex.yaml`, etc.), dropping the legacy `tton_` filename prefix per Beta 25 requirements.
+  - **Triggers & prompts reorganization** — Reorganized triggers (`triggers/`) and prompts (`prompts/`) into the plugin folder, dropping legacy `config/` prefixes.
+  - **Legacy folder cleanup** — Cleaned up loose files from legacy directories (`prompts/`, `config/actions/`, `config/triggers/`), while preserving the plugin settings UI schema.
+
+---
+
 ## v2.4.1 - 2026-09-03
 
 ### Fixed

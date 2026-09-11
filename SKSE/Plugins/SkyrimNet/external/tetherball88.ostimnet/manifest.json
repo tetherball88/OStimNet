@@ -1,0 +1,24 @@
+{
+    "id": "tetherball88.ostimnet",
+    "type": "bundle",
+    "title": "OStimNet",
+    "tagline": "Intimate encounter AI framework integration for OStim and SkyrimNet.",
+    "description": "Ostim-SkyrimNet integration mod enabling natural language control and AI-driven interactions for intimate encounters.",
+    "author": "tetherball88",
+    "tags": [
+        "ostim",
+        "animation",
+        "adult"
+    ],
+    "nsfw": true,
+    "icon": "flame",
+    "version": "2.4.2",
+    "min_skyrimnet_version": "0.25.0",
+    "mods": [
+        {
+            "name": "TT_OStimNet",
+            "file": "TT_OStimNet.esp",
+            "required": true
+        }
+    ]
+}
