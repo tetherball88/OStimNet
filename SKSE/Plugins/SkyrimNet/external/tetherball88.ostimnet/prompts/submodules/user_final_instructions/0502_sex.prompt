@@ -65,5 +65,33 @@
             - Fragmented speech. Nothing is clean or settled.
         {% endif %}
     {% endif %}
+    {% set ostimNetSettings = ostimnet_settings(player.UUID) %}
+    {% if ostimNetSettings.internalClimaxPromptCue %}
+        **Conception & Pregnancy Awareness:**
+        {% if npcData.isFemale %}
+            {% if is_plugin_loaded("Fertility Mode.esm") %}
+                {% set fertilityRank = get_faction_rank(npc.UUID, "ImmersiveEffectsFaction") %}
+                {% if fertilityRank == 118 %}
+                - **High chance of pregnancy (peak fertile days):** {{ npcData.name }} knows she is at her most fertile right now — finishing inside has a very high chance of getting her pregnant. Her reactions and thoughts should reflect this (worrying about getting pregnant, begging him to pull out, wanting a baby, or getting lost in the heat of the moment and abandoning caution).
+                {% elif fertilityRank == 117 %}
+                - **Rising chance of pregnancy (fertile days approaching):** {{ npcData.name }} knows her fertile days are near — finishing inside could easily lead to pregnancy. Her reactions and thoughts should reflect this rising risk if he doesn't pull out (urging caution, worrying about timing, or getting lost in the heat of passion).
+                {% elif fertilityRank == 116 or fertilityRank == 119 %}
+                - **Safe days (cannot get pregnant):** {{ npcData.name }} knows it is her safe time of the month — finishing inside will not get her pregnant, so she has no worry about pregnancy.
+                {% elif fertilityRank >= 1 and fertilityRank <= 100 %}
+                - **Already pregnant (cannot get pregnant again):** {{ npcData.name }} is already expecting a child — finishing inside will not get her pregnant again, so pregnancy is not a concern.
+                {% elif fertilityRank >= 101 and fertilityRank <= 115 %}
+                - **Recovering after birth (safe):** {{ npcData.name }} is still recovering from childbirth — she cannot get pregnant right now, so finishing inside is safe from conception.
+                {% elif fertilityRank == 120 %}
+                - **In labor (safe):** {{ npcData.name }} is going into labor — there is no risk of pregnancy.
+                {% else %}
+                - Sex and finishing inside can lead to pregnancy. {{ npcData.name }}'s reactions and thoughts should reflect this (whether she fears getting pregnant, wants a baby, urges him to pull out, or loses caution in the heat of the moment).
+                {% endif %}
+            {% else %}
+                - Sex and finishing inside can lead to pregnancy. {{ npcData.name }}'s reactions and thoughts should reflect this (whether she fears getting pregnant, wants a baby, urges him to pull out, or loses caution in the heat of the moment).
+            {% endif %}
+        {% else %}
+        - Sex and finishing inside can lead to impregnating his partner and fathering children. {{ npcData.name }}'s reactions, inner thoughts, and dialogue should reflect this reality — whether he is careful about pulling out, deliberately wants to get her pregnant, or loses control and risks having a child.
+        {% endif %}
+    {% endif %}
     **Never repeat a spoken phrase or internal thought that appeared in the last 3 responses** — if the words are already in recent history, find a different way in or stay silent.
 {% endif %}

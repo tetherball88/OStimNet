@@ -138,6 +138,11 @@ int Config::ClimaxDebounceSeconds() const {
     catch (...) { return 2; }
 }
 
+bool Config::EnableInternalClimaxPromptCue() const {
+    std::string val = GetValue("tton.settings.internalClimaxPromptCue", "true");
+    return val == "true" || val == "1";
+}
+
 int Config::SpeedChangeDebounceSeconds() const {
     try { return std::stoi(GetValue("tton.settings.speedChangeDebounce", "5")); }
     catch (...) { return 5; }

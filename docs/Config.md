@@ -88,6 +88,10 @@ When choosing which actor in a scene delivers a comment, this sets how often the
 
 Turns off all NPC scene commentary. It is permanent setting carried over between reloads. Can also be toggled in-game with the mute hotkey without touching this setting permanently.
 
+### Internal climax prompt cue (default: on)
+
+When enabled, includes a reminder in ongoing sexual scene prompts that sex and finishing inside can lead to pregnancy and having children, with distinct behavioral guidance for male (fathering/impregnating) and female (conceiving/becoming pregnant) participants.
+
 ---
 
 ## Spectators

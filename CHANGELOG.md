@@ -1,5 +1,16 @@
 # Changelog
 
+## v2.4.3 - 2026-09-16
+
+### Added
+
+- **Conception & pregnancy awareness prompt cue** — Added a toggleable prompt cue in ongoing sex scenes (`0502_sex.prompt`) reminding the LLM that sexual intercourse and finishing inside can lead to pregnancy and conceiving children, differentiated by gender:
+  - **Female perspective & Fertility Mode support** — Integrates with `Fertility Mode.esm` (`ImmersiveEffectsFaction`) to dynamically reflect the character's cycle state and conception chances (peak fertile days / high risk, approaching fertile days, safe days / period, already pregnant, postpartum recovery, in labor), with natural fallback handling when untracked or if Fertility Mode is not installed.
+  - **Male perspective** — Reminds that finishing inside can lead to fathering children and impregnating his partner (handling pulling out cautiously, taking the risk in the heat of passion, or deliberately aiming to conceive).
+- **Internal climax prompt cue setting** — Added `Internal climax prompt cue` (`tton.settings.internalClimaxPromptCue`) toggle setting under **Comments** (defaults to `true`), with corresponding SKSE `ostimnet_settings` decorator integration.
+
+---
+
 ## v2.4.2 - 2026-09-11
 
 ### Changed

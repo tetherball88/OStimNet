@@ -61,6 +61,9 @@ struct Config {
     /// Wait this many seconds after climax before dispatching the batch.
     int ClimaxDebounceSeconds() const;
 
+    /// When true, adds a dedicated prompt cue for internal climaxes (different for male and female).
+    bool EnableInternalClimaxPromptCue() const;
+
     /// Wait this many seconds after speed changes before dispatching the change.
     int SpeedChangeDebounceSeconds() const;
 
