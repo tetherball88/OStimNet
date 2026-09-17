@@ -9,6 +9,7 @@
 #include "src/ConfirmationModal.h"
 #include "src/EventPayloadBuilder.h"
 #include "src/LocationScanService.h"
+#include "src/PulloutService.h"
 
 namespace OStimNet::Papyrus::PapyrusFunctions {
 
@@ -608,7 +609,15 @@ static void RegisterLatentFixed(RE::BSScript::IVirtualMachine* vm,
         return RE::BSFixedString(s.c_str());
     }
 
+    // Papyrus native: Function SetPulloutDecision(Actor actor, string decision) global native
+    void SetPulloutDecision(RE::StaticFunctionTag*, RE::Actor* actor, RE::BSFixedString decisionStr) {
+        if (!actor) return;
+        OStimNet::PulloutService::GetSingleton().SetPulloutDecision(actor, decisionStr.c_str());
+    }
+
     bool Register(RE::BSScript::IVirtualMachine* vm) {
+        vm->RegisterFunction("SetPulloutDecision", "OStimNet", SetPulloutDecision);
+
         vm->RegisterFunction("GetLocationGeneration", "OStimNet", GetLocationGeneration);
         vm->RegisterFunction("GetSceneDescription", "OStimNet", GetSceneDescription);
         vm->RegisterFunction("GetActorListString", "OStimNet", GetActorListString);

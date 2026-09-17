@@ -155,4 +155,10 @@ namespace OStimNet::SkyrimNetIntegration {
      */
     bool EvaluateScheduledSceneAdvance(int threadID, std::function<void()> onDone);
 
+    /**
+     * Evaluates pullout decision with the LLM using the GmLlmVariant prompt.
+     */
+    bool EvaluatePulloutDecision(int threadID);
+
 }  // namespace OStimNet::SkyrimNetIntegration
+

@@ -11,6 +11,7 @@
 #include "OStimEventListener.h"
 #include "ActorUtils.h"
 #include "LocationScanService.h"
+#include "PulloutService.h"
 
 #include <algorithm>
 #include <map>
@@ -447,7 +448,7 @@ void Register() {
         "(skyrimnet_sexlab_ostim_player) is set to 1, the actor is not a child, the actor is not in combat, "
         "and the StartCareScene action is not on cooldown for this actor. Returns 'unavailable' otherwise.",
         [](RE::Actor* actor) -> std::string {
-            SKSE::log::debug("is_start_care_scene_available: checking availability.");
+            SKSE::log::trace("is_start_care_scene_available: checking availability.");
             if (!actor) return "unavailable";
             const char* actorName = actor->GetName();
             // Faction checks.
@@ -455,25 +456,25 @@ void Register() {
             // Check global flag.
             auto* global = RE::TESForm::LookupByEditorID<RE::TESGlobal>("skyrimnet_sexlab_ostim_player");
             if (global && static_cast<int>(global->value) != 1) {
-                SKSE::log::debug("is_start_care_scene_available: actor '{}' (0x{:08X}) -> unavailable (global flag not set, value={})",
+                SKSE::log::trace("is_start_care_scene_available: actor '{}' (0x{:08X}) -> unavailable (global flag not set, value={})",
                     actorName ? actorName : "(unnamed)", actor->GetFormID(), static_cast<int>(global->value));
                 return "unavailable";
             }
             // Child check.
             if (actor->IsChild()) {
-                SKSE::log::debug("is_start_care_scene_available: actor '{}' (0x{:08X}) -> unavailable (is child)",
+                SKSE::log::trace("is_start_care_scene_available: actor '{}' (0x{:08X}) -> unavailable (is child)",
                     actorName ? actorName : "(unnamed)", actor->GetFormID());
                 return "unavailable";
             }
             // Combat check.
             if (actor->IsInCombat()) {
-                SKSE::log::debug("is_start_care_scene_available: actor '{}' (0x{:08X}) -> unavailable (in combat)",
+                SKSE::log::trace("is_start_care_scene_available: actor '{}' (0x{:08X}) -> unavailable (in combat)",
                     actorName ? actorName : "(unnamed)", actor->GetFormID());
                 return "unavailable";
             }
             // Cooldown check.
             bool onCooldown = OStimNet::ConfirmationModal::GetSingleton().IsOnCooldown("StartCareScene", actor);
-            SKSE::log::debug("is_start_care_scene_available: actor '{}' (0x{:08X}) -> {} (cooldown={})",
+            SKSE::log::trace("is_start_care_scene_available: actor '{}' (0x{:08X}) -> {} (cooldown={})",
                 actorName ? actorName : "(unnamed)", actor->GetFormID(), onCooldown ? "unavailable" : "available", onCooldown);
             return onCooldown ? "unavailable" : "available";
         });
@@ -485,7 +486,7 @@ void Register() {
         "OStimActorCountFaction, or TTON_OStimPending, the actor is not a child, the actor is not in combat, "
         "and the StartNewSex action is not on cooldown for this actor. Returns 'unavailable' otherwise.",
         [](RE::Actor* actor) -> std::string {
-            SKSE::log::debug("is_start_new_sex_available: checking availability.");
+            SKSE::log::trace("is_start_new_sex_available: checking availability.");
             if (!actor) return "unavailable";
             const char* actorName = actor->GetName();
             // Faction checks.
@@ -493,25 +494,25 @@ void Register() {
             // Check global flag.
             auto* global = RE::TESForm::LookupByEditorID<RE::TESGlobal>("skyrimnet_sexlab_ostim_player");
             if (global && static_cast<int>(global->value) != 1) {
-                SKSE::log::debug("is_start_new_sex_available: actor '{}' (0x{:08X}) -> unavailable (global flag not set, value={})",
+                SKSE::log::trace("is_start_new_sex_available: actor '{}' (0x{:08X}) -> unavailable (global flag not set, value={})",
                     actorName ? actorName : "(unnamed)", actor->GetFormID(), static_cast<int>(global->value));
                 return "unavailable";
             }
             // Child check.
             if (actor->IsChild()) {
-                SKSE::log::debug("is_start_new_sex_available: actor '{}' (0x{:08X}) -> unavailable (is child)",
+                SKSE::log::trace("is_start_new_sex_available: actor '{}' (0x{:08X}) -> unavailable (is child)",
                     actorName ? actorName : "(unnamed)", actor->GetFormID());
                 return "unavailable";
             }
             // Combat check.
             if (actor->IsInCombat()) {
-                SKSE::log::debug("is_start_new_sex_available: actor '{}' (0x{:08X}) -> unavailable (in combat)",
+                SKSE::log::trace("is_start_new_sex_available: actor '{}' (0x{:08X}) -> unavailable (in combat)",
                     actorName ? actorName : "(unnamed)", actor->GetFormID());
                 return "unavailable";
             }
             // Cooldown check.
             bool onCooldown = OStimNet::ConfirmationModal::GetSingleton().IsOnCooldown("StartNewSex", actor);
-            SKSE::log::debug("is_start_new_sex_available: actor '{}' (0x{:08X}) -> {} (cooldown={})",
+            SKSE::log::trace("is_start_new_sex_available: actor '{}' (0x{:08X}) -> {} (cooldown={})",
                 actorName ? actorName : "(unnamed)", actor->GetFormID(), onCooldown ? "unavailable" : "available", onCooldown);
             return onCooldown ? "unavailable" : "available";
         });
@@ -523,39 +524,39 @@ void Register() {
         "the actor is not a child, the actor is not in combat, "
         "and the SpectatorOfSex action is not on cooldown for this actor. Returns 'unavailable' otherwise.",
         [](RE::Actor* actor) -> std::string {
-            SKSE::log::debug("is_spectate_sex_available: checking availability.");
+            SKSE::log::trace("is_spectate_sex_available: checking availability.");
             if (!actor) return "unavailable";
             const char* actorName = actor->GetName();
 
             // Faction checks.
             if (ActorUtils::IsInFactionByEditorID(actor, "OStimActorCountFaction")) {
-                SKSE::log::debug("is_spectate_sex_available: actor '{}' (0x{:08X}) -> unavailable (in OStimActorCountFaction)",
+                SKSE::log::trace("is_spectate_sex_available: actor '{}' (0x{:08X}) -> unavailable (in OStimActorCountFaction)",
                     actorName ? actorName : "(unnamed)", actor->GetFormID());
                 return "unavailable";
             }
             if (ActorUtils::IsInFactionByEditorID(actor, "TTON_SpectatorFaction")) {
-                SKSE::log::debug("is_spectate_sex_available: actor '{}' (0x{:08X}) -> unavailable (in TTON_SpectatorFaction)",
+                SKSE::log::trace("is_spectate_sex_available: actor '{}' (0x{:08X}) -> unavailable (in TTON_SpectatorFaction)",
                     actorName ? actorName : "(unnamed)", actor->GetFormID());
                 return "unavailable";
             }
 
             // Active thread check.
             if (OStimNet::ThreadDataStore::GetSingleton().GetActiveScenes().empty()) {
-                SKSE::log::debug("is_spectate_sex_available: actor '{}' (0x{:08X}) -> unavailable (no active scenes)",
+                SKSE::log::trace("is_spectate_sex_available: actor '{}' (0x{:08X}) -> unavailable (no active scenes)",
                     actorName ? actorName : "(unnamed)", actor->GetFormID());
                 return "unavailable";
             }
 
             // Child check.
             if (actor->IsChild()) {
-                SKSE::log::debug("is_spectate_sex_available: actor '{}' (0x{:08X}) -> unavailable (is child)",
+                SKSE::log::trace("is_spectate_sex_available: actor '{}' (0x{:08X}) -> unavailable (is child)",
                     actorName ? actorName : "(unnamed)", actor->GetFormID());
                 return "unavailable";
             }
 
             // Combat check.
             if (actor->IsInCombat()) {
-                SKSE::log::debug("is_spectate_sex_available: actor '{}' (0x{:08X}) -> unavailable (in combat)",
+                SKSE::log::trace("is_spectate_sex_available: actor '{}' (0x{:08X}) -> unavailable (in combat)",
                     actorName ? actorName : "(unnamed)", actor->GetFormID());
                 return "unavailable";
             }
@@ -567,18 +568,18 @@ void Register() {
         "is_spectate_sex_flee_available",
         "Returns 'available' if the actor is in TTON_SpectatorFaction and not in TTON_SpectatorFleeFaction. Returns 'unavailable' otherwise.",
         [](RE::Actor* actor) -> std::string {
-            SKSE::log::debug("is_spectate_sex_flee_available: checking availability.");
+            SKSE::log::trace("is_spectate_sex_flee_available: checking availability.");
             if (!actor) return "unavailable";
             const char* actorName = actor->GetName();
 
             if (!ActorUtils::IsInFactionByEditorID(actor, "TTON_SpectatorFaction")) {
-                SKSE::log::debug("is_spectate_sex_flee_available: actor '{}' (0x{:08X}) -> unavailable (not in TTON_SpectatorFaction)",
+                SKSE::log::trace("is_spectate_sex_flee_available: actor '{}' (0x{:08X}) -> unavailable (not in TTON_SpectatorFaction)",
                     actorName ? actorName : "(unnamed)", actor->GetFormID());
                 return "unavailable";
             }
 
             if (ActorUtils::IsInFactionByEditorID(actor, "TTON_SpectatorFleeFaction")) {
-                SKSE::log::debug("is_spectate_sex_flee_available: actor '{}' (0x{:08X}) -> unavailable (in TTON_SpectatorFleeFaction)",
+                SKSE::log::trace("is_spectate_sex_flee_available: actor '{}' (0x{:08X}) -> unavailable (in TTON_SpectatorFleeFaction)",
                     actorName ? actorName : "(unnamed)", actor->GetFormID());
                 return "unavailable";
             }
@@ -614,24 +615,24 @@ void Register() {
         "Returns 'available' if this actor is currently in a sexual OStim scene (OStimActorCountFaction) and the ChangeSexScenePosition action is not on cooldown for them. "
         "Returns 'unavailable' otherwise (actor not in OStimActorCountFaction, not in a scene, scene is not sexual, or action is on cooldown).",
         [](RE::Actor* actor) -> std::string {
-            SKSE::log::debug("is_sex_scene_position_change_available: checking availability.");
+            SKSE::log::trace("is_sex_scene_position_change_available: checking availability.");
             if (!actor) return "unavailable";
             const char* actorName = actor->GetName();
             if (IsNotInOngoingEncounter(actor, "is_sex_scene_position_change_available")) return "unavailable";
             int threadID = OStimNet::ThreadDataStore::GetSingleton().GetActorThreadID(actor->GetFormID());
             if (threadID == -1) {
-                SKSE::log::debug("is_sex_scene_position_change_available: actor '{}' (0x{:08X}) -> unavailable (not in a scene)",
+                SKSE::log::trace("is_sex_scene_position_change_available: actor '{}' (0x{:08X}) -> unavailable (not in a scene)",
                     actorName ? actorName : "(unnamed)", actor->GetFormID());
                 return "unavailable";
             }
             auto sexual = OStimNet::ThreadDataStore::GetSingleton().GetSexual(threadID);
             if (!sexual.value_or(false)) {
-                SKSE::log::debug("is_sex_scene_position_change_available: actor '{}' (0x{:08X}) threadID={} -> unavailable (scene is not sexual)",
+                SKSE::log::trace("is_sex_scene_position_change_available: actor '{}' (0x{:08X}) threadID={} -> unavailable (scene is not sexual)",
                     actorName ? actorName : "(unnamed)", actor->GetFormID(), threadID);
                 return "unavailable";
             }
             bool onCooldown = OStimNet::ConfirmationModal::GetSingleton().IsOnCooldown("ChangeSexScenePosition", actor);
-            SKSE::log::debug("is_sex_scene_position_change_available: actor '{}' (0x{:08X}) threadID={} -> {} (cooldown={})",
+            SKSE::log::trace("is_sex_scene_position_change_available: actor '{}' (0x{:08X}) threadID={} -> {} (cooldown={})",
                 actorName ? actorName : "(unnamed)", actor->GetFormID(), threadID, onCooldown ? "unavailable" : "available", onCooldown);
             return onCooldown ? "unavailable" : "available";
         });
@@ -650,6 +651,14 @@ void Register() {
             return OStimNet::ConfirmationModal::GetSingleton().IsOnCooldown("ChangeSexSceneIntent", actor)
                 ? "unavailable" : "available";
         });
+
+    RegisterDecorator(
+        "is_pullout_decision_available",
+        "Returns 'available' if this actor is currently in a sexual OStim scene with vaginal sex, pullout mechanics are enabled, and thread intent is not prohibited by configuration. Returns 'unavailable' otherwise.",
+        [](RE::Actor* actor) -> std::string {
+            return PulloutService::GetSingleton().IsPulloutAvailable(actor) ? "available" : "unavailable";
+        });
+
 
     RegisterDecorator(
         "is_sex_scene_pace_change_available",
@@ -1945,4 +1954,139 @@ bool EvaluateScheduledSceneAdvance(int threadID, std::function<void()> onDone) {
     return queued;
 }
 
+bool EvaluatePulloutDecision(int threadID) {
+    if (!PublicSendCustomPromptToLLM) {
+        SKSE::log::warn("EvaluatePulloutDecision: PublicSendCustomPromptToLLM unavailable");
+        PulloutService::GetSingleton().OnLLMFailure(threadID);
+        return false;
+    }
+
+    if (!g_ostimThreadInterface || !g_ostimThreadInterface->IsThreadValid(static_cast<uint32_t>(threadID)) ||
+        !ThreadDataStore::GetSingleton().IsOStimNet(threadID)) {
+        SKSE::log::info("EvaluatePulloutDecision: thread {} is no longer valid", threadID);
+        PulloutService::GetSingleton().OnLLMFailure(threadID);
+        return false;
+    }
+
+    auto allActors = ThreadDataStore::GetSingleton().GetActorPtrs(threadID);
+    if (allActors.empty()) {
+        PulloutService::GetSingleton().OnLLMFailure(threadID);
+        return false;
+    }
+
+    std::vector<RE::Actor*> actors;
+    const char* curScene = g_ostimThreadInterface->GetCurrentSceneID(static_cast<uint32_t>(threadID));
+    auto pairs = PulloutService::GetVaginalPairs(curScene);
+
+    constexpr uint32_t kMaxActors = 8;
+    OstimNG_API::Thread::ActorData buffer[kMaxActors];
+    uint32_t count = g_ostimThreadInterface->GetActors(static_cast<uint32_t>(threadID), buffer, kMaxActors);
+
+    int peakingGiverSlot = -1;
+    int matchingReceiverSlot = -1;
+    float maxEx = -1.0f;
+    for (const auto& pair : pairs) {
+        if (pair.giverSlot >= 0 && static_cast<uint32_t>(pair.giverSlot) < count) {
+            float ex = buffer[pair.giverSlot].excitement;
+            if (ex > maxEx) {
+                maxEx = ex;
+                peakingGiverSlot = pair.giverSlot;
+                matchingReceiverSlot = pair.receiverSlot;
+            }
+        }
+    }
+
+    if (peakingGiverSlot >= 0 && matchingReceiverSlot >= 0) {
+        if (static_cast<uint32_t>(peakingGiverSlot) < count) {
+            auto* a = RE::TESForm::LookupByID<RE::Actor>(buffer[peakingGiverSlot].formID);
+            if (a) actors.push_back(a);
+        }
+        if (static_cast<uint32_t>(matchingReceiverSlot) < count) {
+            auto* a = RE::TESForm::LookupByID<RE::Actor>(buffer[matchingReceiverSlot].formID);
+            if (a && (actors.empty() || a != actors.front())) actors.push_back(a);
+        }
+    }
+
+    if (actors.empty()) {
+        actors = allActors;
+    }
+
+    nlohmann::json actorUUIDs = nlohmann::json::array();
+    std::vector<std::string> actorNameVec;
+    for (auto* actor : actors) {
+        if (!actor) continue;
+        uint64_t uuid = ActorToUUID(actor);
+        if (uuid != 0) {
+            actorUUIDs.push_back(uuid);
+            actorNameVec.push_back(ThreadDataStore::GetActorDisplayName(actor, ""));
+        }
+    }
+
+    nlohmann::json contextJson;
+    contextJson["actors"] = std::move(actorUUIDs);
+    contextJson["actorNames"] = OStimNet::FormatActorList(actorNameVec);
+    contextJson["intent"] = OStimNet::IntentToString(ThreadDataStore::GetSingleton().GetIntent(threadID));
+    contextJson["currentSceneDescription"] = OStimNet::GetSceneDescription(static_cast<uint32_t>(threadID));
+    contextJson["threadID"] = threadID;
+
+    std::string contextStr = contextJson.dump();
+    std::string promptName = "ostimnet_evaluations/ostimnet_evaluate_pullout_decision";
+    std::string llmVariant = OStimNet::Config::GetSingleton().GmLlmVariant();
+
+    auto callbackHolder = std::make_shared<std::function<void(const char*, int)>>();
+    *callbackHolder = [threadID, promptName, llmVariant, contextStr, callbackHolder](const char* responseJsonStr, int success) {
+        if (!g_ostimThreadInterface || !g_ostimThreadInterface->IsThreadValid(static_cast<uint32_t>(threadID)) ||
+            !ThreadDataStore::GetSingleton().IsOStimNet(threadID)) {
+            SKSE::log::info("EvaluatePulloutDecision: thread {} is no longer valid during LLM wait", threadID);
+            PulloutService::GetSingleton().OnLLMFailure(threadID);
+            return;
+        }
+
+        auto retryAction = [threadID, promptName, llmVariant, contextStr, callbackHolder]() {
+            SKSE::log::info("EvaluatePulloutDecision: retrying prompt for thread {}", threadID);
+            PublicSendCustomPromptToLLM(promptName.c_str(), llmVariant.c_str(), contextStr.c_str(), *callbackHolder);
+        };
+        auto ignoreAction = [threadID]() {
+            SKSE::log::info("EvaluatePulloutDecision: player chose to ignore failed pullout evaluation for thread {}", threadID);
+            PulloutService::GetSingleton().OnLLMFailure(threadID);
+        };
+
+        if (!success || !responseJsonStr || responseJsonStr[0] == '\0') {
+            SKSE::log::error("EvaluatePulloutDecision: LLM request failed for thread {}", threadID);
+            ShowLLMRetryModal("Pullout Decision", "The LLM request failed or returned an empty response.", retryAction, ignoreAction);
+            return;
+        }
+
+        nlohmann::json resp = nlohmann::json::parse(responseJsonStr, nullptr, /*exceptions=*/false);
+        if (resp.is_discarded()) {
+            std::string sanitized = JsonService::SanitizeLLMJson(responseJsonStr);
+            if (!sanitized.empty())
+                resp = nlohmann::json::parse(sanitized, nullptr, /*exceptions=*/false);
+        }
+
+        if (resp.is_discarded()) {
+            SKSE::log::error("EvaluatePulloutDecision: failed to parse response JSON: {}", responseJsonStr ? responseJsonStr : "(null)");
+            ShowLLMRetryModal("Pullout Decision", "Failed to parse the LLM response.", retryAction, ignoreAction);
+            return;
+        }
+
+        std::string decision = "finish_inside";
+        if (resp.contains("decision") && resp["decision"].is_string()) {
+            decision = resp["decision"].get<std::string>();
+        }
+
+        SKSE::log::info("EvaluatePulloutDecision: LLM returned decision='{}' for thread {}", decision, threadID);
+        PulloutService::GetSingleton().OnLLMDecision(threadID, decision);
+    };
+
+    bool queued = PublicSendCustomPromptToLLM(promptName.c_str(), llmVariant.c_str(), contextStr.c_str(), *callbackHolder);
+    if (!queued) {
+        SKSE::log::warn("EvaluatePulloutDecision: PublicSendCustomPromptToLLM returned false");
+        PulloutService::GetSingleton().OnLLMFailure(threadID);
+        return false;
+    }
+    return true;
+}
+
 }  // namespace OStimNet::SkyrimNetIntegration
+

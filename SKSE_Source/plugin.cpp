@@ -11,6 +11,8 @@
 #include "src/OStimEventListener.h"
 #include "src/LocationScanService.h"
 #include "src/ScheduledEvalService.h"
+#include "src/PulloutService.h"
+#include <SKSE/InputMap.h>
 
 using namespace SKSE;
 
@@ -71,6 +73,37 @@ public:
             auto* btn = event->AsButtonEvent();
             if (!btn || !btn->IsDown()) continue;
 
+            // Check OStim's pullout hotkey in player's thread
+            int pulloutKey = OStimNet::PulloutService::GetSingleton().GetOStimPulloutHotkey();
+            if (pulloutKey > 0) {
+                uint32_t keyCode = btn->GetIDCode();
+                RE::INPUT_DEVICE deviceType = btn->GetDevice();
+                if (deviceType == RE::INPUT_DEVICE::kMouse) {
+                    keyCode = 256 + keyCode;
+                } else if (deviceType == RE::INPUT_DEVICE::kGamepad) {
+                    keyCode = SKSE::InputMap::GamepadMaskToKeycode(keyCode);
+                }
+
+                if (static_cast<int>(keyCode) == pulloutKey) {
+                    if (OStimNet::PulloutService::GetSingleton().TriggerPlayerPullout()) {
+                        SKSE::log::info("OStimNet: pullout hotkey ({}) triggered immediate pullout for player thread", pulloutKey);
+                        return RE::BSEventNotifyControl::kStop;
+                    } else {
+                        // If player thread is an active OStimNet sexual thread, consume the key to prevent native OStim pullout
+                        if (g_ostimThreadInterface && OStimNet::Config::GetSingleton().PulloutEnabled()) {
+                            uint32_t threadID = g_ostimThreadInterface->GetPlayerThreadID();
+                            if (g_ostimThreadInterface->IsThreadValid(threadID)) {
+                                auto& store = OStimNet::ThreadDataStore::GetSingleton();
+                                if (store.IsOStimNet(static_cast<int>(threadID)) && store.GetSexual(static_cast<int>(threadID)).value_or(false)) {
+                                    SKSE::log::info("OStimNet: pullout hotkey ({}) consumed to prevent native OStim pullout in thread {}", pulloutKey, threadID);
+                                    return RE::BSEventNotifyControl::kStop;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             int muteHotkey = OStimNet::Config::GetSingleton().ToggleMuteHotkey();
             if (muteHotkey > 0) {
                 uint32_t diCode = MapVirtualKeyA(static_cast<uint32_t>(muteHotkey), MAPVK_VK_TO_VSC);
@@ -100,6 +133,14 @@ public:
         return RE::BSEventNotifyControl::kContinue;
     }
 };
+
+static void RegisterHotkeyInputSink() {
+    if (auto* idm = RE::BSInputDeviceManager::GetSingleton()) {
+        idm->RemoveEventSink(HotkeyInputSink::GetSingleton());
+        idm->PrependEventSink(HotkeyInputSink::GetSingleton());
+        SKSE::log::info("OStimNet: hotkey input sink prepended to input dispatcher.");
+    }
+}
 
 SKSEPluginLoad(const LoadInterface* skse) {
     SKSE::Init(skse);
@@ -140,10 +181,8 @@ SKSEPluginLoad(const LoadInterface* skse) {
                     case SKSE::MessagingInterface::kNewGame:
                         SKSE::log::info("New game/Load...");
                         OStimNet::Config::GetSingleton().InitFromConfig();
-                        if (auto* idm = RE::BSInputDeviceManager::GetSingleton()) {
-                            idm->AddEventSink(HotkeyInputSink::GetSingleton());
-                            SKSE::log::info("OStimNet: hotkey input sink re-registered after load.");
-                        }
+                        OStimNet::PulloutService::GetSingleton().SyncOStimPulloutSetting();
+                        RegisterHotkeyInputSink();
                         OStimNet::LocationScanService::GetSingleton().OnGameReady();
                         break;
 
@@ -177,6 +216,8 @@ SKSEPluginLoad(const LoadInterface* skse) {
                         OStimNet::Config::GetSingleton().ApplyLogLevel();
                         OStimNet::OStimEventListener::Register();
                         OStimNet::LocationScanService::GetSingleton().Register();
+                        OStimNet::PulloutService::GetSingleton().SyncOStimPulloutSetting();
+                        RegisterHotkeyInputSink();
 
                         break;
                     }

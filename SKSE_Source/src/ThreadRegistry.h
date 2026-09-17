@@ -63,6 +63,33 @@ inline const char* ThreadPhaseToString(ThreadPhase p) {
 }
 
 // -------------------------------------------------------------------------
+// Pullout decision states
+// -------------------------------------------------------------------------
+enum class PulloutDecision {
+    Undecided = 0,
+    RequestPullout,
+    AllowFinishInside,
+    DoesntCare
+};
+
+inline const char* PulloutDecisionToString(PulloutDecision d) {
+    switch (d) {
+        case PulloutDecision::RequestPullout:    return "request_pullout";
+        case PulloutDecision::AllowFinishInside: return "allow_finish_inside";
+        case PulloutDecision::DoesntCare:        return "doesnt_care";
+        default:                                 return "undecided";
+    }
+}
+
+inline PulloutDecision PulloutDecisionFromString(const std::string& s) {
+    if (s == "request_pullout" || s == "pullout") return PulloutDecision::RequestPullout;
+    if (s == "allow_finish_inside" || s == "finish_inside") return PulloutDecision::AllowFinishInside;
+    if (s == "doesnt_care") return PulloutDecision::DoesntCare;
+    return PulloutDecision::Undecided;
+}
+
+
+// -------------------------------------------------------------------------
 // Per-thread data store and lifecycle manager.
 //
 // Everything is accessed on the game thread; no locking is needed.
@@ -258,7 +285,7 @@ public:
     std::optional<int> GetPlayerThreadID() const {
         if (g_ostimThreadInterface) {
             uint32_t tid = g_ostimThreadInterface->GetPlayerThreadID();
-            if (tid != 0 && g_ostimThreadInterface->IsThreadValid(tid)) {
+            if (g_ostimThreadInterface->IsThreadValid(tid)) {
                 return static_cast<int>(tid);
             }
         }
@@ -590,6 +617,67 @@ public:
         return it != _threads.end() && it->second.isOStimNet;
     }
 
+    // =========================================================================
+    // Pullout mechanics
+    // =========================================================================
+
+    void SetPulloutDecision(int threadID, PulloutDecision decision) {
+        SKSE::log::info("ThreadRegistry: thread {} SetPulloutDecision -> {}", threadID, PulloutDecisionToString(decision));
+        _threads[threadID].pulloutDecision = decision;
+    }
+
+    PulloutDecision GetPulloutDecision(int threadID) const {
+        auto it = _threads.find(threadID);
+        return it != _threads.end() ? it->second.pulloutDecision : PulloutDecision::Undecided;
+    }
+
+    void SetPulloutStallActive(int threadID, bool active) {
+        auto& state = _threads[threadID];
+        state.pulloutStallActive = active;
+        if (active) {
+            state.pulloutStallStartTime = std::chrono::steady_clock::now();
+        }
+        SKSE::log::info("ThreadRegistry: thread {} SetPulloutStallActive -> {}", threadID, active);
+    }
+
+    bool IsPulloutStallActive(int threadID) const {
+        auto it = _threads.find(threadID);
+        return it != _threads.end() && it->second.pulloutStallActive;
+    }
+
+    void SetPulloutEvaluationPending(int threadID, bool pending) {
+        _threads[threadID].pulloutEvaluationPending = pending;
+    }
+
+    bool IsPulloutEvaluationPending(int threadID) const {
+        auto it = _threads.find(threadID);
+        return it != _threads.end() && it->second.pulloutEvaluationPending;
+    }
+
+    void SetPulloutEvaluatedForCycle(int threadID, bool evaluated) {
+        _threads[threadID].pulloutEvaluatedForCycle = evaluated;
+    }
+
+    bool IsPulloutEvaluatedForCycle(int threadID) const {
+        auto it = _threads.find(threadID);
+        return it != _threads.end() && it->second.pulloutEvaluatedForCycle;
+    }
+
+    void SetPulloutCueFired(int threadID, bool fired) {
+        _threads[threadID].pulloutCueFired = fired;
+    }
+
+    bool HasPulloutCueFired(int threadID) const {
+        auto it = _threads.find(threadID);
+        return it != _threads.end() && it->second.pulloutCueFired;
+    }
+
+    std::chrono::steady_clock::time_point GetPulloutStallStartTime(int threadID) const {
+        auto it = _threads.find(threadID);
+        return it != _threads.end() ? it->second.pulloutStallStartTime : std::chrono::steady_clock::time_point{};
+    }
+
+
     void SetMainActors(int threadID, std::vector<RE::Actor*> actors) {
         SKSE::log::info("ThreadRegistry: thread {} SetMainActors count={}", threadID, actors.size());
         for (auto* a : actors)
@@ -832,7 +920,9 @@ public:
                 }
             }
             nw.secondaryActors = std::move(secondary);
-            SKSE::log::info("ThreadRegistry: CopyStateForContinuation secondaryActors={}", FormatActorNames(nw.secondaryActors));
+            nw.pulloutDecision = old.pulloutDecision;
+            SKSE::log::info("ThreadRegistry: CopyStateForContinuation secondaryActors={} pulloutDecision={}",
+                FormatActorNames(nw.secondaryActors), PulloutDecisionToString(nw.pulloutDecision));
         }
     }
 
@@ -902,6 +992,14 @@ private:
         std::vector<RE::Actor*> overrideSecondaryActors;
         // Per-thread spectators: spectatorFormID → targetActorFormID
         std::unordered_map<RE::FormID, RE::FormID> spectators;
+
+        // --- pullout mechanics ---
+        PulloutDecision         pulloutDecision          = PulloutDecision::Undecided;
+        bool                    pulloutStallActive       = false;
+        bool                    pulloutEvaluationPending = false;
+        bool                    pulloutEvaluatedForCycle = false;
+        bool                    pulloutCueFired          = false;
+        std::chrono::steady_clock::time_point pulloutStallStartTime;
     };
 
     int _nextClaimToken = 1;

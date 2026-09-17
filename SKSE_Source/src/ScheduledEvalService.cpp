@@ -3,6 +3,7 @@
 #include "Config.h"
 #include "ThreadRegistry.h"
 #include "SkyrimNetIntegration.h"
+#include "PulloutService.h"
 
 namespace OStimNet {
 
@@ -161,6 +162,8 @@ void ScheduledEvalService::RunLoop() {
             }
         }
 
+        PulloutService::GetSingleton().CheckActiveThreads(activeThreads);
+
         auto now = std::chrono::steady_clock::now();
         int intervalSecs = Config::GetSingleton().ScheduledEvalIntervalSeconds();
 
@@ -261,3 +264,4 @@ void ScheduledEvalService::RunLoop() {
 }
 
 } // namespace OStimNet
+

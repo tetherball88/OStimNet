@@ -21,6 +21,10 @@ Function Log(string msg, int level = 2) global native
 ; Returns "" if no intent has been set for that thread.
 string Function GetThreadIntent(int ThreadID) global native
 
+; Sets the pullout decision ("request_pullout", "allow_finish_inside", "doesnt_care") for the actor's thread
+Function SetPulloutDecision(Actor akActor, string decision) global native
+
+
 ; Returns the current sexual phase name for a thread: "undressing", "foreplay", "oral", or "sex".
 ; Returns "" if phase tracking is disabled for this thread (e.g. dom/aggressive intent,
 ; or the EnableThreadPhases config setting is off).

@@ -41,9 +41,9 @@ public:
         bool onCooldown = it != _cooldowns.end() && std::chrono::steady_clock::now() < it->second;
         if (onCooldown) {
             auto remaining = std::chrono::duration_cast<std::chrono::seconds>(it->second - std::chrono::steady_clock::now()).count();
-            SKSE::log::debug("ConfirmationModal::IsOnCooldown - key='{}' ON COOLDOWN ({}s remaining)", key, remaining);
+            SKSE::log::trace("ConfirmationModal::IsOnCooldown - key='{}' ON COOLDOWN ({}s remaining)", key, remaining);
         } else {
-            SKSE::log::debug("ConfirmationModal::IsOnCooldown - key='{}' not on cooldown", key);
+            SKSE::log::trace("ConfirmationModal::IsOnCooldown - key='{}' not on cooldown", key);
         }
         return onCooldown;
     }

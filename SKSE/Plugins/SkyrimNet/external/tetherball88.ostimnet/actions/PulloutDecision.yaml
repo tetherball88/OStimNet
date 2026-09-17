@@ -1,0 +1,24 @@
+customCategory: TTON_CategoryManage
+name: PulloutDecision
+description: "{{render_template(\"ostimnet_actions/ostimnet_action_pullout_decision\")}}"
+questEditorId: TTON_MainController
+scriptName: TTON_Actions
+executionFunctionName: PulloutDecisionExecute
+parameterMapping:
+  - type: speaker
+    name: akActor
+    description: Speaker Actor parameter (triggering entity)
+  - type: dynamic
+    name: decision
+    description: "Pullout decision. Must be one of: 'request_pullout', 'allow_finish_inside', 'doesnt_care'."
+  - type: dynamic
+    name: reasoning
+    description: Explain why you chose this pullout decision based on character personality, relationship, and desires.
+enabled: true
+eligibilityRules:
+  - conditions:
+      - decoratorName: is_pullout_decision_available
+        arguments:
+          - currentActor
+        comparisonOperator: ==
+        expectedValue: "available"

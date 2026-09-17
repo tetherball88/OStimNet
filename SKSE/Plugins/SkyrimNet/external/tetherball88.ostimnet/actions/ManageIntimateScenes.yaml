@@ -1,6 +1,6 @@
 customCategory: TTON_CategoryManage
 name: ManageIntimateScenes
-description: "Actions to manage ongoing sex - change position, change pace, change intent, invite others, stop sex"
+description: "Actions to manage ongoing sex - change position, change pace, change intent, invite others, ask to pullout or allow to finish inside, stop sex"
 enabled: true
 parameterMapping:
   - type: dynamic

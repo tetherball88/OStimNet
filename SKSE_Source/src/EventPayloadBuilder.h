@@ -239,4 +239,11 @@ inline std::string BuildIntentChanged(int threadID,
     return j.dump();
 }
 
+// --- ostimnet_partner_near_edge -------------------------------------------
+inline std::string BuildPartnerNearEdge(int threadID, RE::Actor* speaker = nullptr) {
+    std::string speakerName = ThreadDataStore::GetActorDisplayName(speaker, "");
+    std::string msg = "Partner is tensing up and approaching climax.";
+    return BuildBaseEventJson("partner_near_edge", msg, threadID, Config::GetSingleton().IsMuted(), speakerName).dump();
+}
+
 }  // namespace OStimNet::EventPayloadBuilder

@@ -174,6 +174,34 @@ bool Config::EnableAggressiveIntent() const {
 }
 
 // -----------------------------------------------------------------------------
+// Pullout Mechanics
+// -----------------------------------------------------------------------------
+
+bool Config::PulloutEnabled() const {
+    std::string val = GetValue("tton.pullout.enabled", "true");
+    return val == "true" || val == "1";
+}
+
+float Config::PulloutExcitementThreshold() const {
+    try { return std::stof(GetValue("tton.pullout.excitementThreshold", "85")); }
+    catch (...) { return 85.0f; }
+}
+
+float Config::PulloutEvalTimeoutSeconds() const {
+    try { return std::stof(GetValue("tton.pullout.evalTimeoutSeconds", "25")); }
+    catch (...) { return 25.0f; }
+}
+
+bool Config::PulloutNarrateCue() const {
+    std::string val = GetValue("tton.pullout.narrateCue", "true");
+    return val == "true" || val == "1";
+}
+
+std::string Config::PulloutProhibitedIntents() const {
+    return GetValue("tton.pullout.prohibitedIntents", "aggressive_dom");
+}
+
+// -----------------------------------------------------------------------------
 // Controls
 // -----------------------------------------------------------------------------
 

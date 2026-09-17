@@ -230,6 +230,7 @@ inline const char* (*ONavGetAllActions)(const char* tag) = nullptr;
  */
 #ifndef OSTIMNAVIGATOR_BUILDING
 inline const char* (*ONavGetSceneActions)(const char* sceneId) = nullptr;
+inline const char* (*ONavGetSceneActionsDetailed)(const char* sceneId) = nullptr;
 #endif
 
 /**
@@ -322,6 +323,21 @@ inline int (*ONavGetScenePhaseRank)(const char* sceneId) = nullptr;
 #endif
 
 /**
+ * Searches and returns the best matching pullout scene for the given active scene.
+ * Excludes vaginalsex/intercourse, matches actor pose height tiers, and prioritizes
+ * malemasturbation, handjob, boobjob, or cum-on actions.
+ *
+ * @param sceneId   Current active scene ID. Must not be null.
+ * @param threadId  OStim thread ID.
+ * @return Pointer to static null-terminated buffer inside OStimNavigator.dll, or "" if none found.
+ *         COPY IT IMMEDIATELY — it is overwritten on the next call.
+ * @note Not thread-safe. Call only from the SKSE game thread.
+ */
+#ifndef OSTIMNAVIGATOR_BUILDING
+inline const char* (*ONavFindPulloutScene)(const char* sceneId, uint32_t threadId) = nullptr;
+#endif
+
+/**
  * Load OStimNavigator.dll and resolve all exported function pointers.
  *
  * Call once during plugin initialization (kDataLoaded is recommended so the
@@ -371,6 +387,9 @@ inline bool ONavFindFunctions() {
     ONavGetSceneActions = reinterpret_cast<const char*(*)(const char*)>(
         GetProcAddress(hDLL, "ONavGetSceneActions"));
 
+    ONavGetSceneActionsDetailed = reinterpret_cast<const char*(*)(const char*)>(
+        GetProcAddress(hDLL, "ONavGetSceneActionsDetailed"));
+
     ONavGetSceneTags = reinterpret_cast<const char*(*)(const char*)>(
         GetProcAddress(hDLL, "ONavGetSceneTags"));
 
@@ -385,6 +404,9 @@ inline bool ONavFindFunctions() {
 
     ONavGetScenePhaseRank = reinterpret_cast<int(*)(const char*)>(
         GetProcAddress(hDLL, "ONavGetScenePhaseRank"));
+
+    ONavFindPulloutScene = reinterpret_cast<const char*(*)(const char*, uint32_t)>(
+        GetProcAddress(hDLL, "ONavFindPulloutScene"));
 
     return ONavBuildSceneDescription != nullptr;
 }

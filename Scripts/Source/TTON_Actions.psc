@@ -524,3 +524,17 @@ Function SpectatorOfSexFleeActionExecute(Actor akActor)
     endif
 EndFunction
 
+;==========================================================================
+; Pullout Decision Action
+; Receiver or giver indicates whether to pull out or finish inside.
+;==========================================================================
+
+Function PulloutDecisionExecute(Actor akActor, string decision, string reasoning)
+    TTON_Debug.debug("PulloutDecisionExecute: actor=" + TTON_Utils.GetActorName(akActor) + ", decision=" + decision + ", reasoning=" + reasoning)
+    if (!akActor)
+        return
+    endif
+    OStimNet.SetPulloutDecision(akActor, decision)
+EndFunction
+
+

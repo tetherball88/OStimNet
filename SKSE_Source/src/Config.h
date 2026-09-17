@@ -94,6 +94,25 @@ struct Config {
     bool EnableAggressiveIntent() const;
 
     // -------------------------------------------------------------------------
+    // Pullout Mechanics
+    // -------------------------------------------------------------------------
+
+    /// When true, automated pullout evaluation and climax stalling are enabled.
+    bool PulloutEnabled() const;
+
+    /// Excitement threshold (0-100) of the vaginal giver at which climax is stalled.
+    float PulloutExcitementThreshold() const;
+
+    /// Seconds to wait for actor's dialogue and PulloutDecision action call before fallback to LLM evaluation.
+    float PulloutEvalTimeoutSeconds() const;
+
+    /// When true, fires a sensory cue (ostimnet_partner_near_edge) at threshold.
+    bool PulloutNarrateCue() const;
+
+    /// Scene intents that disallow pullout mechanics ("none", "aggressive", "aggressive_dom").
+    std::string PulloutProhibitedIntents() const;
+
+    // -------------------------------------------------------------------------
     // Controls
     // -------------------------------------------------------------------------
 

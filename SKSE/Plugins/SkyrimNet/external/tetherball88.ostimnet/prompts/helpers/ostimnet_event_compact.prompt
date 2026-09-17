@@ -67,6 +67,8 @@
     {{msg}}
 {% else if tton_type == "spectator_fled" %}
     {{msg}}
+{% else if tton_type == "partner_near_edge" %}
+    {{msg}}
 {% else if tton_type == "intent_changed" %}
     {% if intent == "romantic" %}
         {% set mainActorsRole = "initiators" %}

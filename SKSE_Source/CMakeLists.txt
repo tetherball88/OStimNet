@@ -45,9 +45,10 @@ include("${CommonLibPath}/cmake/CommonLibSSE.cmake")
 # find_package(CommonLibSSE CONFIG REQUIRED)
 
 # Collect all source files
-file(GLOB_RECURSE SOURCES
+file(GLOB_RECURSE SRC_SOURCES "src/*.cpp")
+set(SOURCES
     "plugin.cpp"
-    "src/*.cpp"
+    ${SRC_SOURCES}
     "version.rc"
 )
 

@@ -416,3 +416,39 @@ schema:
       defaultValue: "OStim"
       category: "Undressing"
 
+    # Pullout Mechanics
+    - name: "Enable pullout mechanics"
+      path: "tton.pullout.enabled"
+      type: "bool"
+      description: "When enabled, OStimNet monitors excitement during vaginal sex and evaluates pullout decisions, stalling climax to allow pulling out before ejaculation."
+      defaultValue: true
+      category: "Pullout Mechanics"
+    - name: "Pullout excitement threshold"
+      path: "tton.pullout.excitementThreshold"
+      type: "float"
+      description: "Excitement level (0-100) of the vaginal giver at which climax is stalled to evaluate pullout."
+      defaultValue: 85
+      category: "Pullout Mechanics"
+    - name: "Pullout actor decision timeout (seconds)"
+      path: "tton.pullout.evalTimeoutSeconds"
+      type: "float"
+      description: "Seconds to wait for an actor's dialogue and PulloutDecision action call after firing the near-edge narration trigger, before falling back to custom LLM evaluation."
+      defaultValue: 25
+      category: "Pullout Mechanics"
+    - name: "Sensory narration cue at threshold"
+      path: "tton.pullout.narrateCue"
+      type: "bool"
+      description: "When enabled, dispatches an ostimnet_partner_near_edge sensory event to SkyrimNet when giver excitement crosses threshold."
+      defaultValue: true
+      category: "Pullout Mechanics"
+    - name: "Prohibited intents"
+      path: "tton.pullout.prohibitedIntents"
+      type: "select"
+      description: "Defines which scene intents disallow pullout mechanics. 'none': pullout is permitted across all scene intents; 'aggressive': pullout is disallowed in aggressive scenes; 'aggressive_dom': pullout is disallowed in both aggressive and dominant scenes."
+      defaultValue: "aggressive_dom"
+      options:
+        - "none"
+        - "aggressive"
+        - "aggressive_dom"
+      category: "Pullout Mechanics"
+

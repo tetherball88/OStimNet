@@ -12,6 +12,7 @@
 #include "ThreadRegistry.h"
 #include "OCumOverlayReader.h"
 #include "ScheduledEvalService.h"
+#include "PulloutService.h"
 namespace OStimNet {
 
 class OStimEventListener : public RE::BSTEventSink<SKSE::ModCallbackEvent> {
@@ -508,6 +509,7 @@ private:
     //   numArg = threadID  |  strArg = ""  |  sender = None
     void OnThreadEnd(int threadID) {
         SKSE::log::info("OStimEventListener: thread {} ended", threadID);
+        PulloutService::GetSingleton().OnThreadEnd(threadID);
         _suppressNextSceneChange.erase(threadID);  // clean up if thread ended before first scene change
         _suppressNextSpeedChange.erase(threadID);   // clean up if thread ended before first speed change
         _skipNextSceneTrigger.erase(threadID);     // clean up if thread ended before the marked scene change

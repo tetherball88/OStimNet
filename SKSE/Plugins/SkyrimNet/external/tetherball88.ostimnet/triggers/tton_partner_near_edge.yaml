@@ -1,0 +1,23 @@
+name: tton_partner_near_edge
+description: Sensory awareness when partner is tensing up and approaching climax during intercourse
+eventCriteria:
+  eventType: tton_event
+  schemaConditions:
+    - fieldPath: tton_type
+      operator: equals
+      value: partner_near_edge
+      caseSensitive: false
+    - fieldPath: skipTrigger
+      operator: equals
+      value: false
+    - fieldPath: speaker
+      operator: not_equals
+      value: ""
+audience: nearby_npcs
+response:
+  type: direct_narration
+  content: "Your partner is tensing up, breathing heavily, and right on the edge of climax! React with spoken dialogue in this intense moment, and make an action call to PulloutDecision deciding whether to request pulling out or allow finishing inside."
+enabled: true
+cooldownSeconds: 20
+priority: 8
+interrupt: false
