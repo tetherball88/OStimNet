@@ -1,6 +1,6 @@
 # Changelog
 
-## v2.4.3 - 2026-09-16
+## v2.4.3 - 2026-09-16 (Requires SkyrimNet 25+)
 
 ### Added
 
@@ -11,7 +11,7 @@
 
 ---
 
-## v2.4.2 - 2026-09-11
+## v2.4.2 - 2026-09-11 (Requires SkyrimNet 25+)
 
 ### Changed
 
