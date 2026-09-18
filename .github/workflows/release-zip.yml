@@ -19,18 +19,39 @@ jobs:
 
       # build steps here if needed
 
-      - name: Create selective zip
+      - name: Create selective zips
         run: |
           mkdir -p out
-          # use the tag from a push context
           TAG="${{ github.ref_name }}"
-          # quote paths in case
-          zip -r "out/OStimNet_${TAG}.zip" \
+
+          # 1. SkyrimNet v25 (standard structure)
+          zip -r "out/OStimNet_${TAG}_SkyrimNet_v25.zip" \
             Interface/ \
             Scripts/ \
             SKSE/ \
             TT_OStimNet.esp \
             -x ".github/*"
+
+          # 2. SkyrimNet vPre-25 (legacy loose structure)
+          mkdir -p staging_pre25
+          cp -r Interface Scripts SKSE TT_OStimNet.esp staging_pre25/
+          cp -r staging_pre25/SKSE/Plugins/SkyrimNet/external/tetherball88.ostimnet/* staging_pre25/SKSE/Plugins/SkyrimNet/
+          rm -rf staging_pre25/SKSE/Plugins/SkyrimNet/external
+
+          (cd staging_pre25 && zip -r "../out/OStimNet_${TAG}_SkyrimNet_vPre-25.zip" \
+            Interface/ \
+            Scripts/ \
+            SKSE/ \
+            TT_OStimNet.esp)
+          rm -rf staging_pre25
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-artifacts
+          path: |
+            out/OStimNet_${{ github.ref_name }}_SkyrimNet_v25.zip
+            out/OStimNet_${{ github.ref_name }}_SkyrimNet_vPre-25.zip
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -43,4 +64,6 @@ jobs:
             ## Release Notes
             See the changelog for full details: https://github.com/${{ github.repository }}/blob/${{ github.ref_name }}/CHANGELOG.md
           files: |
-            out/OStimNet_${{ github.ref_name }}.zip
+            out/OStimNet_${{ github.ref_name }}_SkyrimNet_v25.zip
+            out/OStimNet_${{ github.ref_name }}_SkyrimNet_vPre-25.zip
+
