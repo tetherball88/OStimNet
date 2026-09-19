@@ -212,6 +212,16 @@ struct Config {
     /// Undressing approach for NPC-only threads.
     std::string UndressingApproachNpc() const;
 
+    // -------------------------------------------------------------------------
+    // External scenes
+    // -------------------------------------------------------------------------
+
+    /// When true, external player threads prompt the player for intent and actor roles.
+    bool ExternalScenesPlayerThread() const;
+
+    /// When true, external NPC-only threads prompt the player for intent and actor roles.
+    bool ExternalScenesNpcThreads() const;
+
 private:
     std::optional<bool> m_muteOverride;
     std::unordered_map<std::string, std::string> m_defaults;

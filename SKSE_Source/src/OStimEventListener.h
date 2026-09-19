@@ -84,6 +84,16 @@ public:
         SKSE::log::info("OStimEventListener: reset on game load.");
     }
 
+    // Called when the user cancels external thread setup or the thread is discarded.
+    void CancelPendingThread(int threadID) {
+        _suppressNextSceneChange.erase(threadID);
+        _suppressNextSpeedChange.erase(threadID);
+        _skipNextSceneTrigger.erase(threadID);
+        ThreadDataStore::GetSingleton().ClearThread(threadID);
+        SKSE::log::info("OStimEventListener: thread {} cancelled and cleared", threadID);
+    }
+
+
 protected:
     // ProcessEvent must return as fast as possible — OStim's BSTEventSource holds
     // its BSSpinLock for the entire duration of the notification, and any re-entry
@@ -251,8 +261,19 @@ private:
             return;
         }
 
-        SKSE::log::info("OStimEventListener: thread {} is non-OStimNet, queuing LLM evaluation", threadID);
-        SkyrimNetIntegration::EvaluateExternalSexualThread(actorFormIDs, threadID);
+        bool isPlayer = ThreadRegistry::GetSingleton().IsPlayerThread(threadID);
+        bool manualSetup = isPlayer
+            ? Config::GetSingleton().ExternalScenesPlayerThread()
+            : Config::GetSingleton().ExternalScenesNpcThreads();
+
+        if (manualSetup) {
+            SKSE::log::info("OStimEventListener: thread {} is non-OStimNet (isPlayer={}), manual setup enabled — firing ostimnet_manual_thread_setup",
+                            threadID, isPlayer);
+            FireModEvent("ostimnet_manual_thread_setup", "", static_cast<float>(threadID), nullptr);
+        } else {
+            SKSE::log::info("OStimEventListener: thread {} is non-OStimNet, queuing LLM evaluation", threadID);
+            SkyrimNetIntegration::EvaluateExternalSexualThread(actorFormIDs, threadID);
+        }
     }
 
     // Called when ostim_thread_end fires.

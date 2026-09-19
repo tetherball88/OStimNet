@@ -246,4 +246,19 @@ inline std::string BuildPartnerNearEdge(int threadID, RE::Actor* speaker = nullp
     return BuildBaseEventJson("partner_near_edge", msg, threadID, Config::GetSingleton().IsMuted(), speakerName).dump();
 }
 
+// --- ostimnet_pullout -------------------------------------------------------
+inline std::string BuildPullout(int threadID, RE::Actor* giver, RE::Actor* receiver) {
+    std::string giverName = ThreadDataStore::GetActorDisplayName(giver, "");
+    std::string receiverName = ThreadDataStore::GetActorDisplayName(receiver, "");
+    std::string msg;
+    if (!giverName.empty() && !receiverName.empty()) {
+        msg = giverName + " pulled out just before climaxing inside " + receiverName + ".";
+    } else if (!giverName.empty()) {
+        msg = giverName + " pulled out just before climaxing inside.";
+    } else {
+        msg = "Pulled out just before climaxing inside.";
+    }
+    return BuildBaseEventJson("pullout", msg, threadID, Config::GetSingleton().IsMuted(), giverName).dump();
+}
+
 }  // namespace OStimNet::EventPayloadBuilder

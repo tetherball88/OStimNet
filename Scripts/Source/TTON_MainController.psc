@@ -47,6 +47,7 @@ Function Maintenance()
 
     RegisterForModEvent("ostimnet_location_scan_result", "OnLocationScanResult")
     RegisterForModEvent("ostimnet_scene_change_schedule_finished", "OnGmSceneAdvanceFinished")
+    RegisterForModEvent("ostimnet_manual_thread_setup", "OnManualThreadSetup")
 
     TTON_Events.RegisterEvents()
     TTON_Spectators.CleanAllSpectatorsStorage()
@@ -133,6 +134,12 @@ EndEvent
 Event OStimNetDecline(string eventName, string strArg, float numArg, Form akSpeaker)
     TTON_Debug.debug("Received OStimNet decline event: " + strArg)
     TTON_Events.SendSkyrimNetEvent(strArg, akSpeaker)
+EndEvent
+
+Event OnManualThreadSetup(string eventName, string strArg, float numArg, Form sender)
+    int ThreadID = numArg as int
+    TTON_Debug.debug("Received ostimnet_manual_thread_setup event, thread id: " + ThreadID)
+    TTON_OStimOptions.SetupExternalThread(ThreadID)
 EndEvent
 
 Event OStimStart(string eventName, string strArg, float numArg, Form sender)

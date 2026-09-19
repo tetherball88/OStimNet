@@ -334,7 +334,7 @@ inline int (*ONavGetScenePhaseRank)(const char* sceneId) = nullptr;
  * @note Not thread-safe. Call only from the SKSE game thread.
  */
 #ifndef OSTIMNAVIGATOR_BUILDING
-inline const char* (*ONavFindPulloutScene)(const char* sceneId, uint32_t threadId) = nullptr;
+inline const char* (*ONavFindPulloutScene)(const char* sceneId, uint32_t threadId, int giverPos, int receiverPos) = nullptr;
 #endif
 
 /**
@@ -405,7 +405,7 @@ inline bool ONavFindFunctions() {
     ONavGetScenePhaseRank = reinterpret_cast<int(*)(const char*)>(
         GetProcAddress(hDLL, "ONavGetScenePhaseRank"));
 
-    ONavFindPulloutScene = reinterpret_cast<const char*(*)(const char*, uint32_t)>(
+    ONavFindPulloutScene = reinterpret_cast<const char*(*)(const char*, uint32_t, int, int)>(
         GetProcAddress(hDLL, "ONavFindPulloutScene"));
 
     return ONavBuildSceneDescription != nullptr;

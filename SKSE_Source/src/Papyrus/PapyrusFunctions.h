@@ -615,8 +615,91 @@ static void RegisterLatentFixed(RE::BSScript::IVirtualMachine* vm,
         OStimNet::PulloutService::GetSingleton().SetPulloutDecision(actor, decisionStr.c_str());
     }
 
+    // Papyrus native: Function ClaimExternalThread(int threadID, string intent, Actor[] mainActors, bool isSexual = true) global native
+    void ClaimExternalThread(RE::StaticFunctionTag*,
+                             int32_t threadID,
+                             RE::BSFixedString intent,
+                             std::vector<RE::Actor*> mainActors,
+                             bool isSexual) {
+        auto& store = OStimNet::ThreadDataStore::GetSingleton();
+        if (!store.IsRegisteredAndPending(threadID)) {
+            SKSE::log::warn("PapyrusFunctions: ClaimExternalThread threadID={} not registered or not pending", threadID);
+            return;
+        }
+        if (!g_ostimThreadInterface || !g_ostimThreadInterface->IsThreadValid(static_cast<uint32_t>(threadID))) {
+            SKSE::log::warn("PapyrusFunctions: ClaimExternalThread threadID={} is not valid in OStim", threadID);
+            store.ClearThread(threadID);
+            return;
+        }
+
+        std::string intentLower = ToLower(intent.c_str());
+        OStimNet::Intent intentEnum = OStimNet::IntentFromString(intentLower);
+
+        store.SetOStimNet(threadID, true);
+        store.SetIntent(threadID, intentEnum);
+        store.SetSexual(threadID, isSexual);
+
+        const auto& allActors = store.GetActorPtrs(threadID);
+        std::unordered_set<RE::FormID> mainIDs;
+        for (RE::Actor* a : mainActors) {
+            if (a) mainIDs.insert(a->GetFormID());
+        }
+        std::vector<RE::Actor*> secondaryActors;
+        for (RE::Actor* a : allActors) {
+            if (a && !mainIDs.count(a->GetFormID()))
+                secondaryActors.push_back(a);
+        }
+
+        if (mainActors.empty() && !allActors.empty()) {
+            mainActors.push_back(allActors[0]);
+            secondaryActors.clear();
+            for (size_t i = 1; i < allActors.size(); ++i) {
+                secondaryActors.push_back(allActors[i]);
+            }
+        }
+
+        store.SetMainActors(threadID, std::move(mainActors));
+        store.SetSecondaryActors(threadID, std::move(secondaryActors));
+
+        auto* listener = OStimNet::OStimEventListener::GetInstance();
+        if (listener) {
+            listener->ClaimPendingNonOStimNetThread(threadID);
+            SKSE::log::info("PapyrusFunctions: ClaimExternalThread claimed threadID={} with intent={} isSexual={}",
+                            threadID, intentLower, isSexual);
+        } else {
+            SKSE::log::warn("PapyrusFunctions: ClaimExternalThread listener is null for thread {}", threadID);
+        }
+    }
+
+    // Papyrus native: Function EvaluateExternalSexualThread(int threadID) global native
+    void EvaluateExternalSexualThread(RE::StaticFunctionTag*, int32_t threadID) {
+        auto& store = OStimNet::ThreadDataStore::GetSingleton();
+        if (!store.IsRegisteredAndPending(threadID)) {
+            SKSE::log::warn("PapyrusFunctions: EvaluateExternalSexualThread threadID={} not pending", threadID);
+            return;
+        }
+        auto formIDs = store.GetActorFormIDs(threadID);
+        std::vector<RE::FormID> fids;
+        for (uint32_t fid : formIDs) fids.push_back(static_cast<RE::FormID>(fid));
+        SkyrimNetIntegration::EvaluateExternalSexualThread(fids, threadID);
+    }
+
+    // Papyrus native: Function CancelExternalThread(int threadID) global native
+    void CancelExternalThread(RE::StaticFunctionTag*, int32_t threadID) {
+        auto* listener = OStimNet::OStimEventListener::GetInstance();
+        if (listener) {
+            listener->CancelPendingThread(threadID);
+        } else {
+            OStimNet::ThreadDataStore::GetSingleton().ClearThread(threadID);
+        }
+        SKSE::log::info("PapyrusFunctions: CancelExternalThread threadID={}", threadID);
+    }
+
     bool Register(RE::BSScript::IVirtualMachine* vm) {
         vm->RegisterFunction("SetPulloutDecision", "OStimNet", SetPulloutDecision);
+        vm->RegisterFunction("ClaimExternalThread", "OStimNet", ClaimExternalThread);
+        vm->RegisterFunction("EvaluateExternalSexualThread", "OStimNet", EvaluateExternalSexualThread);
+        vm->RegisterFunction("CancelExternalThread", "OStimNet", CancelExternalThread);
 
         vm->RegisterFunction("GetLocationGeneration", "OStimNet", GetLocationGeneration);
         vm->RegisterFunction("GetSceneDescription", "OStimNet", GetSceneDescription);
@@ -655,7 +738,7 @@ static void RegisterLatentFixed(RE::BSScript::IVirtualMachine* vm,
         vm->RegisterFunction("GetMainActors", "OStimNet", GetMainActors);
         vm->RegisterFunction("GetSecondaryActors", "OStimNet", GetSecondaryActors);
         vm->RegisterFunction("BuildSpectatorFledEventJson", "OStimNet", BuildSpectatorFledEventJson);
-        SKSE::log::info("PapyrusDecorators: registered GetSceneDescription, GetActorListString, Log, SetThreadContinuation, OcumApplied, OcumSquirt, GetSpectatorTarget, EvaluatePreStartSexualScene, EvaluateNonSexualScene, JsonGetString, JsonGetInt, JsonGetFloat, JsonGetBool, JsonArrayLength, ShowConfirmationModal, CheckAndSetActionCooldown, GetSexualPositionFromTags, GetThreadIntent, SetThreadIntent, ClaimThread, ConfirmThread on OStimNet.");
+        SKSE::log::info("PapyrusDecorators: registered GetSceneDescription, GetActorListString, Log, SetThreadContinuation, OcumApplied, OcumSquirt, GetSpectatorTarget, EvaluatePreStartSexualScene, EvaluateNonSexualScene, JsonGetString, JsonGetInt, JsonGetFloat, JsonGetBool, JsonArrayLength, ShowConfirmationModal, CheckAndSetActionCooldown, GetSexualPositionFromTags, GetThreadIntent, SetThreadIntent, ClaimThread, ConfirmThread, ClaimExternalThread, EvaluateExternalSexualThread, CancelExternalThread on OStimNet.");
         return true;
     }
 

@@ -25,7 +25,9 @@ std::vector<PulloutService::VaginalPair> PulloutService::GetVaginalPairs(const c
                     for (const auto& item : j) {
                         if (item.is_object() && item.contains("type")) {
                             std::string actionType = item["type"].get<std::string>();
-                            if (actionType == "vaginalsex") {
+                            std::string lowerAction = actionType;
+                            for (char& c : lowerAction) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+                            if (lowerAction == "vaginalsex" || lowerAction == "sex") {
                                 VaginalPair pair;
                                 if (item.contains("actor") && item["actor"].is_number_integer()) {
                                     pair.giverSlot = item["actor"].get<int>();
@@ -55,12 +57,16 @@ std::vector<PulloutService::VaginalPair> PulloutService::GetVaginalPairs(const c
         }
     }
 
-    // Fallback: If detailed actions unavailable or returned no pairs with slots, but scene has "vaginalsex" in ONavGetSceneActions
+    // Fallback: If detailed actions unavailable or returned no pairs with slots, but scene has "vaginalsex" or alias "sex" in ONavGetSceneActions
     if (pairs.empty() && ONavGetSceneActions) {
         const char* actionsJson = ONavGetSceneActions(sceneId);
-        if (actionsJson && std::string(actionsJson).find("vaginalsex") != std::string::npos) {
-            // Standard 2-actor fallback: slot 1 is giver (male penetrator) and slot 0 is receiver (female)
-            pairs.push_back({ 1, 0 });
+        if (actionsJson) {
+            std::string s = actionsJson;
+            for (char& c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+            if (s.find("vaginalsex") != std::string::npos || s.find("\"sex\"") != std::string::npos) {
+                // Standard 2-actor fallback: slot 1 is giver (male penetrator) and slot 0 is receiver (female)
+                pairs.push_back({ 1, 0 });
+            }
         }
     }
 
@@ -69,6 +75,10 @@ std::vector<PulloutService::VaginalPair> PulloutService::GetVaginalPairs(const c
 
 bool PulloutService::IsPulloutAvailable(RE::Actor* actor) {
     if (!actor) return false;
+
+    auto* base = actor->GetActorBase();
+    if (!base || base->GetSex() != RE::SEX::kFemale) return false;
+
     if (!Config::GetSingleton().PulloutEnabled()) return false;
     if (!ActorUtils::IsInFactionByEditorID(actor, "OStimActorCountFaction")) return false;
 
@@ -83,33 +93,7 @@ bool PulloutService::IsPulloutAvailable(RE::Actor* actor) {
 
     if (!g_ostimThreadInterface || !g_ostimThreadInterface->IsThreadValid(static_cast<uint32_t>(threadID))) return false;
 
-    const char* curScene = g_ostimThreadInterface->GetCurrentSceneID(static_cast<uint32_t>(threadID));
-    if (!curScene || curScene[0] == '\0') return false;
-
-    auto pairs = GetVaginalPairs(curScene);
-    if (pairs.empty()) return false;
-
-    // Resolve actor's slot in the current thread
-    constexpr uint32_t kMaxActors = 8;
-    OstimNG_API::Thread::ActorData buffer[kMaxActors];
-    uint32_t count = g_ostimThreadInterface->GetActors(static_cast<uint32_t>(threadID), buffer, kMaxActors);
-    int actorSlot = -1;
-    for (uint32_t i = 0; i < count; ++i) {
-        if (buffer[i].formID == actor->GetFormID()) {
-            actorSlot = static_cast<int>(i);
-            break;
-        }
-    }
-    if (actorSlot == -1) return false;
-
-    // Check if this actor is giving or receiving vaginal sex in any pair
-    for (const auto& pair : pairs) {
-        if (actorSlot == pair.giverSlot || actorSlot == pair.receiverSlot) {
-            return true;
-        }
-    }
-
-    return false;
+    return true;
 }
 
 bool PulloutService::IsIntentProhibited(Intent intent) const {
@@ -373,6 +357,31 @@ void PulloutService::FirePulloutSensoryCue(int threadID) {
     }
 }
 
+void PulloutService::FirePulloutEvent(int threadID, RE::Actor* giver, RE::Actor* receiver) {
+    std::string jsonStr = EventPayloadBuilder::BuildPullout(threadID, giver, receiver);
+
+    RE::Actor* speaker = giver ? giver : receiver;
+    RE::Actor* target = receiver ? receiver : giver;
+
+    if (auto* taskIF = SKSE::GetTaskInterface()) {
+        taskIF->AddTask([jsonStr, speaker, target]() {
+            auto vm = RE::BSScript::Internal::VirtualMachine::GetSingleton();
+            if (vm) {
+                RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> nullCallback;
+                auto eventType = RE::BSFixedString("tton_event");
+                auto msg = RE::BSFixedString(jsonStr);
+                auto spk = speaker;
+                auto tgt = target;
+                vm->DispatchStaticCall("SkyrimNetApi", "RegisterEvent",
+                    RE::MakeFunctionArguments(std::move(eventType), std::move(msg), std::move(spk), std::move(tgt)),
+                    nullCallback);
+                SKSE::log::info("PulloutService: dispatched tton_event (pullout) to SkyrimNetApi (speaker=0x{:08X}, target=0x{:08X})",
+                    speaker ? speaker->GetFormID() : 0, target ? target->GetFormID() : 0);
+            }
+        });
+    }
+}
+
 bool PulloutService::ExecutePulloutNavigation(int threadID) {
     if (!g_ostimThreadInterface || !g_ostimThreadInterface->IsThreadValid(static_cast<uint32_t>(threadID))) {
         ReleasePulloutStall(threadID);
@@ -386,15 +395,70 @@ bool PulloutService::ExecutePulloutNavigation(int threadID) {
         return false;
     }
 
+    int giverPos = -1;
+    int receiverPos = -1;
+    constexpr uint32_t kMax = 8;
+    OstimNG_API::Thread::ActorData buf[kMax];
+    uint32_t count = g_ostimThreadInterface->GetActors(static_cast<uint32_t>(threadID), buf, kMax);
+
+    auto pairs = GetVaginalPairs(curScene);
+    if (!pairs.empty() && count > 0) {
+        float maxEx = -1.0f;
+        for (const auto& pair : pairs) {
+            if (pair.giverSlot >= 0 && static_cast<uint32_t>(pair.giverSlot) < count) {
+                float ex = buf[pair.giverSlot].excitement;
+                if (ex > maxEx) {
+                    maxEx = ex;
+                    giverPos = pair.giverSlot;
+                    receiverPos = pair.receiverSlot;
+                }
+            }
+        }
+        if (giverPos < 0 && !pairs.empty()) {
+            giverPos = pairs[0].giverSlot;
+            receiverPos = pairs[0].receiverSlot;
+        }
+    }
+
+    // Fallback: If no vaginal pairs found, try to resolve male as giver and female as receiver
+    if (giverPos < 0 && count > 0) {
+        for (uint32_t i = 0; i < count; ++i) {
+            auto* a = RE::TESForm::LookupByID<RE::Actor>(buf[i].formID);
+            if (!a) continue;
+            auto* base = a->GetActorBase();
+            bool isFem = (base && base->GetSex() == RE::SEX::kFemale) || buf[i].isFemale;
+            if (!isFem && giverPos < 0) {
+                giverPos = static_cast<int>(i);
+            } else if (isFem && receiverPos < 0) {
+                receiverPos = static_cast<int>(i);
+            }
+        }
+    }
+
+    RE::Actor* giverActor = (giverPos >= 0 && static_cast<uint32_t>(giverPos) < count)
+        ? RE::TESForm::LookupByID<RE::Actor>(buf[giverPos].formID) : nullptr;
+    RE::Actor* receiverActor = (receiverPos >= 0 && static_cast<uint32_t>(receiverPos) < count)
+        ? RE::TESForm::LookupByID<RE::Actor>(buf[receiverPos].formID) : nullptr;
+
+    if (!giverActor && count > 0) {
+        giverActor = RE::TESForm::LookupByID<RE::Actor>(buf[0].formID);
+    }
+    if (!receiverActor && count > 1) {
+        receiverActor = RE::TESForm::LookupByID<RE::Actor>(buf[1].formID);
+    }
+
     std::string targetScene;
     if (ONavFindPulloutScene) {
-        const char* res = ONavFindPulloutScene(curScene, static_cast<uint32_t>(threadID));
+        const char* res = ONavFindPulloutScene(curScene, static_cast<uint32_t>(threadID), giverPos, receiverPos);
         if (res && res[0] != '\0') {
             targetScene = res;
         }
     }
 
     if (!targetScene.empty()) {
+        // Dispatch SkyrimNet pullout event before scene change
+        FirePulloutEvent(threadID, giverActor, receiverActor);
+
         SKSE::log::info("PulloutService: transitioning thread {} from '{}' to pullout scene '{}'",
             threadID, curScene, targetScene);
         g_ostimThreadInterface->NavigateToSearchResult(static_cast<uint32_t>(threadID), targetScene.c_str());
@@ -518,9 +582,8 @@ bool PulloutService::TriggerPlayerPullout() {
     if (!curScene || curScene[0] == '\0') return false;
 
     auto pairs = GetVaginalPairs(curScene);
-    if (pairs.empty()) return false; // Only vaginal intercourse scenes have pullout mechanics
 
-    // Check that the player is actually giving or receiving vaginal sex in this scene!
+    // Check that the player is in this thread
     auto* player = RE::PlayerCharacter::GetSingleton();
     if (!player) return false;
     uint32_t playerFormID = player->GetFormID();
@@ -538,17 +601,19 @@ bool PulloutService::TriggerPlayerPullout() {
     }
     if (playerSlot == -1) return false;
 
-    bool playerInVaginalPair = false;
-    for (const auto& pair : pairs) {
-        if (playerSlot == pair.giverSlot || playerSlot == pair.receiverSlot) {
-            playerInVaginalPair = true;
-            break;
+    if (!pairs.empty()) {
+        bool playerInVaginalPair = false;
+        for (const auto& pair : pairs) {
+            if (playerSlot == pair.giverSlot || playerSlot == pair.receiverSlot) {
+                playerInVaginalPair = true;
+                break;
+            }
         }
-    }
-    if (!playerInVaginalPair) {
-        SKSE::log::info("PulloutService: player pressed pullout hotkey, but is neither giving nor receiving vaginal sex in scene '{}' (thread {})",
-            curScene, threadID);
-        return false;
+        if (!playerInVaginalPair) {
+            SKSE::log::info("PulloutService: player pressed pullout hotkey, but is not in any vaginal pair in scene '{}' (thread {})",
+                curScene, threadID);
+            return false;
+        }
     }
 
     SKSE::log::info("PulloutService: player hotkey triggered immediate pullout for thread {}", threadID);

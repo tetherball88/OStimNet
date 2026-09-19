@@ -654,7 +654,7 @@ void Register() {
 
     RegisterDecorator(
         "is_pullout_decision_available",
-        "Returns 'available' if this actor is currently in a sexual OStim scene with vaginal sex, pullout mechanics are enabled, and thread intent is not prohibited by configuration. Returns 'unavailable' otherwise.",
+        "Returns 'available' if this actor is female, currently in a sexual OStim scene, pullout mechanics are enabled, and thread intent is not prohibited by configuration. Returns 'unavailable' otherwise.",
         [](RE::Actor* actor) -> std::string {
             return PulloutService::GetSingleton().IsPulloutAvailable(actor) ? "available" : "unavailable";
         });

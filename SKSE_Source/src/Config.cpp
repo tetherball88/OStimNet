@@ -381,5 +381,20 @@ std::string Config::UndressingApproachNpc() const {
     return GetValue("tton.undress.undressingApproachNpc", "OStim");
 }
 
+// -----------------------------------------------------------------------------
+// External scenes
+// -----------------------------------------------------------------------------
+
+bool Config::ExternalScenesPlayerThread() const {
+    std::string val = GetValue("tton.externalScenes.playerThread", "false");
+    return val == "true" || val == "1";
+}
+
+bool Config::ExternalScenesNpcThreads() const {
+    std::string val = GetValue("tton.externalScenes.npcThreads", "false");
+    return val == "true" || val == "1";
+}
+
 }  // namespace OStimNet
+
 

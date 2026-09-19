@@ -452,3 +452,18 @@ schema:
         - "aggressive_dom"
       category: "Pullout Mechanics"
 
+    # External scenes
+    - name: "Player thread"
+      path: "tton.externalScenes.playerThread"
+      type: "bool"
+      description: "If enabled, when an OStim scene with the player is started outside of OStimNet (manually or by third-party mods), prompts the player with selection options for intent and main/secondary actors."
+      defaultValue: false
+      category: "External scenes"
+    - name: "NPC threads"
+      path: "tton.externalScenes.npcThreads"
+      type: "bool"
+      description: "If enabled, when an NPC-only OStim scene is started outside of OStimNet (manually or by third-party mods), prompts the player with selection options for intent and main/secondary actors."
+      defaultValue: false
+      category: "External scenes"
+
+

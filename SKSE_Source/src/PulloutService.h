@@ -24,8 +24,8 @@ public:
     }
 
     /// Evaluates whether pullout decision action is available for this actor.
-    /// Checks: pullout enabled, actor in encounter faction, valid sexual OStimNet thread,
-    /// and actor is either giving or receiving vaginal sex in the current scene.
+    /// Checks: female actor, pullout enabled, actor in encounter faction, valid sexual OStimNet thread,
+    /// and thread intent is not prohibited.
     bool IsPulloutAvailable(RE::Actor* actor);
 
     struct VaginalPair {
@@ -49,8 +49,11 @@ public:
     /// Dispatches an ostimnet_partner_near_edge sensory event to SkyrimNet.
     void FirePulloutSensoryCue(int threadID);
 
+    /// Dispatches a tton_event (pullout) to SkyrimNet.
+    void FirePulloutEvent(int threadID, RE::Actor* giver, RE::Actor* receiver);
+
     /// Performs scene search via ONavFindPulloutScene, transitions the scene,
-    /// and releases the climax stall.
+    /// dispatches SkyrimNet pullout event, and releases the climax stall.
     bool ExecutePulloutNavigation(int threadID);
 
     /// Sets pullout decision for actor (looks up threadID).

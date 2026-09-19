@@ -1,6 +1,29 @@
 {% if render_mode == "tton_gm" %}
+
 #### Summary
 {{ render_character_profile("bio_summary", actorUUID) }}
+**Conception & Pregnancy Awareness:**
+{% set actorName = decnpc(actorUUID).name %}
+{% set isFemale = decnpc(actorUUID).isFemale %}
+{% set ostimNetSettings = ostimnet_settings(player.UUID) %}
+{% if ostimNetSettings.internalClimaxPromptCue and isFemale and is_plugin_loaded("Fertility Mode.esm") %}
+    {% set fertilityRank = get_faction_rank(actorUUID, "ImmersiveEffectsFaction") %}
+    {% if fertilityRank == 118 %}
+    - **High chance of pregnancy (peak fertile days):** {{ actorName }} knows she is at her most fertile right now — finishing inside has a very high chance of getting her pregnant.
+    {% elif fertilityRank == 117 %}
+    - **Rising chance of pregnancy (fertile days approaching):** {{ actorName }} knows her fertile days are near — finishing inside could easily lead to pregnancy.
+    {% elif fertilityRank == 116 or fertilityRank == 119 %}
+    - **Safe days (cannot get pregnant):** {{ actorName }} knows it is her safe time of the month — finishing inside will not get her pregnant.
+    {% elif fertilityRank >= 1 and fertilityRank <= 100 %}
+    - **Already pregnant (cannot get pregnant again):** {{ actorName }} is already expecting a child — finishing inside will not get her pregnant again.
+    {% elif fertilityRank >= 101 and fertilityRank <= 115 %}
+    - **Recovering after birth (safe):** {{ actorName }} is still recovering from childbirth — she cannot get pregnant right now.
+    {% elif fertilityRank == 120 %}
+    - **In labor (safe):** {{ actorName }} is going into labor — there is no risk of pregnancy.
+    {% endif %}
+{% else %}
+    - Sex and finishing inside can lead to pregnancy.
+{% endif %}
 #### Background
 {{ render_character_profile("bio_background", actorUUID) }}
 #### Personality
@@ -14,5 +37,5 @@
 
 #### Memories
 {{ render_character_profile("bio_long_term_memories", actorUUID) }}
-{% include "submodules/character_bio/7100_memories.prompt" %} 
+{% include "submodules/character_bio/7100_memories.prompt" %}
 {% endif %}

@@ -54,6 +54,16 @@ Actor[] Function GetSecondaryActors(int ThreadID) global native
 ; Secondary actors are derived automatically from the remaining thread participants.
 Function SetThreadIntent(int ThreadID, string intent, Actor[] mainActors) global native
 
+; Claims an external (pending) OStim thread with player-selected intent, roles, and sexual flag.
+Function ClaimExternalThread(int ThreadID, string intent, Actor[] mainActors, bool isSexual = true) global native
+
+; Fallback: invokes SkyrimNet LLM evaluation to determine intent and roles for a pending thread.
+Function EvaluateExternalSexualThread(int ThreadID) global native
+
+; Discards an external thread if setup was cancelled.
+Function CancelExternalThread(int ThreadID) global native
+
+
 ; Call BEFORE OThreadBuilder.Start() when you already know intent, sexual flag,
 ; and actor roles (e.g. after receiving ostimnet_sexual_evaluation_finished).
 ; Allocates a claim token in the registry that HandleStart will consume when

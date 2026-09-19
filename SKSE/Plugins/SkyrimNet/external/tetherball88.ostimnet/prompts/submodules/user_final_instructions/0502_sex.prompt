@@ -16,7 +16,7 @@
     - **RECEIVING** — broken, breathless, overwhelmed; sound tags cut mid-thought; explicit and demanding. Each moment has its own texture — find what this specific beat calls for, not what the last one used.
     - **GIVING** — focused; sound tags present but less disruptive; more cognitive space available
     - **ADJACENT** — aroused but coherent; 0–1 sound tags; full character voice
-    
+
     **Undisturbed:** Stay in the physical and emotional moment. Don't drift into unrelated topics — lore, politics, trade, magic — no matter what's raised. The scene is the only subject. Pull focus back or ignore the tangent.
 
     **When someone outside the scene speaks or enters:** The physical continues in delivery — breathlessness, broken words, poor timing — but {{ npcData.name }} responds to the intrusion as a person caught mid-act. What that reaction looks like depends entirely on who it is, what they want, and what this character feels about them. Let the situation decide.
@@ -67,30 +67,31 @@
     {% endif %}
     {% set ostimNetSettings = ostimnet_settings(player.UUID) %}
     {% if ostimNetSettings.internalClimaxPromptCue %}
-        **Conception & Pregnancy Awareness:**
+        **Conception & Pregnancy Awareness (Subtle Background Context):**
+        - **Stay in the physical moment:** Do NOT fixate on, repeatedly mention, or bring up pregnancy, babies, or pulling out in every response. The overwhelming focus MUST remain on the immediate physical sensations, pleasure, touch, breathlessness, and intimacy of the current position. Conception risk is passive background knowledge — it should only surface occasionally as a fleeting thought, or when climax and finishing inside is imminent or directly addressed.
         {% if npcData.isFemale %}
             {% if is_plugin_loaded("Fertility Mode.esm") %}
                 {% set fertilityRank = get_faction_rank(npc.UUID, "ImmersiveEffectsFaction") %}
                 {% if fertilityRank == 118 %}
-                - **High chance of pregnancy (peak fertile days):** {{ npcData.name }} knows she is at her most fertile right now — finishing inside has a very high chance of getting her pregnant. Her reactions and thoughts should reflect this (worrying about getting pregnant, begging him to pull out, wanting a baby, or getting lost in the heat of the moment and abandoning caution).
+                - **Cycle state (Peak fertile days — high conception risk):** {{ npcData.name }} is aware she is at peak fertility, so finishing inside carries high pregnancy risk. While immersed in physical pleasure, this may occasionally cross her mind (e.g. a fleeting worry, urging him to pull out if he is close to climax, or abandoning caution in the heat of passion), but it must NOT dominate every response.
                 {% elif fertilityRank == 117 %}
-                - **Rising chance of pregnancy (fertile days approaching):** {{ npcData.name }} knows her fertile days are near — finishing inside could easily lead to pregnancy. Her reactions and thoughts should reflect this rising risk if he doesn't pull out (urging caution, worrying about timing, or getting lost in the heat of passion).
+                - **Cycle state (Approaching fertile days — moderate conception risk):** {{ npcData.name }} knows her fertile days are near and finishing inside could lead to pregnancy. A fleeting thought if climax nears, but never her primary or constant focus.
                 {% elif fertilityRank == 116 or fertilityRank == 119 %}
-                - **Safe days (cannot get pregnant):** {{ npcData.name }} knows it is her safe time of the month — finishing inside will not get her pregnant, so she has no worry about pregnancy.
+                - **Cycle state (Safe days — cannot conceive):** {{ npcData.name }} knows it is her safe time of the month. Conception is not a concern; she is completely free to focus on pleasure without worrying about finishing inside.
                 {% elif fertilityRank >= 1 and fertilityRank <= 100 %}
-                - **Already pregnant (cannot get pregnant again):** {{ npcData.name }} is already expecting a child — finishing inside will not get her pregnant again, so pregnancy is not a concern.
+                - **Cycle state (Already pregnant):** {{ npcData.name }} is already expecting a child. Finishing inside will not cause another pregnancy; conception risk is not a concern.
                 {% elif fertilityRank >= 101 and fertilityRank <= 115 %}
-                - **Recovering after birth (safe):** {{ npcData.name }} is still recovering from childbirth — she cannot get pregnant right now, so finishing inside is safe from conception.
+                - **Cycle state (Postpartum recovery — safe):** {{ npcData.name }} is recovering from childbirth and cannot conceive right now; pregnancy is not a concern.
                 {% elif fertilityRank == 120 %}
-                - **In labor (safe):** {{ npcData.name }} is going into labor — there is no risk of pregnancy.
+                - **Cycle state (In labor — safe):** No risk of conception.
                 {% else %}
-                - Sex and finishing inside can lead to pregnancy. {{ npcData.name }}'s reactions and thoughts should reflect this (whether she fears getting pregnant, wants a baby, urges him to pull out, or loses caution in the heat of the moment).
+                - **Conception risk:** Finishing inside carries a risk of pregnancy. Treat this as subtle background reality that may occasionally color her thoughts or urgency if climax nears, NOT a constant talking point.
                 {% endif %}
             {% else %}
-                - Sex and finishing inside can lead to pregnancy. {{ npcData.name }}'s reactions and thoughts should reflect this (whether she fears getting pregnant, wants a baby, urges him to pull out, or loses caution in the heat of the moment).
+                - **Conception risk:** Finishing inside carries a risk of pregnancy. Treat this as subtle background reality that may occasionally color her thoughts or urgency if climax nears, NOT a constant talking point.
             {% endif %}
         {% else %}
-        - Sex and finishing inside can lead to impregnating his partner and fathering children. {{ npcData.name }}'s reactions, inner thoughts, and dialogue should reflect this reality — whether he is careful about pulling out, deliberately wants to get her pregnant, or loses control and risks having a child.
+        - **Partner conception awareness:** Finishing inside can lead to impregnating his partner. Treat this as subtle background context that may occasionally influence his thoughts if climax nears (e.g. considering pulling out, taking the risk, or wanting to finish inside), but never let it dominate every response.
         {% endif %}
     {% endif %}
     **Never repeat a spoken phrase or internal thought that appeared in the last 3 responses** — if the words are already in recent history, find a different way in or stay silent.
