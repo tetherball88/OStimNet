@@ -123,6 +123,8 @@ If the evaluation comes back with too few willing participants, the thread doesn
 
 If OStim starts a thread that OStimNet didn't initiate — triggered by another mod, a script, manually, anything — OStimNet detects it and runs a **retroactive evaluation**. The thread is already playing; the AI assigns intent and roles to the situation as it finds it. There's no willingness check here (the actors are already engaged) — the evaluation is purely about understanding the dynamic so OStimNet can manage the thread correctly going forward.
 
+Alternatively, you can enable **Manual External Thread Setup** in [Config.md#external-scenes](Config.md#external-scenes) (configurable separately for player and NPC threads). When enabled, OStimNet prompts you with an in-game selection menu (`UIListMenu`) to choose whether the scene is sexual or non-sexual, select the intent directly (or delegate to "Let AI decide"), and designate main and secondary actors.
+
 ---
 
 ## Manually Changing Intent Mid-Thread

@@ -121,6 +121,28 @@ Permanently ends the current sex scene with no intention to continue. Not used f
 
 ---
 
+### ✋ PulloutDecision
+
+Allows the receiving partner in an ongoing vaginal intercourse scene to indicate whether their partner should pull out or finish inside as climax approaches. 🌊
+
+**Eligibility Requirements:**
+- 🚺 Actor is female and receiving vaginal intercourse in an active scene
+- ⚙️ Pullout mechanics are enabled in settings
+- 🛡️ Thread intent is not prohibited (e.g. not aggressive/dom if prohibited in settings)
+- ⏳ Partner's excitement has crossed the threshold (`is_pullout_decision_available` decorator)
+
+**Parameters:**
+- **`decision`**: One of:
+  - `request_pullout`: Asks partner to pull out before climax. OStim Navigator searches for a matching non-vaginal finish (handjob, boobjob, masturbation, cum-on) and transitions the scene.
+  - `allow_finish_inside`: Consents to finishing inside. Climax stall is released and the scene continues to internal completion.
+  - `doesnt_care`: Leaves the choice to the partner in the heat of passion.
+- **`reasoning`**: Dynamic explanation based on personality, relationship, and pregnancy risk.
+
+**Notes:**
+- ⏱️ If the actor does not make an action call before the decision timeout (default: 25s), an automated fallback LLM evaluation resolves the choice based on character profile and pregnancy risk.
+
+---
+
 ## 👀 Spectating
 
 These actions let NPCs outside of a scene watch it, and let existing spectators leave. 🍿
@@ -213,3 +235,10 @@ Fires when a spectator decides to leave the scene! 😳
 - **Default Status:** Disabled ❌
 - **Priority:** `1`
 - **Cooldown:** `30s`
+
+### ⚡ Partner Near Edge (`tton_partner_near_edge`)
+Fires when the partner giving vaginal intercourse crosses the excitement threshold and approaches climax! Alerts the receiving partner to react verbally and prompts a `PulloutDecision` action call. 🌊
+- **Default Status:** Enabled ✅
+- **Priority:** `8`
+- **Cooldown:** `20s`
+

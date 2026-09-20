@@ -278,3 +278,52 @@ Select the undressing approach to use in npc-npc thread.
 - **OARE**: Normal undressing speed, second actor mostly undresses themself, first actor helps with top cloth. Second actor undresses first.
 - **OSA**: Slowest undressing, first actor helps second actor to undress all parts of clothing. Second actor helps first actor to undress all parts of clothing. First actor undresses first.
 - **OSAFirstFast**: Faster than OSA undressing, first actor helps second actor to undress all parts of clothing. Second actor helps first actor to undress fast.
+
+---
+
+## Pullout Mechanics
+
+OStimNet can monitor vaginal intercourse scenes and stall climax when the giving partner is about to finish, allowing the partner to react, converse, and decide whether to request pulling out or allow finishing inside. When pulling out is chosen, OStim Navigator finds an appropriate non-vaginal climax scene (such as a handjob, boobjob, male masturbation, or cum-on animation) matching the current actor poses.
+
+### Enable pullout mechanics (default: on)
+
+Turns the automated pullout evaluation and climax stalling system on or off. When enabled, OStimNet synchronizes with OStim's native pullout configuration by disabling conflicting native random pullout chances (`autoModePulloutChance`). When disabled, native OStim behavior is restored.
+
+### Pullout excitement threshold (default: 85)
+
+The excitement level (0–100) of the vaginal giver at which climax is stalled to evaluate pullout. The default of 85 gives enough time for a verbal exchange and decision before orgasm.
+
+### Pullout actor decision timeout (seconds) (default: 25s)
+
+How many seconds OStimNet waits for the receiving actor to respond to the near-edge sensory prompt and execute the `PulloutDecision` action before falling back to an automated LLM evaluation.
+
+### Sensory narration cue at threshold (default: on)
+
+When enabled, dispatches an `ostimnet_partner_near_edge` sensory event to SkyrimNet when the giver's excitement crosses the threshold. This alerts the partner that climax is imminent and prompts an immediate in-character dialogue reaction.
+
+### Prohibited intents (default: `aggressive_dom`)
+
+Controls which scene intents disallow pullout mechanics:
+- **`none`**: Pullout mechanics are permitted across all scene intents.
+- **`aggressive`**: Pullout is disallowed in aggressive scenes.
+- **`aggressive_dom`** (default): Pullout is disallowed in both aggressive and dominant scenes.
+
+---
+
+## External Scenes
+
+Controls how OStimNet handles OStim scenes that were started outside of OStimNet (e.g. manually through the OStim UI, hotkeys, or third-party mods). Normally, OStimNet runs an automated retroactive LLM evaluation to determine intent and actor roles. These settings allow you to intercept those scenes and configure them manually via an in-game menu.
+
+### Player thread (default: off)
+
+When enabled, starting an external scene that includes the player character opens an interactive menu (`UIListMenu`) to manually configure the scene:
+- Choose whether the scene is **Sexual** or **Non-Sexual**.
+- Select the scene **Intent** (Romantic, Lustful, Transactional, Dom, Aggressive, or "Let AI decide").
+- Select which participants are **Main Actors** (initiators/dominants) and **Secondary Actors** (responders/submissives).
+- Option to cancel setup and cleanly discard the pending thread.
+
+When disabled (default), external scenes with the player are evaluated automatically by the Game Master LLM.
+
+### NPC threads (default: off)
+
+When enabled, prompts the player with the same manual configuration menu when an external NPC-only scene starts. Off by default so background NPC scenes continue uninterrupted.

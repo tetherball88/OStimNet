@@ -1,5 +1,35 @@
 # Changelog
 
+## v2.5.0 - 2026-09-20 (Ships both SkyrimNet pre 25 and 25+ versions)
+
+### Added
+
+- **Pull out mechanic** — Introduced an automated and interactive pull out system during vaginal intercourse, integrating excitement monitoring, climax stalling, AI dialogue reactions, and intelligent scene navigation:
+  - **Climax stalling & excitement monitoring** — Automatically monitors excitement levels during vaginal sex scenes. When the giving partner reaches the excitement threshold (default: 85%), climax is stalled to give partners an opportunity to react and decide whether to pull out before ejaculation.
+  - **Sensory cue (`tton_partner_near_edge`)** — Dispatches a sensory narration cue to SkyrimNet when the giver approaches climax, alerting the receiving partner that their partner is tensing up and on the verge of climax so they can react in dialogue.
+  - **Pullout decision action (`PulloutDecision`)** — Enables receiving partners to make an action call deciding whether to request pulling out (`request_pullout`), allow finishing inside (`allow_finish_inside`), or leave it to their partner (`doesnt_care`). Includes automated LLM fallback evaluation (`ostimnet_evaluate_pullout_decision.prompt`) if no action is chosen before the configurable timeout (default: 25s).
+  - **Smart pullout scene transition** — When pulling out is chosen, queries OStim Navigator (`ONavFindPulloutScene`) to seamlessly transition to a non-vaginal climax scene matching current actor pose height tiers (prioritizing handjob, boobjob, male masturbation, or cum-on animations), releases the climax stall, and dispatches a pullout event to SkyrimNet.
+  - **OStim native pullout synchronization & hotkey** — Disables conflicting native OStim pullout chances while active (restoring them when disabled) and supports triggering immediate pullout in the player's scene via OStim's native pullout hotkey.
+  - **Pullout settings** — Added dedicated **Pullout Mechanics** settings under the SkyrimNet mod menu:
+    - `Enable pullout mechanics` (`tton.pullout.enabled`, default: `true`).
+    - `Pullout excitement threshold` (`tton.pullout.excitementThreshold`, default: `85`).
+    - `Pullout actor decision timeout (seconds)` (`tton.pullout.evalTimeoutSeconds`, default: `25`).
+    - `Sensory narration cue at threshold` (`tton.pullout.narrateCue`, default: `true`).
+    - `Prohibited intents` (`tton.pullout.prohibitedIntents`, default: `aggressive_dom`): disallows pullout mechanics in scenes with prohibited intents (`none`, `aggressive`, `aggressive_dom`).
+
+- **Manual external thread setup** — Added interactive in-game menu setup for OStim scenes started outside of OStimNet (e.g. manually via OStim UI/hotkeys or third-party mods):
+  - **Interactive configuration UI** — Prompts the player via UIExtensions (`UIListMenu`) to configure the scene type (`Sexual` vs `Non-Sexual`), scene intent (`Romantic`, `Lustful`, `Transactional`, `Dom`, `Aggressive`, or `Let AI decide`), and select Main and Secondary actor roles.
+  - **External scenes settings** — Added settings under **External scenes** in the SkyrimNet mod menu to toggle manual setup prompts independently for player-involved and NPC-only scenes:
+    - `Player thread` (`tton.externalScenes.playerThread`, default: `false`).
+    - `NPC threads` (`tton.externalScenes.npcThreads`, default: `false`).
+  - **Papyrus API & mod events** — Added `ClaimExternalThread`, `EvaluateExternalSexualThread`, and `CancelExternalThread` native Papyrus functions in `OStimNet.psc`, triggered via the new `ostimnet_manual_thread_setup` mod event.
+
+### Changed
+
+- **Conception & pregnancy prompt subtlety** — Refined ongoing sex scene prompts (`0502_sex.prompt`) and Game Master bio prompts to ensure pregnancy awareness serves as subtle background context that surfaces when climax is near, preventing repetitive dialogue and keeping focus on physical sensations and intimacy.
+
+---
+
 ## v2.4.3 - 2026-09-16 (Requires SkyrimNet 25+)
 
 ### Added

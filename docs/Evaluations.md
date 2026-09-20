@@ -34,6 +34,12 @@ Runs when a sexual scene is started by an external source (another mod, or the p
 - **No Willingness Check:** The scene is already happening, so consent/willingness is bypassed.
 - **Intent Inference:** The AI reads the situation and infers what the intent of this ongoing scene *must* be.
 - **Role Assignment:** It assigns `mainActors` and `secondaryActors` to properly track the scene moving forward.
+- **Manual Setup Alternative:** If [External Scenes](Config.md#external-scenes) manual setup is enabled in settings, this automatic evaluation can be bypassed in favor of an interactive in-game menu where the player directly configures the intent and actor roles.
+
+### Pullout Decision Evaluation (`ostimnet_evaluate_pullout_decision`)
+Used as an automated fallback when the receiving partner in a vaginal intercourse scene does not manually execute the [PulloutDecision](Actions.md#pulloutdecision) action within the configured decision timeout.
+- **Contextual Decision:** Evaluates the receiving partner's personality, relationship with the giver, and cycle/pregnancy risk (integrating with Fertility Mode if installed).
+- **Decision Outcome:** Chooses whether to request pulling out (`request_pullout`), allow finishing inside (`allow_finish_inside`), or leave it to passion (`doesnt_care`), allowing OStim Navigator to find an appropriate finishing animation or release the climax stall.
 
 ### Location Scan Evaluation (`ostimnet_scan_location`)
 Used by the [Location Scan](./Config.md#location-scan) feature when the player enters a new area [or using hotkey](./Config.md#location-scan-hotkey).

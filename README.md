@@ -18,6 +18,8 @@ This integration mod creates a powerful bridge between **SkyrimNet** AI framewor
 - **[🧠 AI Encounter Evaluations](docs/Evaluations.md)**
 - **[📝 Scene Descriptions](docs/Descriptions.md)**
 - **[💬 Confirmation Messages](docs/ConfirmationMessages.md)**
+- **🌊 Pullout Mechanic** - Monitors excitement during intercourse, stalling climax to allow dialogue reactions and decisions to pull out into non-vaginal finish scenes via OStim Navigator.
+- **🎮 Manual External Scene Setup** - In-game selection menus to configure intent and participant roles for scenes started manually or by third-party mods.
 - **💦 OCum Integration** - Enhances AI awareness with fluid overlays and generates more immersive climax narratives.
 
 ## 📋 Requirements
@@ -59,6 +61,14 @@ The mod creates a seamless bridge between SkyrimNet and OStim through several ke
    - Exact animation descriptions provide the LLM with details of the ongoing positions and activities.
    - NPCs dynamically comment during scenes (when starting, changing positions, or climaxing) using intelligent speaker selection.
    - Deep OCum integration enables the LLM to recognize physical fluid layers on actors and dramatically improves the detail of climax scene descriptions.
+
+7. **Intelligent Pullout System**: Dynamically monitors excitement during vaginal sex and pauses climax build-up as orgasm approaches.
+   - Dispatches near-edge sensory narration cues so partners react verbally in the heat of the moment.
+   - Allows participants to execute `PulloutDecision` (`request_pullout`, `allow_finish_inside`, `doesnt_care`) with automated LLM fallback.
+   - Smoothly transitions to matching non-vaginal finishing positions (handjob, boobjob, masturbation, cum-on) powered by OStim Navigator.
+
+8. **External Scene Interception & Setup**: Full compatibility with third-party sex/animation mods and manual OStim hotkeys.
+   - Can either retroactively deduce scene dynamic through the Game Master LLM or present an interactive in-game selection menu to assign intent and actor roles.
 
 ## 📚 Usage Examples
 
