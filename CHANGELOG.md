@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.5.1 - 2026-09-20
+
+### Fixed
+
+- Fixed Skyrimnet Pre-25 folder structure
+
 ## v2.5.0 - 2026-09-20 (Ships both SkyrimNet pre 25 and 25+ versions)
 
 ### Added

@@ -35,7 +35,10 @@ jobs:
           # 2. SkyrimNet vPre-25 (legacy loose structure)
           mkdir -p staging_pre25
           cp -r Interface Scripts SKSE TT_OStimNet.esp staging_pre25/
-          cp -r staging_pre25/SKSE/Plugins/SkyrimNet/external/tetherball88.ostimnet/* staging_pre25/SKSE/Plugins/SkyrimNet/
+          mkdir -p staging_pre25/SKSE/Plugins/SkyrimNet/config
+          cp -r staging_pre25/SKSE/Plugins/SkyrimNet/external/tetherball88.ostimnet/actions staging_pre25/SKSE/Plugins/SkyrimNet/config/
+          cp -r staging_pre25/SKSE/Plugins/SkyrimNet/external/tetherball88.ostimnet/triggers staging_pre25/SKSE/Plugins/SkyrimNet/config/
+          cp -r staging_pre25/SKSE/Plugins/SkyrimNet/external/tetherball88.ostimnet/prompts staging_pre25/SKSE/Plugins/SkyrimNet/
           rm -rf staging_pre25/SKSE/Plugins/SkyrimNet/external
 
           (cd staging_pre25 && zip -r "../out/OStimNet_${TAG}_SkyrimNet_vPre-25.zip" \
