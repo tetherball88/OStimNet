@@ -287,7 +287,7 @@ schema:
       path: "tton.locationScan.enabled"
       type: "bool"
       description: "When enabled, OStimNet will scan nearby NPCs for willing participants after each location change and suggest an intimate scene. The scan fires after a short delay to allow NPCs to fully spawn."
-      defaultValue: true
+      defaultValue: false
       category: "Location Scan"
     - name: "Player selection mode"
       path: "tton.locationScan.playerSelectionChance"

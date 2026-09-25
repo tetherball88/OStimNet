@@ -301,7 +301,7 @@ bool Config::ConfirmStartCareScene() const {
 // -----------------------------------------------------------------------------
 
 bool Config::LocationScanEnabled() const {
-    std::string val = GetValue("tton.locationScan.enabled", "true");
+    std::string val = GetValue("tton.locationScan.enabled", "false");
     return val == "true" || val == "1";
 }
 
