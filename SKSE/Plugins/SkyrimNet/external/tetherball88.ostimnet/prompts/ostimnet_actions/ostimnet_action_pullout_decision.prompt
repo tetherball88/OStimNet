@@ -2,22 +2,27 @@
 {% set ostimNetSettings = ostimnet_settings(player.UUID) %}
 {{speakingNpc.name}} decides whether the partner should pull out before climaxing or is permitted to finish inside.
 Use 'request_pullout' when wanting or pleading with the partner to pull out or finish inside before ejaculating, 'allow_finish_inside' when wanting or permitting them to finish inside, or 'doesnt_care' if indifferent. Conception & Pregnancy Awareness: {% if ostimNetSettings.internalClimaxPromptCue and speakingNpc.isFemale %}
+    {% set fertilityRank = -1 %}
     {% if is_plugin_loaded("Fertility Mode.esm") %}
         {% set fertilityRank = get_faction_rank(speakingNpc.UUID, "ImmersiveEffectsFaction") %}
-        {% if fertilityRank == 118 %}
-        - **High chance of pregnancy (peak fertile days)**
-        {% elif fertilityRank == 117 %}
-        - **Rising chance of pregnancy (fertile days approaching)**
-        {% elif fertilityRank == 116 or fertilityRank == 119 %}
-        - **Safe days (cannot get pregnant)**
-        {% elif fertilityRank >= 1 and fertilityRank <= 100 %}
-        - **Already pregnant (cannot get pregnant again)**
-        {% elif fertilityRank >= 101 and fertilityRank <= 115 %}
-        - **Recovering after birth (safe)**
-        {% elif fertilityRank == 120 %}
-        - **In labor (safe)**
-        {% else %}
-        - Sex and finishing inside can lead to pregnancy.
-        {% endif %}
+    {% endif %}
+    {% set bfRank = -1 %}
+    {% if is_plugin_loaded("BeeingFemale.esm") %}
+        {% set bfRank = get_faction_rank(speakingNpc.UUID, "_BF_ParentFaction") %}
+    {% endif %}
+    {% if fertilityRank == 118 or bfRank == 1 %}
+    - **High chance of pregnancy (peak fertile days)**
+    {% elif fertilityRank == 117 %}
+    - **Rising chance of pregnancy (fertile days approaching)**
+    {% elif fertilityRank == 116 or fertilityRank == 119 or bfRank == 0 or bfRank == 2 or bfRank == 3 %}
+    - **Safe days (cannot get pregnant)**
+    {% elif (fertilityRank >= 1 and fertilityRank <= 100) or (bfRank >= 4 and bfRank <= 6) %}
+    - **Already pregnant (cannot get pregnant again)**
+    {% elif (fertilityRank >= 101 and fertilityRank <= 115) or bfRank == 8 %}
+    - **Recovering after birth (safe)**
+    {% elif fertilityRank == 120 or bfRank == 7 %}
+    - **In labor (safe)**
+    {% else %}
+    - Sex and finishing inside can lead to pregnancy.
     {% endif %}
 {% endif %}
