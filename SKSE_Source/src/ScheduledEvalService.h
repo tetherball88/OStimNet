@@ -23,6 +23,7 @@ public:
     void PauseThread(int threadID);
     void ResumeThread(int threadID);
     bool TriggerPlayerAdvance();
+    void Reset();
 
 private:
     ScheduledEvalService() = default;

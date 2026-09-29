@@ -11,6 +11,15 @@ ScheduledEvalService::~ScheduledEvalService() {
     StopLoop();
 }
 
+void ScheduledEvalService::Reset() {
+    StopLoop();
+    std::lock_guard<std::mutex> lock(m_mutex);
+    m_lastSceneChange.clear();
+    m_evaluationInFlight.clear();
+    m_pausedThreads.clear();
+    SKSE::log::info("ScheduledEvalService: reset on game load");
+}
+
 void ScheduledEvalService::OnThreadStart(int threadID) {
     std::lock_guard<std::mutex> lock(m_mutex);
     m_lastSceneChange[threadID] = std::chrono::steady_clock::now();

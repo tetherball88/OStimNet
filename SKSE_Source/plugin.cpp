@@ -177,9 +177,20 @@ SKSEPluginLoad(const LoadInterface* skse) {
                         OStimNet::LocationScanService::GetSingleton().Reset();
                         break;
 
-                    case SKSE::MessagingInterface::kPostLoadGame:
                     case SKSE::MessagingInterface::kNewGame:
-                        SKSE::log::info("New game/Load...");
+                        SKSE::log::info("New game...");
+                        OStimNet::Config::GetSingleton().ResetMuteOverride();
+                        if (auto* listener = OStimNet::OStimEventListener::GetInstance())
+                            listener->Reset();
+                        OStimNet::LocationScanService::GetSingleton().Reset();
+                        OStimNet::Config::GetSingleton().InitFromConfig();
+                        OStimNet::PulloutService::GetSingleton().SyncOStimPulloutSetting();
+                        RegisterHotkeyInputSink();
+                        OStimNet::LocationScanService::GetSingleton().OnGameReady();
+                        break;
+
+                    case SKSE::MessagingInterface::kPostLoadGame:
+                        SKSE::log::info("PostLoadGame...");
                         OStimNet::Config::GetSingleton().InitFromConfig();
                         OStimNet::PulloutService::GetSingleton().SyncOStimPulloutSetting();
                         RegisterHotkeyInputSink();

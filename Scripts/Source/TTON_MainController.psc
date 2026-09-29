@@ -15,6 +15,7 @@ Function Maintenance()
     TTON_Events.RegisterEventSchema()
     TTON_GameMaster.ClearStorage()
     TTON_Undress.SetupData()
+    TTON_IsOstimActive.SetValue(0.0)
 
     RegisterForModEvent("ostim_thread_start", "OStimStart")
     RegisterForModEvent("ostim_thread_scenechanged", "OStimSceneChange")

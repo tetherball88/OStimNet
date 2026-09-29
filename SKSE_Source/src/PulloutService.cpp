@@ -814,4 +814,21 @@ void PulloutService::OnThreadEnd(int threadID) {
 #endif
 }
 
+void PulloutService::Reset() {
+#if OSTIM_STALL_CLIMAX_WORKAROUND
+    std::vector<int> threadIDs;
+    {
+        std::lock_guard<std::mutex> lock(m_stallMutex);
+        m_pendingStallActors.clear();
+        for (const auto& [tid, _] : m_stalledActorMultipliers) {
+            threadIDs.push_back(tid);
+        }
+    }
+    for (int tid : threadIDs) {
+        RevertStalledActors(tid);
+    }
+#endif
+    SKSE::log::info("PulloutService: reset on game load");
+}
+
 } // namespace OStimNet

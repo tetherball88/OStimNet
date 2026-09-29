@@ -48,6 +48,12 @@ public:
         return onCooldown;
     }
 
+    void Reset() {
+        std::unique_lock lock(_cooldownMutex);
+        _cooldowns.clear();
+        SKSE::log::info("ConfirmationModal: reset on game load");
+    }
+
     // Atomic check-and-set for the normal (non-decline) cooldown.
     // Called by the Papyrus CheckAndSetActionCooldown native at the start of every action,
     // before SetActorsPending and before ShowConfirmationModal.

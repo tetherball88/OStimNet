@@ -86,6 +86,9 @@ public:
     /// Cleans up state when a thread ends.
     void OnThreadEnd(int threadID);
 
+    /// Resets all pullout state on game load and reverts stalled actors.
+    void Reset();
+
 #if OSTIM_STALL_CLIMAX_WORKAROUND
     // === Temporary Workaround: Excitement Multiplier Stall ===
     /// Queries actor's current excitement multiplier via OActor.GetExcitementMultiplier,

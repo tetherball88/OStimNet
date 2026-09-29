@@ -13,6 +13,7 @@
 #include "OCumOverlayReader.h"
 #include "ScheduledEvalService.h"
 #include "PulloutService.h"
+#include "ConfirmationModal.h"
 namespace OStimNet {
 
 class OStimEventListener : public RE::BSTEventSink<SKSE::ModCallbackEvent> {
@@ -81,6 +82,9 @@ public:
         _suppressNextSpeedChange.clear();
         _skipNextSceneTrigger.clear();
         ThreadDataStore::GetSingleton().ClearAll();
+        ScheduledEvalService::GetSingleton().Reset();
+        PulloutService::GetSingleton().Reset();
+        ConfirmationModal::GetSingleton().Reset();
         SKSE::log::info("OStimEventListener: reset on game load.");
     }
 
