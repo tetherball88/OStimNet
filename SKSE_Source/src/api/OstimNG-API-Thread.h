@@ -291,7 +291,11 @@ namespace OstimNG_API::Thread
 
     inline IThreadInterface* GetAPI(const char* pluginName, REL::Version pluginVersion)
     {
-        const auto ostim = GetModuleHandleA("OStim.dll");
+        auto ostim = GetModuleHandleA("OStim.dll");
+        if (!ostim)
+            ostim = GetModuleHandleA("OStim NG.dll");
+        if (!ostim)
+            ostim = GetModuleHandleA("OStimNG.dll");
         if (!ostim)
             return nullptr;
 

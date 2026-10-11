@@ -1145,7 +1145,7 @@ bool EvaluateExternalSexualThread(const std::vector<RE::FormID>& participantForm
             SKSE::log::info("EvaluateExternalSexualThread: thread {} no longer pending (ended before LLM response), discarding.", threadID);
             return;
         }
-        if (!g_ostimThreadInterface || !g_ostimThreadInterface->IsThreadValid(static_cast<uint32_t>(threadID))) {
+        if (g_ostimThreadInterface && !g_ostimThreadInterface->IsThreadValid(static_cast<uint32_t>(threadID))) {
             SKSE::log::warn("EvaluateExternalSexualThread: thread {} is no longer valid, discarding.", threadID);
             store.ClearThread(threadID);
             return;

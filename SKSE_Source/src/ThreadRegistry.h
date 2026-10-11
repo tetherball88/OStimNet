@@ -455,6 +455,13 @@ public:
         state.actors.names = std::move(names);
     }
 
+    void SetActors(int threadID, std::vector<uint32_t> formIDs, std::vector<RE::Actor*> ptrs, std::vector<std::string> names) {
+        auto& state = _threads[threadID];
+        state.actors.formIDs = std::move(formIDs);
+        state.actors.ptrs    = std::move(ptrs);
+        state.actors.names   = std::move(names);
+    }
+
     const std::vector<RE::Actor*>& GetActorPtrs(int threadID) const {
         static const std::vector<RE::Actor*> kEmpty;
         auto it = _threads.find(threadID);
