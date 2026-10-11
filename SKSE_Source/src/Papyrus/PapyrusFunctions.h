@@ -626,7 +626,7 @@ static void RegisterLatentFixed(RE::BSScript::IVirtualMachine* vm,
             SKSE::log::warn("PapyrusFunctions: ClaimExternalThread threadID={} not registered or not pending", threadID);
             return;
         }
-        if (!g_ostimThreadInterface || !g_ostimThreadInterface->IsThreadValid(static_cast<uint32_t>(threadID))) {
+        if (g_ostimThreadInterface && !g_ostimThreadInterface->IsThreadValid(static_cast<uint32_t>(threadID))) {
             SKSE::log::warn("PapyrusFunctions: ClaimExternalThread threadID={} is not valid in OStim", threadID);
             store.ClearThread(threadID);
             return;
@@ -671,16 +671,38 @@ static void RegisterLatentFixed(RE::BSScript::IVirtualMachine* vm,
         }
     }
 
-    // Papyrus native: Function EvaluateExternalSexualThread(int threadID) global native
-    void EvaluateExternalSexualThread(RE::StaticFunctionTag*, int32_t threadID) {
+    // Papyrus native: Function EvaluateExternalSexualThread(int threadID, Actor[] actors) global native
+    void EvaluateExternalSexualThread(RE::StaticFunctionTag*,
+                                      int32_t threadID,
+                                      std::vector<RE::Actor*> actors) {
         auto& store = OStimNet::ThreadDataStore::GetSingleton();
         if (!store.IsRegisteredAndPending(threadID)) {
             SKSE::log::warn("PapyrusFunctions: EvaluateExternalSexualThread threadID={} not pending", threadID);
             return;
         }
-        auto formIDs = store.GetActorFormIDs(threadID);
+
         std::vector<RE::FormID> fids;
-        for (uint32_t fid : formIDs) fids.push_back(static_cast<RE::FormID>(fid));
+        std::vector<uint32_t> formIDs;
+        std::vector<RE::Actor*> validActors;
+        std::vector<std::string> names;
+
+        for (size_t i = 0; i < actors.size(); ++i) {
+            auto* actor = actors[i];
+            if (actor) {
+                fids.push_back(actor->GetFormID());
+                formIDs.push_back(actor->GetFormID());
+                validActors.push_back(actor);
+                names.push_back(OStimNet::ThreadDataStore::GetActorDisplayName(actor, "Actor" + std::to_string(i)));
+            }
+        }
+
+        if (!formIDs.empty()) {
+            store.SetActors(threadID, std::move(formIDs), std::move(validActors), std::move(names));
+        } else {
+            auto cachedFormIDs = store.GetActorFormIDs(threadID);
+            for (uint32_t fid : cachedFormIDs) fids.push_back(static_cast<RE::FormID>(fid));
+        }
+
         SkyrimNetIntegration::EvaluateExternalSexualThread(fids, threadID);
     }
 

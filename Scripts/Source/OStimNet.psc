@@ -58,7 +58,7 @@ Function SetThreadIntent(int ThreadID, string intent, Actor[] mainActors) global
 Function ClaimExternalThread(int ThreadID, string intent, Actor[] mainActors, bool isSexual = true) global native
 
 ; Fallback: invokes SkyrimNet LLM evaluation to determine intent and roles for a pending thread.
-Function EvaluateExternalSexualThread(int ThreadID) global native
+Function EvaluateExternalSexualThread(int ThreadID, Actor[] actors) global native
 
 ; Discards an external thread if setup was cancelled.
 Function CancelExternalThread(int ThreadID) global native

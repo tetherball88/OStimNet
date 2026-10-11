@@ -277,7 +277,7 @@ Function SetupExternalThread(int threadID) global
 
     if(intent == "ai")
         Debug.Notification("OStimNet: Delegating scene evaluation to AI...")
-        OStimNet.EvaluateExternalSexualThread(threadID)
+        OStimNet.EvaluateExternalSexualThread(threadID, actors)
         return
     endif
 
