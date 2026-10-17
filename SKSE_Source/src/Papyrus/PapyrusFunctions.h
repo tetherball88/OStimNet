@@ -10,6 +10,7 @@
 #include "src/EventPayloadBuilder.h"
 #include "src/LocationScanService.h"
 #include "src/PulloutService.h"
+#include "src/Config.h"
 
 namespace OStimNet::Papyrus::PapyrusFunctions {
 
@@ -717,11 +718,34 @@ static void RegisterLatentFixed(RE::BSScript::IVirtualMachine* vm,
         SKSE::log::info("PapyrusFunctions: CancelExternalThread threadID={}", threadID);
     }
 
+    // Papyrus native: bool Function ToggleMute() global native
+    // Toggles the session mute state for NPC comments/triggers. Returns the new mute state.
+    bool ToggleMute(RE::StaticFunctionTag*) {
+        OStimNet::Config::GetSingleton().ToggleMuteSession();
+        return OStimNet::Config::GetSingleton().IsMuted();
+    }
+
+    // Papyrus native: bool Function IsMuted() global native
+    // Returns true if NPC comments/triggers are currently muted.
+    bool IsMuted(RE::StaticFunctionTag*) {
+        return OStimNet::Config::GetSingleton().IsMuted();
+    }
+
+    // Papyrus native: Function SetMuted(bool akMuted) global native
+    // Explicitly sets the session mute state for NPC comments/triggers.
+    void SetMuted(RE::StaticFunctionTag*, bool akMuted) {
+        OStimNet::Config::GetSingleton().SetMutedSession(akMuted);
+    }
+
     bool Register(RE::BSScript::IVirtualMachine* vm) {
         vm->RegisterFunction("SetPulloutDecision", "OStimNet", SetPulloutDecision);
         vm->RegisterFunction("ClaimExternalThread", "OStimNet", ClaimExternalThread);
         vm->RegisterFunction("EvaluateExternalSexualThread", "OStimNet", EvaluateExternalSexualThread);
         vm->RegisterFunction("CancelExternalThread", "OStimNet", CancelExternalThread);
+
+        vm->RegisterFunction("ToggleMute", "OStimNet", ToggleMute);
+        vm->RegisterFunction("IsMuted", "OStimNet", IsMuted);
+        vm->RegisterFunction("SetMuted", "OStimNet", SetMuted);
 
         vm->RegisterFunction("GetLocationGeneration", "OStimNet", GetLocationGeneration);
         vm->RegisterFunction("GetSceneDescription", "OStimNet", GetSceneDescription);
@@ -760,7 +784,7 @@ static void RegisterLatentFixed(RE::BSScript::IVirtualMachine* vm,
         vm->RegisterFunction("GetMainActors", "OStimNet", GetMainActors);
         vm->RegisterFunction("GetSecondaryActors", "OStimNet", GetSecondaryActors);
         vm->RegisterFunction("BuildSpectatorFledEventJson", "OStimNet", BuildSpectatorFledEventJson);
-        SKSE::log::info("PapyrusDecorators: registered GetSceneDescription, GetActorListString, Log, SetThreadContinuation, OcumApplied, OcumSquirt, GetSpectatorTarget, EvaluatePreStartSexualScene, EvaluateNonSexualScene, JsonGetString, JsonGetInt, JsonGetFloat, JsonGetBool, JsonArrayLength, ShowConfirmationModal, CheckAndSetActionCooldown, GetSexualPositionFromTags, GetThreadIntent, SetThreadIntent, ClaimThread, ConfirmThread, ClaimExternalThread, EvaluateExternalSexualThread, CancelExternalThread on OStimNet.");
+        SKSE::log::info("PapyrusDecorators: registered ToggleMute, IsMuted, SetMuted, GetSceneDescription, GetActorListString, Log, SetThreadContinuation, OcumApplied, OcumSquirt, GetSpectatorTarget, EvaluatePreStartSexualScene, EvaluateNonSexualScene, JsonGetString, JsonGetInt, JsonGetFloat, JsonGetBool, JsonArrayLength, ShowConfirmationModal, CheckAndSetActionCooldown, GetSexualPositionFromTags, GetThreadIntent, SetThreadIntent, ClaimThread, ConfirmThread, ClaimExternalThread, EvaluateExternalSexualThread, CancelExternalThread on OStimNet.");
         return true;
     }
 

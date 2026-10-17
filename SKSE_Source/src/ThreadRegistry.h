@@ -771,6 +771,32 @@ public:
         return result;
     }
 
+    // Continuation (join/swap): carries spectators over from oldThreadID to newThreadID
+    // (works for same-ID restarts too). Spectators that are now participants of the new
+    // thread are dropped and returned as {spectatorID, targetID} so the caller can fire
+    // remove-spectator events for them. _alreadyNotified is kept for carried-over spectators.
+    std::vector<std::pair<RE::FormID, RE::FormID>> TransferSpectatorsForContinuation(
+            int oldThreadID, int newThreadID, const std::vector<uint32_t>& newParticipantIDs) {
+        std::vector<std::pair<RE::FormID, RE::FormID>> dropped;
+        auto oldIt = _threads.find(oldThreadID);
+        if (oldIt == _threads.end()) return dropped;
+
+        auto moved = std::move(oldIt->second.spectators);
+        oldIt->second.spectators.clear();
+
+        std::unordered_set<uint32_t> participants(newParticipantIDs.begin(), newParticipantIDs.end());
+        auto& dst = _threads[newThreadID].spectators;
+        for (const auto& [specID, targetID] : moved) {
+            if (participants.count(specID)) {
+                _alreadyNotified.erase(specID);
+                dropped.emplace_back(specID, targetID);
+            } else {
+                dst[specID] = targetID;
+            }
+        }
+        return dropped;
+    }
+
     RE::FormID GetSpectatorTargetFormID(RE::FormID spectatorID) const {
         for (const auto& [tid, state] : _threads) {
             auto it = state.spectators.find(spectatorID);

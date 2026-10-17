@@ -42,8 +42,8 @@ Function RegisterEventSchema() global
         + "{\"name\": \"speaker\", \"type\": 0, \"required\": false, \"description\": \"Speaker actor name.\"}," \
         + "{\"name\": \"threadID\", \"type\": 1, \"required\": true, \"description\": \"OStim Thread ID.\"}" \
         +"]"
-        string renderTemplateCompact = "\"{{render_template(\\\"helpers/ostimnet_event_compact\\\")}}\""
-        string renderTemplate = "\"{{render_template(\\\"helpers/ostimnet_event_verbose\\\")}}\""
+    string renderTemplateCompact = "\"{{render_template(\\\"helpers/ostimnet_event_compact\\\")}}\""
+    string renderTemplate = "\"{{render_template(\\\"helpers/ostimnet_event_verbose\\\")}}\""
     string renderParams = "{\"recent_events\":"+renderTemplateCompact+",\"raw\":"+renderTemplate+",\"compact\":"+renderTemplateCompact+",\"verbose\":"+renderTemplate+"}"
     SkyrimnetApi.RegisterEventSchema("tton_event", name, description, jsonParams, renderParams, false, 0)
 EndFunction

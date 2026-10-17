@@ -206,6 +206,9 @@ private:
             auto age = std::chrono::duration<float>(
                 std::chrono::steady_clock::now() - pending.recordedAt).count();
             if (age > 5.0f) {
+                // Continuation never arrived: release spectators held back in HandleEnd.
+                for (auto [specID, targetID] : ThreadRegistry::GetSingleton().TakeSpectators(pending.oldThreadID))
+                    DebounceQueue::FireRemoveSpectatorEvent(specID, targetID, pending.oldThreadID);
                 _pendingContinuation.reset();  // expired
             } else {
                 const auto& old = pending.oldFormIDs;
@@ -224,9 +227,10 @@ private:
             SKSE::log::info("OStimEventListener: thread {} is continuation of thread {}", threadID, sourceID);
             ThreadDataStore::GetSingleton().CopyStateForContinuation(sourceID, threadID, preUpdateFormIDs);
             OnThreadContinued(sourceID, threadID);
+            // Carry non-participant spectators over; drop the ones who just joined the scene.
+            for (auto [specID, targetID] : ThreadRegistry::GetSingleton().TransferSpectatorsForContinuation(sourceID, threadID, newActors))
+                DebounceQueue::FireRemoveSpectatorEvent(specID, targetID, sourceID);
             if (sourceID != threadID) {
-                for (auto [specID, targetID] : ThreadDataStore::GetSingleton().TakeSpectators(sourceID))
-                    DebounceQueue::FireRemoveSpectatorEvent(specID, targetID, sourceID);
                 ThreadDataStore::GetSingleton().ClearThread(sourceID);
             }
             return;
@@ -304,8 +308,8 @@ private:
         if (ThreadDataStore::GetSingleton().IsContinuation(threadID)) {
             SKSE::log::info("OStimEventListener: thread {} end suppressed (continuation)", threadID);
             // Do not clear — data is preserved for CopyStateForContinuation in HandleStart.
-            for (auto [specID, targetID] : ThreadRegistry::GetSingleton().TakeSpectators(threadID))
-                DebounceQueue::FireRemoveSpectatorEvent(specID, targetID, threadID);
+            // Spectators are kept too: HandleStart transfers them to the new thread, or the
+            // pending-continuation expiry releases them if no continuation arrives.
         } else {
             SKSE::log::info("OStimEventListener: thread {} ended", threadID);
             OnThreadEnd(threadID);

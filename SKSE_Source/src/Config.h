@@ -129,6 +129,9 @@ struct Config {
     /// Persists until ResetMuteOverride() is called (e.g., on game reload).
     void ToggleMuteSession();
 
+    /// Explicitly sets the session-level mute override.
+    void SetMutedSession(bool muted);
+
     /// Clears the session-level mute override so IsMuted() falls back to the config value.
     void ResetMuteOverride();
 

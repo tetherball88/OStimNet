@@ -61,6 +61,8 @@
       {% endif %}
       The encounter is fully concluded and should not be revisited or re-initiated unless actors explicitly and unambiguously propose it again. Do not use StartNewSex or StartCareScene based on prior encounter history alone.
     {% endif %}
+{% else if tton_type == "sex_continue_thread" %}
+    {{msg}}
 {% else if tton_type == "action_decline" %}
     {{msg}}
 {% else if tton_type == "spectator_added" %}

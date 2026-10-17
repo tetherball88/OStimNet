@@ -212,8 +212,13 @@ bool Config::IsMuted() const {
 }
 
 void Config::ToggleMuteSession() {
-    m_muteOverride = !m_muteOverride.value_or(false);
-    SKSE::log::info("OStimNet: mute toggled (session override = {})", *m_muteOverride);
+    bool newMute = !IsMuted();
+    SetMutedSession(newMute);
+}
+
+void Config::SetMutedSession(bool muted) {
+    m_muteOverride = muted;
+    SKSE::log::info("OStimNet: mute set (session override = {})", *m_muteOverride);
     RE::SendHUDMessage::ShowHUDMessage(*m_muteOverride ? "OStimNet: all actors muted" : "OStimNet: all actors unmuted");
 }
 

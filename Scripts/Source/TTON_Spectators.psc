@@ -7,11 +7,17 @@ Function TryMakeSpectator(Actor spectator, Actor target) global
         ThreadID != -1 \
         && !spectator.IsInFaction(TTON_JData.GetSpectatorFaction()) \
     )
+        string eventJson = OStimNet.BuildSpectatorAddedEventJson(spectator)
+        if(eventJson == "")
+            ; spectator was untracked by the plugin before we handled the event (thread ended/continued) - nothing to do
+            TTON_Debug.debug("TryMakeSpectator: " + TTON_Utils.GetActorName(spectator) + " no longer tracked, skipping")
+            return
+        endif
         LinkSpectatorToOStimParticipant(spectator, target)
         ActorUtil.AddPackageOverride(spectator, TTON_JData.GetSpectatorFollowPackage(), 60)
         spectator.AddToFaction(TTON_JData.GetSpectatorFaction())
         spectator.EvaluatePackage()
-        TTON_Events.SendSkyrimNetEvent(OStimNet.BuildSpectatorAddedEventJson(spectator), spectator, target)
+        TTON_Events.SendSkyrimNetEvent(eventJson, spectator, target)
     endif
 EndFunction
 

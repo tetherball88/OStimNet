@@ -4,6 +4,17 @@ scriptname OStimNet
 ; Native functions (implemented in OStimNet SKSE plugin)
 ;==========================================================================
 
+; Toggles the session mute state for NPC comments/triggers.
+; When muted, all scene triggers and comments from NPCs are suppressed (skipTrigger=true).
+; Returns true if now muted, false if unmuted.
+bool Function ToggleMute() global native
+
+; Returns true if NPC comments/triggers are currently muted.
+bool Function IsMuted() global native
+
+; Explicitly sets the session mute state for NPC comments/triggers.
+Function SetMuted(bool akMuted) global native
+
 ; Returns the current location generation counter for async evaluation invalidation
 int Function GetLocationGeneration() global native
 

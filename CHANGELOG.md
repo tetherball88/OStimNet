@@ -1,5 +1,31 @@
 # Changelog
 
+## v2.5.6
+
+### Added
+
+- **Session mute Papyrus API** — Added global native Papyrus functions on `OStimNet` (`ToggleMute()`, `IsMuted()`, and `SetMuted(bool akMuted)`) to query, toggle, or explicitly set the session-level mute state for NPC scene triggers and comments.
+
+### Fixed
+
+- **Spectator handling across thread continuations (join/swap)** — Fixed spectators being prematurely removed or stuck when an active scene transitions via thread continuation (e.g. when a spectator joins an ongoing scene):
+  - Preserved non-participating spectators across continued threads via `TransferSpectatorsForContinuation`, only firing remove-spectator events for spectators who joined the scene as participants (or if a pending continuation expires).
+  - Added a guard in `TTON_Spectators.TryMakeSpectator` to skip package overrides, faction assignment, and event dispatch if the spectator was already untracked before the Papyrus event was processed.
+- **Thread continuation event prompt rendering** — Added `sex_continue_thread` event rendering (`{{msg}}`) to `ostimnet_event_compact.prompt` and `ostimnet_event_verbose.prompt` so scene continuation events are no longer omitted from SkyrimNet event logs.
+- **Session mute toggle baseline** — Fixed `Config::ToggleMuteSession()` to invert the effective `IsMuted()` state (respecting the configured `muteAllActors` setting when no session override is active yet).
+
+---
+
+## v2.5.5
+
+### Fixed
+
+- **External thread start with AI evaluation** — Fixed third-party / external scene starts failing when delegating scene evaluation to AI (`EvaluateExternalSexualThread`):
+  - Passed resolved participant `Actor[]` directly from `TTON_OStimOptions.SetupExternalThread` into `OStimNet.EvaluateExternalSexualThread` and stored participant FormIDs, pointers, and display names on the thread registry before running LLM evaluation.
+  - Added module handle fallbacks for `OStim NG.dll` and `OStimNG.dll` alongside `OStim.dll` in `OstimNG_API::Thread::GetAPI`, and prevented missing `g_ostimThreadInterface` pointers from prematurely aborting `ClaimExternalThread` and `EvaluateExternalSexualThread`.
+
+---
+
 ## v2.5.1 - 2026-09-20
 
 ### Fixed
