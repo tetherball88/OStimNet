@@ -20,7 +20,7 @@ BEGIN
 			VALUE "FileDescription", "OStimNet"
 			VALUE "FileVersion", "0.0.1.0"
 			VALUE "InternalName", "OStimNet"
-			VALUE "LegalCopyright", "MIT License"
+			VALUE "LegalCopyright", "Copyright (c) tetherball88. All Rights Reserved."
 			VALUE "ProductName", "OStimNet"
 			VALUE "ProductVersion", "0.0.1.0"
 		END

@@ -90,4 +90,15 @@ This mod is intended for adult users and requires all components to be properly 
 
 ---
 
+## 📜 License & Permissions ⚖️
+
+**Copyright © 2025–2026 tetherball88. All Rights Reserved** *(Source-Available — see [LICENSE](LICENSE) for full terms).*
+
+- ✅ **Contributions Welcome:** You are welcome and encouraged to fork this repository on GitHub, inspect the code, and submit **Pull Requests** or bug reports.
+- ✅ **Patches & Third-Party Integrations:** You may freely create and publish compatibility patches, JSON/YAML configs, animation description packs, SkyrimNet prompt/action extensions, and add-on mods that require the official OStimNet release as a dependency. The public interop file (`Scripts/Source/OStimNet.psc`) is explicitly provided under the **MIT License** so third-party mods can compile against it freely.
+- ✅ **Translations:** Community translations may be published as standalone translation patches that require the original OStimNet mod and credit the original page.
+- ❌ **No Standalone Redistribution or Re-uploading:** You may **not** copy, repackage, re-upload, or publish OStimNet (or modified standalone forks of its DLL, ESP, SkyrimNet bundles, or scripts) as your own mod on Nexus Mods or any other platform without explicit written permission from the author.
+
+---
+
 *Bringing natural intelligence to intimate encounters in Skyrim!* 🏹❤️

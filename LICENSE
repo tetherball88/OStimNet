@@ -1,0 +1,103 @@
+OStimNet (SkyrimNet-OStim Integration) — Source-Available Modding License
+Copyright (c) 2025–2026 tetherball88. All Rights Reserved, except as explicitly granted below.
+
+================================================================================
+1. DEFINITIONS & RETROACTIVE SCOPE
+================================================================================
+- "The Mod" refers to OStimNet across all past, present, and future versions,
+  releases, tags, and git commits, including its SKSE C++ source code and
+  compiled binaries (OStimNet.dll), Creation Kit plugin (TT_OStimNet.esp),
+  Papyrus scripts (Scripts/Source/*.psc and compiled .pex files), SkyrimNet
+  bundle/prompt/action definitions (SKSE/Plugins/SkyrimNet/), JSON/INI/YAML
+  configurations and animation descriptions (SKSE/Plugins/OStimNet/), interface
+  translation files (Interface/), documentation, and all associated assets in
+  this repository.
+- "Author" refers to tetherball88.
+- "Public API Files" refers strictly to:
+  1. Scripts/Source/OStimNet.psc
+
+================================================================================
+2. PERMITTED USES (WHAT YOU MAY DO)
+================================================================================
+Subject to the restrictions in Section 3, the Author grants you the following
+non-exclusive, royalty-free permissions:
+
+a) Personal Use:
+   You may download, inspect, and compile the source code for your own personal,
+   private gameplay and testing.
+
+b) Contributions (GitHub Forks & Pull Requests):
+   In accordance with the GitHub Terms of Service, you may fork this repository
+   on GitHub, make modifications in your fork for testing or development, and
+   submit Pull Requests, bug reports, or issues back to the official repository.
+
+c) Compatibility Patches, Add-ons & Integrations:
+   You may create and publish independent compatibility patches, JSON/YAML
+   configuration presets, animation description packs, SkyrimNet prompt/action
+   extensions, or third-party mods that interact with The Mod, PROVIDED THAT:
+   - Your patch or mod requires the official release of OStimNet as an external
+     dependency (master/requirement); and
+   - Your upload does NOT bundle, repackage, or redistribute OStimNet.dll,
+     TT_OStimNet.esp, OStimNet SkyrimNet bundles, or OStimNet core scripts
+     (except for the Public API Files covered in Section 4).
+
+d) Translations:
+   You may create and publish translations of The Mod (such as translated string
+   files, JSON/YAML localization files, prompt translations, or ESP text-only
+   translation patches), PROVIDED THAT:
+   - The translation is distributed strictly as a translation-only patch that
+     requires the original OStimNet mod to function;
+   - It does not bundle OStimNet.dll or the full mod archive; and
+   - Clear credit and a link back to the official OStimNet page are provided.
+
+================================================================================
+3. PROHIBITED USES (WHAT YOU MAY NOT DO)
+================================================================================
+Without prior written permission from the Author, you may NOT:
+
+a) Redistribute or Re-upload:
+   Upload, host, mirror, or distribute The Mod (in whole or in part, whether
+   unmodified or modified, from any version or commit) as a standalone mod, fork,
+   or replacement package on Nexus Mods, Steam Workshop, Bethesda.net, Discord,
+   Patreon, LoversLab, or any other website or platform.
+
+b) Plagiarize or Rebrand:
+   Copy substantial portions of the C++ implementation, Papyrus service scripts,
+   SkyrimNet prompt/action definitions, or ESP records to publish under your own
+   name or as a competing/derivative standalone mod.
+
+c) Commercial Use or Paywalling:
+   Sell, rent, sublicense, or place The Mod, any patch, or any derivative work
+   behind a paywall, donation lock, or commercial subscription.
+
+================================================================================
+4. PERMISSIVE EXCEPTION FOR PUBLIC API INTEROP FILES (MIT LICENSE)
+================================================================================
+To allow third-party SKSE plugins and Papyrus mods to freely compile against and
+interface with OStimNet without licensing friction, the Public API Files
+(`Scripts/Source/OStimNet.psc`) are licensed under the MIT License:
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+the Public API Files to use, copy, include, compile against, and distribute
+those specific interface files within their own third-party mods, subject to
+retaining the copyright notice in those files. This exception applies ONLY to
+the Public API Files and does not extend to any other file in this repository.
+
+================================================================================
+5. CONTRIBUTOR LICENSE AGREEMENT (INBOUND CONTRIBUTIONS)
+================================================================================
+By submitting a Pull Request, patch, or other contribution to this repository,
+you represent that you have the right to submit the contribution and you grant
+the Author a perpetual, worldwide, irrevocable, royalty-free, transferable
+license to use, modify, reproduce, and distribute your contribution as part of
+The Mod across all official distribution channels.
+
+================================================================================
+6. DISCLAIMER OF WARRANTY
+================================================================================
+THE MOD AND ITS SOURCE CODE ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO
+EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE FOR ANY CLAIM, DAMAGES, OR
+OTHER LIABILITY ARISING FROM THE USE OF OR INABILITY TO USE THE MOD.
+
