@@ -56,6 +56,26 @@ namespace {
             console->Print("%s", message.data());
         }
     }
+
+    uint32_t VkToDirectInputKeyCode(int a_vk) {
+        if (a_vk <= 0) return 0;
+        if (a_vk == VK_PAUSE) return 0xC5;    // DIK_PAUSE
+        if (a_vk == VK_NUMLOCK) return 0x45;  // DIK_NUMLOCK
+
+        uint32_t vsc = MapVirtualKeyA(static_cast<uint32_t>(a_vk), MAPVK_VK_TO_VSC_EX);
+        if (vsc == 0) {
+            vsc = MapVirtualKeyA(static_cast<uint32_t>(a_vk), MAPVK_VK_TO_VSC);
+        }
+        if (vsc == 0) return 0;
+
+        if ((vsc & 0xFF00) == 0xE000) {
+            return (vsc & 0xFF) | 0x80;
+        }
+        if ((vsc & 0xFF00) != 0) {
+            return 0;
+        }
+        return vsc & 0xFF;
+    }
 }
 
 class HotkeyInputSink : public RE::BSTEventSink<RE::InputEvent*> {
@@ -104,10 +124,12 @@ public:
                 }
             }
 
+            if (btn->GetDevice() != RE::INPUT_DEVICE::kKeyboard) continue;
+
             int muteHotkey = OStimNet::Config::GetSingleton().ToggleMuteHotkey();
             if (muteHotkey > 0) {
-                uint32_t diCode = MapVirtualKeyA(static_cast<uint32_t>(muteHotkey), MAPVK_VK_TO_VSC);
-                if (btn->GetIDCode() == diCode) {
+                uint32_t diCode = VkToDirectInputKeyCode(muteHotkey);
+                if (diCode > 0 && btn->GetIDCode() == diCode) {
                     SKSE::log::info("OStimNet: toggleMuteHotkey fired (key={})", muteHotkey);
                     OStimNet::Config::GetSingleton().ToggleMuteSession();
                 }
@@ -115,16 +137,16 @@ public:
 
             int scanHotkey = OStimNet::Config::GetSingleton().LocationScanHotkey();
             if (scanHotkey > 0) {
-                uint32_t scanDiCode = MapVirtualKeyA(static_cast<uint32_t>(scanHotkey), MAPVK_VK_TO_VSC);
-                if (btn->GetIDCode() == scanDiCode) {
+                uint32_t scanDiCode = VkToDirectInputKeyCode(scanHotkey);
+                if (scanDiCode > 0 && btn->GetIDCode() == scanDiCode) {
                     OStimNet::LocationScanService::GetSingleton().TriggerManualScan();
                 }
             }
 
             int advanceHotkey = OStimNet::Config::GetSingleton().AdvancePlayerSceneHotkey();
             if (advanceHotkey > 0) {
-                uint32_t advanceDiCode = MapVirtualKeyA(static_cast<uint32_t>(advanceHotkey), MAPVK_VK_TO_VSC);
-                if (btn->GetIDCode() == advanceDiCode) {
+                uint32_t advanceDiCode = VkToDirectInputKeyCode(advanceHotkey);
+                if (advanceDiCode > 0 && btn->GetIDCode() == advanceDiCode) {
                     SKSE::log::info("OStimNet: advancePlayerSceneHotkey fired (key={})", advanceHotkey);
                     OStimNet::ScheduledEvalService::GetSingleton().TriggerPlayerAdvance();
                 }

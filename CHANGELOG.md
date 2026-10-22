@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.5.7
+
+### Fixed
+
+- **Hotkeys triggering on mouse clicks & extended keys mapping** — Fixed an issue in `HotkeyInputSink::ProcessEvent` where configuring hotkeys (`Advance scene (player thread)`, `Location scan`, `Toggle mute`) to keys without a standard 1-byte `MapVirtualKeyA` scan code (such as `Pause/Break` / `VK_PAUSE = 19`, which mapped to `0`) caused every Left Mouse Click (`IDCode == 0`) to trigger the hotkey action and advance the player's scene:
+  - Restricted keyboard hotkey evaluation strictly to `RE::INPUT_DEVICE::kKeyboard` events and required non-zero DirectInput scan codes.
+  - Added `VkToDirectInputKeyCode` helper with explicit `VK_PAUSE` (`0xC5`) and `VK_NUMLOCK` (`0x45`) handling and `MAPVK_VK_TO_VSC_EX` translation for `0xE0`-extended keys (arrow keys, Insert/Delete/Home/End/PageUp/PageDown, Numpad Divide, right modifiers).
+
+---
+
 ## v2.5.6
 
 ### Added
