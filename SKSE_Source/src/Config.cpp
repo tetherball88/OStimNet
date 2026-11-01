@@ -83,6 +83,11 @@ std::string Config::GmLlmVariant() const {
     return GetValue("tton.gm.gmLlmVariant", "gamemaster_evaluation");
 }
 
+bool Config::UseDecisions() const {
+    std::string val = GetValue("tton.gm.useDecisions", "true");
+    return val == "true" || val == "1";
+}
+
 bool Config::ScheduledEvalPlayerThread() const {
     std::string val = GetValue("tton.gameMaster.scheduledEvalPlayerThread", "false");
     return val == "true" || val == "1";
@@ -401,5 +406,3 @@ bool Config::ExternalScenesNpcThreads() const {
 }
 
 }  // namespace OStimNet
-
-

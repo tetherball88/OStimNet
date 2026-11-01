@@ -1,0 +1,24 @@
+# Normalize all text files in working tree and index to LF
+* text=auto eol=crlf
+
+# Binary files
+*.esp binary
+*.esm binary
+*.esl binary
+*.pex binary
+*.dll binary
+*.lib binary
+*.pdb binary
+*.bsa binary
+*.png binary
+*.jpg binary
+*.webp binary
+*.woff2 binary
+*.swf binary
+*.seq binary
+*.fuz binary
+*.xwm binary
+*.wav binary
+*.nif binary
+*.hkx binary
+*.tri binary

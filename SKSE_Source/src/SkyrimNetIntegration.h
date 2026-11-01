@@ -1,4 +1,5 @@
 #pragma once
+#include <functional>
 #include <map>
 #include <string>
 #include <vector>
@@ -54,10 +55,12 @@ namespace OStimNet::SkyrimNetIntegration {
      *   numArg = 0.0  — error (LLM failure or unparseable response)
      *
      * @param participantFormIDs  FormIDs of all intended participants (max 5).
-     * @param intent              Optional hint for the LLM (e.g. "romantic", "dom"). Empty string = no hint.
+     * @param evalId              Evaluation ID string.
+     * @param reason              Optional initiation reason from the triggering action.
+     * @param forceChat           When true, bypasses Jev Decisions and forces the GM chat LLM path.
      * @return true if the LLM task was successfully queued.
      */
-    bool EvaluatePreStartSexualScene(const std::vector<RE::FormID>& participantFormIDs, const std::string& intent = "", const std::string& evalId = "");
+    bool EvaluatePreStartSexualScene(const std::vector<RE::FormID>& participantFormIDs, const std::string& evalId = "", const std::string& reason = "", bool forceChat = false);
 
     /**
      * Send the "ostimnet_evaluate_external_sexual_thread" prompt to the LLM for an OStim
@@ -70,10 +73,12 @@ namespace OStimNet::SkyrimNetIntegration {
      *
      * @param participantFormIDs  FormIDs of the thread's participants (max 5).
      * @param threadID            Active OStim thread ID.
+     * @param forceChat           When true, bypasses Jev Decisions and forces the GM chat LLM path.
      * @return true if the LLM task was successfully queued.
      */
     bool EvaluateExternalSexualThread(const std::vector<RE::FormID>& participantFormIDs,
-                                      int threadID);
+                                      int threadID,
+                                      bool forceChat = false);
 
     /**
      * Send the "ostimnet_evaluate_nonsexual_scene" prompt to the LLM before a non-sexual
@@ -88,9 +93,12 @@ namespace OStimNet::SkyrimNetIntegration {
      * @param activity            Optional activity hint for the LLM (e.g. "spar", "meditate"). Empty = no hint.
      * @param intent              Optional intent hint for the LLM (e.g. "friendly", "hostile"). Empty = no hint.
      * @param initiatorFormID     Optional FormID of the actor who initiated the scene. 0 = no initiator.
+     * @param evalId              Evaluation ID string.
+     * @param reason              Optional initiation reason from the triggering action.
+     * @param forceChat           When true, bypasses Jev Decisions and forces the GM chat LLM path.
      * @return true if the LLM task was successfully queued.
      */
-    bool EvaluateNonSexualScene(const std::vector<RE::FormID>& participantFormIDs, const std::string& activity = "", const std::string& intent = "", RE::FormID initiatorFormID = 0, const std::string& evalId = "");
+    bool EvaluateNonSexualScene(const std::vector<RE::FormID>& participantFormIDs, const std::string& activity = "", const std::string& intent = "", RE::FormID initiatorFormID = 0, const std::string& evalId = "", const std::string& reason = "", bool forceChat = false);
 
     /**
      * Send the "ostimnet_evaluate_join_ongoing_sex" prompt to the LLM when an actor outside
@@ -101,15 +109,18 @@ namespace OStimNet::SkyrimNetIntegration {
      *   numArg = 2.0  — LLM returned scene=null (decided not to proceed)
      *   numArg = 0.0  — error (LLM failure or unparseable response)
      *
-     * @param joinerFormID              FormID of the actor requesting to join.
-     * @param currentParticipantFormIDs FormIDs of actors already in the thread.
-     * @param currentIntent             Current thread intent string (e.g. "romantic").
-     * @param threadID                  Active OStim thread ID.
+     * @param joinerFormID  FormID of the actor requesting to join.
+     * @param threadID      Active OStim thread ID.
+     * @param evalId        Evaluation ID string.
+     * @param reason        Optional initiation reason from the triggering action.
+     * @param forceChat     When true, bypasses Jev Decisions and forces the GM chat LLM path.
      * @return true if the LLM task was successfully queued.
      */
     bool EvaluateJoinOngoingSex(RE::FormID joinerFormID,
                                 int threadID,
-                                const std::string& evalId = "");
+                                const std::string& evalId = "",
+                                const std::string& reason = "",
+                                bool forceChat = false);
 
     /**
      * Send the "ostimnet_evaluate_invite_to_sex" prompt to the LLM when an actor in a
@@ -120,17 +131,20 @@ namespace OStimNet::SkyrimNetIntegration {
      *   numArg = 2.0  — LLM returned scene=null (decided not to proceed)
      *   numArg = 0.0  — error (LLM failure or unparseable response)
      *
-     * @param inviterFormID             FormID of the actor sending the invitation.
-     * @param currentParticipantFormIDs FormIDs of actors already in the thread.
-     * @param inviteeFormIDs            FormIDs of the actors being invited.
-     * @param currentIntent             Current thread intent string (e.g. "romantic").
-     * @param threadID                  Active OStim thread ID.
+     * @param inviterFormID   FormID of the actor sending the invitation.
+     * @param inviteeFormIDs  FormIDs of the actors being invited.
+     * @param threadID        Active OStim thread ID.
+     * @param evalId          Evaluation ID string.
+     * @param reason          Optional initiation reason from the triggering action.
+     * @param forceChat       When true, bypasses Jev Decisions and forces the GM chat LLM path.
      * @return true if the LLM task was successfully queued.
      */
     bool EvaluateInviteToSex(RE::FormID inviterFormID,
                              const std::vector<RE::FormID>& inviteeFormIDs,
                              int threadID,
-                             const std::string& evalId = "");
+                             const std::string& evalId = "",
+                             const std::string& reason = "",
+                             bool forceChat = false);
 
     /**
      * Send the "ostimnet_scan_location" prompt to the LLM.
@@ -139,26 +153,29 @@ namespace OStimNet::SkyrimNetIntegration {
      *
      * @param contextJson   Pre-built context JSON string.
      * @param nameToFormID  Name→FormID snapshot captured on the game thread.
+     * @param scanGen       Scan generation counter.
+     * @param forceChat     When true, bypasses Jev Decisions and forces the GM chat LLM path.
      * @return true if the LLM task was successfully queued.
      */
     bool EvaluateLocationScan(const std::string& contextJson,
                               const std::map<std::string, RE::FormID>& nameToFormID,
-                              uint64_t scanGen);
+                              uint64_t scanGen,
+                              bool forceChat = false);
 
     /**
      * Send the "ostimnet_evaluate_scene_advance" prompt to the LLM to choose the next
      * position/activity for a running sexual scene.
      *
-     * @param threadID Active OStim thread ID.
-     * @param onDone   Called in all terminal paths (success, null, error after ignore).
+     * @param threadID   Active OStim thread ID.
+     * @param onDone     Called in all terminal paths (success, null, error after ignore).
+     * @param forceChat  When true, bypasses Jev Decisions and forces the GM chat LLM path.
      * @return true if the LLM task was successfully queued.
      */
-    bool EvaluateScheduledSceneAdvance(int threadID, std::function<void()> onDone);
+    bool EvaluateScheduledSceneAdvance(int threadID, std::function<void()> onDone, bool forceChat = false);
 
     /**
-     * Evaluates pullout decision with the LLM using the GmLlmVariant prompt.
+     * Evaluates pullout decision with the LLM using Jev Decisions or GmLlmVariant prompt.
      */
-    bool EvaluatePulloutDecision(int threadID);
+    bool EvaluatePulloutDecision(int threadID, bool forceChat = false);
 
 }  // namespace OStimNet::SkyrimNetIntegration
-

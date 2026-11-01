@@ -1,0 +1,33 @@
+{# Decision template: determines whether the male partner pulls out before climax or finishes inside
+   during vaginal intercourse. #}
+
+[ state current_scene ]
+    A `{{ intent }}` sexual scene between {{ maleName }} and {{ femaleName }} is currently underway.
+    Current Scene: {% if sceneDescription != "" %}{{ sceneDescription }}{% else %}Vaginal intercourse between {{ maleName }} and {{ femaleName }}.{% endif %}
+    {{ render_template("ostimnet_intents\\ostimnet_intents_description") }}
+[ end state ]
+
+[ state participant_profiles ]
+    ### {{ maleName }} (Approaching Climax)
+    {{ render_character_profile("tton_gm", maleActor) }}
+    ---
+    ### {{ femaleName }} (Receiving Partner)
+    {{ render_character_profile("tton_gm", femaleActor) }}
+    ---
+[ end state ]
+
+[ state recent_events ]
+    {{ render_template("helpers\\ostimnet_recent_events") }}
+[ end state ]
+
+[ question decision choice ]
+    {{ maleName }} is having vaginal sex with {{ femaleName }} and is right on the edge of climax. Decide whether {{ maleName }} pulls out before ejaculation or finishes inside based on `current_scene`, `participant_profiles`, and `recent_events`:
+    - Desires, pleas, or limits expressed in recent dialogue or thoughts
+    - Feelings about pregnancy, fertility, intimacy, trust, and vulnerability
+    - The relationship dynamic, commitment status, and `{{ intent }}` intent
+    - Personalities of the characters: whether they are cautious, passionate, reckless, or seeking closeness
+    [ criteria ]
+        pullout: {{ maleName }} pulls out of {{ femaleName }} right before climax and finishes externally
+        finish_inside: {{ maleName }} remains inside {{ femaleName }} and finishes internally
+    [ end criteria ]
+[ end question ]

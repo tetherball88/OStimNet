@@ -1,0 +1,104 @@
+{# Decision template: 1-step evaluation for JoinOngoingSex.
+   Evaluates whether current participants accept the joiner, whether the group intent shifts,
+   and the main/secondary role combination for all participants. #}
+{% set ostimNetSettings = ostimnet_settings(player.UUID) %}
+{% set enableAggressiveIntent = ostimNetSettings.enableAggressiveIntent %}
+
+[ state participants ]
+    ### {{ decnpc(joiner).name }} (wants to join)
+    {{ render_character_profile("tton_gm", joiner) }}
+    ---
+    {% for actor in currentActors %}
+        ### {{ decnpc(actor).name }} (currently in scene)
+        {% if actor == player.UUID %}
+            **Player rule:** Don't evaluate {{ player.name }}'s willingness. Assume the player is always willing to accept joining.
+        {% else %}
+            {{ render_character_profile("tton_gm", actor) }}
+        {% endif %}
+        ---
+    {% endfor %}
+[ end state ]
+
+[ state recent_events ]
+    {{ render_template("helpers\\ostimnet_recent_events") }}
+[ end state ]
+
+[ state ongoing_scene ]
+    A `{{ currentIntent }}` sexual scene involving {{ currentActorNames }} is currently underway.
+    {% if sceneDescription != "" %}Current Animation: {{ sceneDescription }}{% endif %}
+    **{{ joinerName }}** wants to join the scene.
+    {% if reason != "" %}Why the roleplaying AI decided {{ joinerName }} should join the scene: {{ reason }}{% endif %}
+
+    ### Acceptance Rules for `{{ currentIntent }}`
+    {{ joinerName }} has already decided to join. Evaluate whether the **current participants** would accept them:
+
+    {% if currentIntent == "romantic" %}
+        Acceptance requires ALL of the following from the current participants:
+        - No current participant has hostility, disgust, or strong discomfort toward {{ joinerName }}
+        - At least one current participant has a positive motivation to include {{ joinerName }}: attraction, emotional investment, or genuine desire for their presence
+        - No dealbreakers: exclusive commitment that would be violated by adding {{ joinerName }}
+        - "No objection" is not sufficient — at least one participant must actively want {{ joinerName }} there
+    {% elif currentIntent == "lustful" %}
+        Acceptance requires ALL of the following from the current participants:
+        - No current participant has hostility or disgust toward {{ joinerName }} (mild dislike is acceptable if overridden by physical interest)
+        - The current participants would welcome or at least not meaningfully resist {{ joinerName }} joining
+        - No dealbreakers: exclusive emotional commitments that adding {{ joinerName }} would violate
+    {% elif currentIntent == "transactional" %}
+        Acceptance requires:
+        - The current participants would accept {{ joinerName }} in the available role (provider or recipient)
+        - The modified arrangement still makes material sense to all parties
+        - No active hostility that would override the material dynamic
+    {% elif currentIntent == "dom" %}
+        Acceptance requires ALL of the following:
+        - The current participants would accept {{ joinerName }} into their established dynamic in a specific role
+        - There is sufficient trust or an established relationship to include a new participant — absence of objection is not enough
+    {% elif currentIntent == "aggressive" %}
+        {% if enableAggressiveIntent %}
+            Acceptance is evaluated asymmetrically:
+            - **As additional aggressor:** Current aggressors must be willing to include {{ joinerName }} and {{ joinerName }} must be capable of assisting in overpowering the victim(s)
+            - **As additional victim:** You don't have to evaluate willingness — the victim's lack of consent is what defines the aggressive intent.
+        {% endif %}
+    {% endif %}
+
+    ### Role Definitions per Intent
+    {{ render_template("ostimnet_intents\\ostimnet_intents_roles_all") }}
+[ end state ]
+
+[ question accept noul ]
+    {{ joinerName }} wants to join the ongoing `{{ currentIntent }}` sexual scene with {{ currentActorNames }}.
+    Evaluate whether the current participants ({{ currentActorNames }}) accept {{ joinerName }} joining based on the Acceptance Rules in `ongoing_scene`, `participants`, and `recent_events`.
+    [ criteria ]
+        true: The current participants ({{ currentActorNames }}) accept {{ joinerName }} joining the scene
+        false: The current participants ({{ currentActorNames }}) refuse and do not accept {{ joinerName }} joining the scene
+    [ end criteria ]
+[ end question ]
+
+[ question intent choice ]
+    The current intent is `{{ currentIntent }}`, set for the original participants. If {{ joinerName }} joins, determine whether the intent stays `{{ currentIntent }}` or updates for the full group ({{ currentActorNames }} + {{ joinerName }}) based on `participants` and `recent_events`:
+    - **romantic -> lustful:** Downgrade if {{ joinerName }} has no romantic feelings toward any current participant and the current participants have no romantic feelings toward {{ joinerName }}.
+    - **lustful -> romantic:** Upgrade only if {{ joinerName }} has a deep romantic connection to all current participants and all current participants reciprocate romantically. Very rare.
+    - **lustful / romantic -> transactional:** Only if a material exchange (payment, favor, leverage) is now the primary driver for at least one participant's involvement and this reframes the whole encounter.
+    - **transactional -> lustful:** Only if the material component becomes irrelevant with the new participant and mutual physical desire takes over.
+    - **dom -> other:** Only if the dominant/submissive structure can no longer hold with the new group composition.
+    - **aggressive -> other:** Do not change.
+    - **other -> aggressive:** Do not set.
+    If none of the above clearly apply, keep `{{ currentIntent }}`.
+    [ criteria ]
+        romantic: {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_romantic_description_short") }}
+        lustful: {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_lustful_description_short") }}
+        transactional: {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_transactional_description_short") }}
+        dom: {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_dom_description_short") }}
+        {% if enableAggressiveIntent -%}
+            aggressive: {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_aggressive_description_short") }}
+        {%- endif %}
+    [ end criteria ]
+[ end question ]
+
+[ question roles choice ]
+    If {{ joinerName }} joins the scene, choose the `main` and `secondary` role combination for all participants ({{ currentActorNames }} + {{ joinerName }}) based on `ongoing_scene`, `participants`, and `recent_events`.
+    [ criteria ]
+        {% for combo in roleCombinations -%}
+            {{ combo.key }}: main: {{ combo.mainNames }}; secondary: {{ combo.secondaryNames }}
+        {% endfor -%}
+    [ end criteria ]
+[ end question ]

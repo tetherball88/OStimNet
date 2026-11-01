@@ -1,0 +1,118 @@
+{# Decision template: 2-step evaluation before starting a new sexual encounter (StartNewSex).
+   Step 1 identifies the sexual intent and nearby furniture.
+   Step 2 evaluates participant consent/willingness, main/secondary role combinations, activity, and position. #}
+{% set ostimNetSettings = ostimnet_settings(player.UUID) %}
+{% set enableAggressiveIntent = ostimNetSettings.enableAggressiveIntent %}
+
+[ state scene_context ]
+    {% if step == 1 %}
+        A roleplaying AI has initiated a sexual scene involving {{ actorNames }}.
+        {% if reason != "" %}Why the roleplaying AI decided to initiate this scene with these participants: {{ reason }}{% endif %}
+        {{ render_template("ostimnet_intents\\ostimnet_intents_available") }}
+    {% else %}
+        A roleplaying AI has initiated a `{{ intent }}` sexual scene involving {{ actorNames }}.
+        {% if reason != "" %}Why the roleplaying AI decided to initiate this scene with these participants: {{ reason }}{% endif %}
+        {% if furniture != "" and furniture != "floor" %}Selected Furniture: `{{ furniture }}`{% endif %}
+        {{ render_template("ostimnet_intents\\ostimnet_intents_description") }}
+
+        #### Willingness Rules for `{{ intent }}`
+        {{ render_template("ostimnet_intents\\ostimnet_intents_willingness") }}
+
+        #### Role Definitions for `{{ intent }}`
+        {{ render_template("ostimnet_intents\\ostimnet_intents_roles_conditional") }}
+
+        {% if length(activities) > 0 %}
+        #### Activity Preferences for `{{ intent }}`
+        {{ render_template("ostimnet_intents\\ostimnet_intents_preferences") }}
+        {% endif %}
+    {% endif %}
+[ end state ]
+
+[ state participant_profiles ]
+    {% for p in participantsList %}
+        ### {{ p.name }}{% if p.isPlayer %} (Player — always willing){% endif %}
+        {% if p.isPlayer %}
+            **Player rule:** The player character {{ p.name }} always participates — never exclude them. Always assign {{ p.name }} to either `main` or `secondary`.
+        {% else %}
+            {{ render_character_profile("tton_gm", p.uuid) }}
+        {% endif %}
+        ---
+    {% endfor %}
+[ end state ]
+
+[ state recent_events ]
+    {{ render_template("helpers\\ostimnet_recent_events") }}
+[ end state ]
+
+{% if step == 1 %}
+    [ question intent choice ]
+    Identify the sexual intent of this encounter involving {{ actorNames }} based on `participant_profiles` and `recent_events`.
+        [ criteria ]
+            romantic: {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_romantic_description_short") }}
+            lustful: {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_lustful_description_short") }}
+            transactional: {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_transactional_description_short") }}
+            dom: {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_dom_description_short") }}
+            {% if enableAggressiveIntent -%}
+                aggressive: {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_aggressive_description_short") }}
+            {%- endif %}
+        [ end criteria ]
+    [ end question ]
+
+    {% if length(furnitureList) > 0 %}
+        [ question furniture choice ]
+            Select which nearby furniture (or the floor) should be used for this sexual encounter based on `recent_events` and the setting. Prefer beds in buildings (best privacy and comfort) > situational non-bed furniture (when it fits the location and characters) > floor only when outdoors, urgency is overwhelming, or no other option exists.
+            [ criteria ]
+                floor: No furniture — perform the scene on the floor or standing where they are
+                {% for f in furnitureList -%}
+                    {{ f.id }}: {{ f.desc }}
+                {% endfor -%}
+            [ end criteria ]
+        [ end question ]
+    {% endif %}
+{% else %}
+    {% for p in participantsList %}
+        {% if not p.isPlayer %}
+            [ question willing_{{ p.key }} noul ]
+                Does {{ p.name }} participate in this `{{ intent }}` sexual scene involving {{ actorNames }}?
+                Evaluate using the `{{ intent }}` willingness rules in `scene_context`, `participant_profiles`, and `recent_events`. (For `aggressive` intent, the target/victim is forced into the scene and does not need to consent; answer `true` if {{ p.name }} is part of this encounter.)
+                [ criteria ]
+                    true: {{ p.name }} participates in this `{{ intent }}` sexual encounter
+                    false: {{ p.name }} refuses, is unwilling, and is excluded from this sexual encounter
+                [ end criteria ]
+            [ end question ]
+        {% endif %}
+    {% endfor %}
+
+    [ question roles choice ]
+        Assign the participating actors into `main` and `secondary` role buckets according to the `{{ intent }}` role definitions in `scene_context`, `participant_profiles`, and `recent_events`.
+        - Every participating actor must be assigned to either `main` or `secondary` (neither bucket may be empty when 2+ actors participate).
+        - If any proposed NPC is unwilling, select the combination that lists them under `excluded`.
+        [ criteria ]
+            {% for combo in roleCombinations -%}
+                {{ combo.key }}: main: {{ combo.mainNames }}{% if combo.secondaryNames != "" %}; secondary: {{ combo.secondaryNames }}{% endif %}{% if combo.excludedNames != "" %}; excluded: {{ combo.excludedNames }}{% endif %}
+            {% endfor -%}
+        [ end criteria ]
+    [ end question ]
+
+    {% if length(activities) > 0 %}
+        [ question activity choice ]
+            Select the opening{% if openingPhase == "foreplay" %} foreplay{% elif openingPhase == "oral" %} oral{% elif openingPhase == "sex" %} intercourse{% else %} sexual{% endif %} activity for this `{{ intent }}` encounter based on `recent_events` and the participants' preferences.
+            [ criteria ]
+                {% for act in activities -%}
+                    {{ act.id }}: {{ act.desc }}
+                {% endfor -%}
+            [ end criteria ]
+        [ end question ]
+    {% endif %}
+
+    {% if length(positions) > 0 %}
+        [ question position choice ]
+            Select the opening physical position that best fits `recent_events`, the `{{ intent }}` intent, and the participants' personalities. Avoid defaulting to missionary/doggy unless it genuinely fits best.
+            [ criteria ]
+                {% for pos in positions -%}
+                    {{ pos.id }}: {{ pos.desc }}
+                {% endfor -%}
+            [ end criteria ]
+        [ end question ]
+    {% endif %}
+{% endif %}

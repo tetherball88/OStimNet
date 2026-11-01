@@ -48,12 +48,6 @@ int function StartOstimSex(Actor[] dom = none, Actor[] sub = none, string action
         return -1
     endif
 
-    if(actions == "foreplay")
-        actions = "boobjob,breastsmothering,buttsmothering,footjob,handjob,lickingnipple,rubbingclitoris,suckingnipple,vaginalfingering"
-    elseif(actions == "oral")
-        actions = "blowjob,deepthroat,lickingpenis,lickingtesticles,cunnilingus,lickingvagina,anilingus"
-    endif
-
     if(furn)
         TTON_Debug.debug("StartOstim: waiting for actors to be near furniture before starting scene. Furniture: " + furn)
         int stucktimer = 0

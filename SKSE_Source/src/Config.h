@@ -194,6 +194,10 @@ struct Config {
     /// SkyrimNet LLM variant used for Game Master evaluations.
     std::string GmLlmVariant() const;
 
+    /// When true, OStimNet uses SkyrimNet's typed Jev Decisions API (prompts/decisions/*)
+    /// for evaluations instead of regular Game Master chat prompts, with automatic fallback.
+    bool UseDecisions() const;
+
     bool ScheduledEvalPlayerThread() const;
     bool ScheduledEvalNpcThreads() const;
     int ScheduledEvalIntervalSeconds() const;

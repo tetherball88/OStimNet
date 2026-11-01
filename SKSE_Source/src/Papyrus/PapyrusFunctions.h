@@ -259,27 +259,26 @@ static void RegisterLatentFixed(RE::BSScript::IVirtualMachine* vm,
         listener->RegisterOcumSquirt(threadID, actorID, ToLower(sceneID.c_str()), ToLower(squirtType.c_str()));
     }
 
-    // Papyrus native: int Function EvaluatePreStartSexualScene(Actor[] akParticipants, string asIntent, string evalId) global native
+    // Papyrus native: int Function EvaluatePreStartSexualScene(Actor[] akParticipants, string evalId = "", string asReason = "") global native
     // Sends the "ostimnet_evaluate_prestart_sexual" prompt to the LLM before an OStim scene is created.
     // Returns 1 if the task was successfully queued, 0 on failure.
-    // asIntent: optional intent hint for the LLM (e.g. "romantic", "dom"). Pass "" for no hint.
     // On completion fires mod event "ostimnet_sexual_evaluation_finished":
     //   numArg = 1.0 success, 2.0 insufficient participants, 0.0 error.
     int32_t EvaluatePreStartSexualScene(RE::StaticFunctionTag*,
                                         std::vector<RE::Actor*> participants,
-                                        RE::BSFixedString intent,
-                                        RE::BSFixedString evalId) {
+                                        RE::BSFixedString evalId,
+                                        RE::BSFixedString reason) {
         std::vector<RE::FormID> formIDs;
         formIDs.reserve(participants.size());
         for (RE::Actor* actor : participants) {
             if (actor) formIDs.push_back(actor->GetFormID());
         }
         bool queued = OStimNet::SkyrimNetIntegration::EvaluatePreStartSexualScene(
-            formIDs, ToLower(intent.c_str()), evalId.c_str());
+            formIDs, evalId.c_str(), reason.c_str());
         return queued ? 1 : 0;
     }
 
-    // Papyrus native: int Function EvaluateNonSexualScene(Actor[] akParticipants, string asActivity, string asIntent, Actor akInitiator, string evalId) global native
+    // Papyrus native: int Function EvaluateNonSexualScene(Actor[] akParticipants, string asActivity, string asIntent, Actor akInitiator, string evalId, string asReason) global native
     // Sends the "ostimnet_evaluate_nonsexual_scene" prompt to the LLM before a non-sexual scene is started.
     // Returns 1 if the task was successfully queued, 0 on failure.
     // asActivity:   optional activity hint for the LLM (e.g. "spar", "meditate"). Pass "" for no hint.
@@ -294,7 +293,8 @@ static void RegisterLatentFixed(RE::BSScript::IVirtualMachine* vm,
                                    RE::BSFixedString activity,
                                    RE::BSFixedString intent,
                                    RE::Actor* initiator,
-                                   RE::BSFixedString evalId) {
+                                   RE::BSFixedString evalId,
+                                   RE::BSFixedString reason) {
         std::vector<RE::FormID> formIDs;
         formIDs.reserve(participants.size());
         for (RE::Actor* actor : participants) {
@@ -302,27 +302,29 @@ static void RegisterLatentFixed(RE::BSScript::IVirtualMachine* vm,
         }
         RE::FormID initiatorFormID = initiator ? initiator->GetFormID() : 0;
         bool queued = OStimNet::SkyrimNetIntegration::EvaluateNonSexualScene(
-            formIDs, ToLower(activity.c_str()), ToLower(intent.c_str()), initiatorFormID, evalId.c_str());
+            formIDs, ToLower(activity.c_str()), ToLower(intent.c_str()), initiatorFormID, evalId.c_str(), reason.c_str());
         return queued ? 1 : 0;
     }
 
-    // Papyrus native: int Function EvaluateJoinOngoingSex(Actor akJoiner, int threadID, string evalId) global native
+    // Papyrus native: int Function EvaluateJoinOngoingSex(Actor akJoiner, int threadID, string evalId, string asReason) global native
     int32_t EvaluateJoinOngoingSex(RE::StaticFunctionTag*,
                                    RE::Actor* joiner,
                                    int32_t threadID,
-                                   RE::BSFixedString evalId) {
+                                   RE::BSFixedString evalId,
+                                   RE::BSFixedString reason) {
         if (!joiner) return 0;
         bool queued = OStimNet::SkyrimNetIntegration::EvaluateJoinOngoingSex(
-            joiner->GetFormID(), threadID, evalId.c_str());
+            joiner->GetFormID(), threadID, evalId.c_str(), reason.c_str());
         return queued ? 1 : 0;
     }
 
-    // Papyrus native: int Function EvaluateInviteToSex(Actor akInviter, Actor[] akInvitees, int threadID, string evalId) global native
+    // Papyrus native: int Function EvaluateInviteToSex(Actor akInviter, Actor[] akInvitees, int threadID, string evalId, string asReason) global native
     int32_t EvaluateInviteToSex(RE::StaticFunctionTag*,
                                 RE::Actor* inviter,
                                 std::vector<RE::Actor*> invitees,
                                 int32_t threadID,
-                                RE::BSFixedString evalId) {
+                                RE::BSFixedString evalId,
+                                RE::BSFixedString reason) {
         if (!inviter) return 0;
         std::vector<RE::FormID> inviteeFormIDs;
         inviteeFormIDs.reserve(invitees.size());
@@ -330,7 +332,7 @@ static void RegisterLatentFixed(RE::BSScript::IVirtualMachine* vm,
             if (actor) inviteeFormIDs.push_back(actor->GetFormID());
         }
         bool queued = OStimNet::SkyrimNetIntegration::EvaluateInviteToSex(
-            inviter->GetFormID(), inviteeFormIDs, threadID, evalId.c_str());
+            inviter->GetFormID(), inviteeFormIDs, threadID, evalId.c_str(), reason.c_str());
         return queued ? 1 : 0;
     }
 
@@ -474,6 +476,7 @@ static void RegisterLatentFixed(RE::BSScript::IVirtualMachine* vm,
     // when it is disabled for this thread type.
     // Returns "" if the intent has no phase list (e.g. "platonic", or phases disabled for that intent).
     RE::BSFixedString GetInitialPhaseByIntent(RE::StaticFunctionTag*, RE::BSFixedString intent, bool isPlayerThread) {
+        if (!OStimNet::Config::GetSingleton().EnableThreadPhases()) return RE::BSFixedString("");
         OStimNet::Intent intentEnum = OStimNet::IntentFromString(ToLower(intent.c_str()));
         const auto& list = OStimNet::IntentToPhaseList(intentEnum);
         if (list.empty()) return RE::BSFixedString("");

@@ -29,14 +29,8 @@ parameterMapping:
     useNearbyActors: false
     optional: true
   - type: dynamic
-    name: furniture
-    description: Select furniture from list, return exact furniture type. Floor only when urgency is overwhelming or no other option exists. Priority - bed(best privacy comfort) > situational furniture(better variety and unexpected positions) > floor as last resort.
-  - type: dynamic
-    name: intent
-    description: "romantic|lustful|transactional|dom|aggressive"
-  - type: dynamic
     name: reason
-    description: Short 1-2 sentence reason why LLM decided to initiate this action with these participants, intent and furniture.
+    description: Short 1-2 sentence reason why LLM decided to initiate this action with these participants.
 enabled: true
 eligibilityRules:
   - conditions:

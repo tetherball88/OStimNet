@@ -111,7 +111,7 @@ Only complete this if the scene passed evaluation above.
 Match to intent, actors, and situation. Choose what fits best for these characters in this place.
 
 **Activities** — one keyword if appropriate, otherwise "":
-Available: foreplay, oral, vaginalsex, analsex
+Available: {{ ostimnet_available_sexual_actions(player.UUID) }}
 
 {{ render_template("ostimnet_intents\\ostimnet_intents_preferences") }}
 

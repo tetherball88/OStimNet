@@ -92,7 +92,7 @@ Function StartCareSceneExecute(Actor akActor, Actor participant1, string activit
         string evalId = "eval_" + Utility.RandomInt(0, 999999)
         int startGen = OStimNet.GetLocationGeneration()
         StorageUtil.SetIntValue(none, "TTON_EvalGen_" + evalId, startGen)
-        OStimNet.EvaluateNonSexualScene(actors, activity, intent, initiator, evalId)
+        OStimNet.EvaluateNonSexualScene(actors, activity, intent, initiator, evalId, reasoning)
     endif
 EndFunction
 
@@ -105,8 +105,8 @@ EndFunction
 ; @param akActor The initiating actor
 ; @param contextJson The context data in JSON format
 ; @param paramsJson The parameters containing participant info and encounter type
-Function StartSexActionExecute(Actor akActor, Actor participant1, Actor participant2, Actor participant3, Actor participant4, string furnitureType, string intent, string reason)
-    TTON_Debug.debug("StartSexActionExecute called with actor: " + TTON_Utils.GetActorName(akActor) + ", participants: " + TTON_Utils.GetActorName(participant1) + ", " + TTON_Utils.GetActorName(participant2) + ", " + TTON_Utils.GetActorName(participant3) + ", " + TTON_Utils.GetActorName(participant4) + ", furnitureType: " + furnitureType + ", intent: " + intent + ", reason: " + reason)
+Function StartSexActionExecute(Actor akActor, Actor participant1, Actor participant2, Actor participant3, Actor participant4, string reason)
+    TTON_Debug.debug("StartSexActionExecute called with actor: " + TTON_Utils.GetActorName(akActor) + ", participants: " + TTON_Utils.GetActorName(participant1) + ", " + TTON_Utils.GetActorName(participant2) + ", " + TTON_Utils.GetActorName(participant3) + ", " + TTON_Utils.GetActorName(participant4) + ", reason: " + reason)
     if(TTON_Utils.IsSexLabInCharge())
         TTON_Debug.warn("OStimNet is disabled while SkyrimNet_SexLab has control of player scenes.")
         return
@@ -159,7 +159,7 @@ Function StartSexActionExecute(Actor akActor, Actor participant1, Actor particip
 
     TTON_Utils.SetActorsPending(actors, true)
 
-    string json = "{ \"activity\": \"\", \"intent\": \"" + intent + "\", \"isSexual\": true, \"positions\": \"\", \"furniture\": \"" + furnitureType + "\" }"
+    string json = "{ \"activity\": \"\", \"intent\": \"\", \"isSexual\": true, \"positions\": \"\", \"furniture\": \"\" }"
     int result = OStimNet.ShowConfirmationModal("StartNewSexPreEval", OActorUtil.ToArray(akActor), PapyrusUtil.RemoveActor(actors, akActor), json)
     bool earlyReturn = result == -1 || result == 1 || result == 2
 
@@ -176,18 +176,11 @@ Function StartSexActionExecute(Actor akActor, Actor participant1, Actor particip
         return
     endif
 
-    ObjectReference finalFurniture = TTON_OStimIntegration.FindSuitableFurniture(akActor, furnitureType)
-
-    if(finalFurniture)
-        TTON_Debug.info("Found suitable furniture for the sexual scene: " + finalFurniture)
-        TTON_Utils.MakeParticipantsWalkToFurniture(actors, finalFurniture)
-    endif
-
     Debug.Notification("Finalizing sexual scene details before starting the scene...")
     string evalId = "eval_" + Utility.RandomInt(0, 999999)
     int startGen = OStimNet.GetLocationGeneration()
     StorageUtil.SetIntValue(none, "TTON_EvalGen_" + evalId, startGen)
-    OStimNet.EvaluatePreStartSexualScene(actors, intent, evalId)
+    OStimNet.EvaluatePreStartSexualScene(actors, evalId, reason)
 EndFunction
 
 ;==========================================================================
@@ -384,7 +377,7 @@ Bool Function InviteToYourSexExecute(Actor akActor, Actor participant1, Actor pa
     string evalId = "eval_" + Utility.RandomInt(0, 999999)
     int startGen = OStimNet.GetLocationGeneration()
     StorageUtil.SetIntValue(none, "TTON_EvalGen_" + evalId, startGen)
-    OStimNet.EvaluateInviteToSex(akActor, newParticipants, ThreadID, evalId)
+    OStimNet.EvaluateInviteToSex(akActor, newParticipants, ThreadID, evalId, reason)
 EndFunction
 
 ;==========================================================================
@@ -438,7 +431,7 @@ Bool Function JoinOngoingSexActionExecute(Actor akActor, Actor participant1, str
     string evalId = "eval_" + Utility.RandomInt(0, 999999)
     int startGen = OStimNet.GetLocationGeneration()
     StorageUtil.SetIntValue(none, "TTON_EvalGen_" + evalId, startGen)
-    OStimNet.EvaluateJoinOngoingSex(akActor, ThreadID, evalId)
+    OStimNet.EvaluateJoinOngoingSex(akActor, ThreadID, evalId, reasoning)
 EndFunction
 
 ;==========================================================================

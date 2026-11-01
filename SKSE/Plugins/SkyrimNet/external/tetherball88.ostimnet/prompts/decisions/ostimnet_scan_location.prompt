@@ -1,0 +1,186 @@
+{# Decision template: multi-step location scan for NPC-driven intimate encounters.
+   Step 1: Select an initiating NPC (or `none` if no scene is supported right now).
+   Step 2: Given the initiator, select the primary partner (`solo`, `none`, or a candidate), sexual intent, and furniture.
+   Step 3: Given (initiator, partner_1, intent), decide whether a 3rd participant (`partner_2`) is also part of the encounter (`none` or a candidate).
+   Step 4: For the selected 1–3 participants and confirmed intent, evaluate partner consent, main/secondary role combinations, activity, and position. #}
+
+[ state scene_context ]
+    Location: {{ location }}
+    Time: {{ short_time(gameTime) }}
+    {% if step == 1 %}
+        You are a scene coordinator for Skyrim's NPC-driven intimate encounters.
+        Evaluate whether a natural, believable intimate scene exists right now among the available characters.
+        This scan simulates the sexual and romantic lives of NPCs independent of the player. The player cannot initiate here; they can only be desired and approached by others.
+
+        Matching Logic:
+        - A viable scene needs a believable reason the initiator would act on desire right now, and no factor strong enough to override it.
+        - Evidence (strongest to weakest):
+        1. Recent dialogue, actions, or events showing attraction, invitation, tension, or intent
+        2. Established relationship history with a present-moment opportunity
+        3. Strong personality and background compatibility with clear situational opportunity
+        4. Personality or openness alone (not sufficient by itself for a partnered scene)
+        - Privacy & Time: Consider whether the location, time of day, and available furniture support what the character would need.
+    {% elif step == 2 %}
+        Initiator: {{ initiatorName }}
+        Evaluate who {{ initiatorName }} would plausibly approach or engage with right now (or whether {{ initiatorName }} engages in a solo scene), the sexual intent of the encounter, and which nearby furniture they would use.
+        {% if playerSelectionChance == "never" %}
+            DO NOT select the player character for any scene under any circumstances. Evaluate scenes strictly among available NPCs.
+        {% elif playerSelectionChance == "reduced" %}
+            Prefer pairs of background NPCs over the player's travelling companions, and the player last of all.
+        {% else %}
+            NPC-only scenes are the default and the priority. Include the player only when {{ initiatorName }}'s profile and recent events give genuine reason to desire or pursue them.
+        {% endif %}
+        Mutual desirability, relationships, commitment, and privacy must support the pairing.
+
+        {{ render_template("ostimnet_intents\\ostimnet_intents_available") }}
+    {% elif step == 3 %}
+        Proposed Encounter: {{ initiatorName }} and {{ partner1Name }}
+        Confirmed Intent: `{{ intent }}`
+        {% if furniture != "" and furniture != "floor" %}Selected Furniture: `{{ furniture }}`{% endif %}
+        Scenes with a 3rd participant are valid only when strong evidence supports it — interconnected relationships, a shared dynamic, or recent dialogue/events that naturally draw a third person into this `{{ intent }}` encounter right now. Do not artificially seek a group if the scene belongs strictly between {{ initiatorName }} and {{ partner1Name }}.
+    {% elif step == 4 %}
+        Proposed Participants: {{ actorNames }}
+        Initiator: {{ initiatorName }}
+        Confirmed Intent: `{{ intent }}`
+        {% if furniture != "" and furniture != "floor" %}Selected Furniture: `{{ furniture }}`{% endif %}
+        {{ render_template("ostimnet_intents\\ostimnet_intents_description") }}
+
+        #### Willingness Rules for `{{ intent }}`
+        {{ render_template("ostimnet_intents\\ostimnet_intents_willingness") }}
+
+        #### Role Definitions for `{{ intent }}`
+        {{ render_template("ostimnet_intents\\ostimnet_intents_roles_conditional") }}
+
+        {% if length(activities) > 0 %}
+            #### Activity Preferences for `{{ intent }}`
+            {{ render_template("ostimnet_intents\\ostimnet_intents_preferences") }}
+        {% endif %}
+    {% endif %}
+[ end state ]
+
+[ state participant_profiles ]
+    {% if step == 4 %}
+        {% for p in sceneParticipants %}
+            ### {{ p.name }}{% if p.isInitiator %} (Initiator){% endif %}{% if p.isPlayer %} (Player){% endif %}
+            {{ render_character_profile("tton_gm", p.uuid) }}
+            ---
+        {% endfor %}
+    {% else %}
+        {% for c in candidatesList %}
+            ### {{ c.name }}{% if c.isInitiator %} (Initiator){% endif %}{% if c.isPartner1 %} (Selected Partner){% endif %}{% if c.isPlayer %} (Player){% endif %}
+            {{ render_character_profile("tton_gm", c.uuid) }}
+            ---
+        {% endfor %}
+    {% endif %}
+[ end state ]
+
+[ state recent_events ]
+    {{ render_template("helpers\\ostimnet_recent_events") }}
+[ end state ]
+
+{% if step == 1 %}
+    [ question initiator choice ]
+        Select which NPC (if any) has a genuine, believable reason to initiate an intimate encounter right now based on `scene_context`, `participant_profiles`, and `recent_events`. Choose `none` if no scene should happen right now.
+        [ criteria ]
+            none: No intimate scene is genuinely supported right now
+            {% for c in initiatorsList -%}
+                {{ c.key }}: {{ c.name }} initiates an intimate encounter right now
+            {% endfor -%}
+            [ end criteria ]
+    [ end question ]
+
+{% elif step == 2 %}
+    [ question partner_1 choice ]
+        Select who {{ initiatorName }} initiates the intimate encounter with based on `scene_context`, `participant_profiles`, and `recent_events`. Choose `solo` if {{ initiatorName }} engages in a solo scene alone, or `none` if no plausible partner or solo scene is supported.
+        [ criteria ]
+            none: No plausible partner or scene — do not start an encounter
+            solo: {{ initiatorName }} alone (solo scene)
+            {% for c in partner1List -%}
+                {{ c.key }}: {{ c.name }} (partner with {{ initiatorName }})
+            {% endfor -%}
+        [ end criteria ]
+    [ end question ]
+
+[ question intent choice ]
+    Identify the sexual intent that best fits {{ initiatorName }}'s encounter based on `participant_profiles` and `recent_events`.
+    [ criteria ]
+        romantic: {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_romantic_description_short") }}
+        lustful: {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_lustful_description_short") }}
+        transactional: {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_transactional_description_short") }}
+        dom: {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_dom_description_short") }}
+        {% if enableAggressiveIntent -%}
+            aggressive: {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_aggressive_description_short") }}
+        {%- endif %}
+    [ end criteria ]
+[ end question ]
+
+{% if length(furnitureList) > 0 %}
+    [ question furniture choice ]
+        Select which nearby furniture (or the floor) best fits this encounter.
+        [ criteria ]
+            floor: No furniture — perform the scene on the floor or standing where they are
+            {% for f in furnitureList -%}
+                {{ f.id }}: {{ f.desc }}
+            {% endfor -%}
+        [ end criteria ]
+    [ end question ]
+{% endif %}
+
+{% elif step == 3 %}
+    [ question partner_2 choice ]
+        Decide whether this `{{ intent }}` encounter is strictly between {{ initiatorName }} and {{ partner1Name }} (`none`), or whether a 3rd participant from `participant_profiles` is also genuinely drawn into the scene right now.
+        [ criteria ]
+            none: Only {{ initiatorName }} and {{ partner1Name }} (2-participant scene, no 3rd actor)
+            {% for c in partner2List -%}
+                {{ c.key }}: {{ c.name }} also joins {{ initiatorName }} and {{ partner1Name }} as a 3rd participant
+            {% endfor -%}
+        [ end criteria ]
+    [ end question ]
+
+{% elif step == 4 %}
+    {% for p in sceneParticipants %}
+        {% if not p.isInitiator and not p.isPlayer %}
+            [ question willing_{{ p.key }} noul ]
+                Does {{ p.name }} willingly participate in this `{{ intent }}` sexual encounter with {{ initiatorName }}?
+                Evaluate using the `{{ intent }}` willingness rules in `scene_context`, `participant_profiles`, and `recent_events`. (For `aggressive` intent, the target/victim is forced into the scene and does not need to consent; answer `true` if {{ p.name }} is part of this encounter.)
+                [ criteria ]
+                    true: {{ p.name }} participates in this `{{ intent }}` sexual encounter
+                    false: {{ p.name }} refuses, is unwilling, and is excluded from this sexual encounter
+                [ end criteria ]
+            [ end question ]
+        {% endif %}
+    {% endfor %}
+
+    {% if length(roleCombinations) > 0 %}
+        [ question roles choice ]
+            Assign the participating actors into `main` and `secondary` role buckets according to the `{{ intent }}` role definitions in `scene_context`, `participant_profiles`, and `recent_events`.
+            [ criteria ]
+                {% for combo in roleCombinations -%}
+                    {{ combo.key }}: main: {{ combo.mainNames }}{% if combo.secondaryNames != "" %}; secondary: {{ combo.secondaryNames }}{% endif %}{% if combo.excludedNames != "" %}; excluded: {{ combo.excludedNames }}{% endif %}
+                {% endfor -%}
+            [ end criteria ]
+        [ end question ]
+    {% endif %}
+
+    {% if length(activities) > 0 %}
+        [ question activity choice ]
+            Select the opening{% if openingPhase == "foreplay" %} foreplay{% elif openingPhase == "oral" %} oral{% elif openingPhase == "sex" %} intercourse{% else %} sexual{% endif %} activity for this `{{ intent }}` encounter based on `recent_events` and the participants' preferences.
+            [ criteria ]
+                {% for act in activities -%}
+                    {{ act.id }}: {{ act.desc }}
+                {% endfor -%}
+            [ end criteria ]
+        [ end question ]
+    {% endif %}
+
+    {% if length(positions) > 0 %}
+        [ question position choice ]
+            Select the opening physical position that best fits `recent_events`, the `{{ intent }}` intent, and the participants' personalities.
+            [ criteria ]
+                {% for pos in positions -%}
+                    {{ pos.id }}: {{ pos.desc }}
+                {% endfor -%}
+            [ end criteria ]
+        [ end question ]
+    {% endif %}
+{% endif %}

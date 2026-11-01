@@ -2,6 +2,7 @@
 ## Context
 A `{{ currentIntent }}` sexual scene involving {{ currentActorNames }} is currently underway.
 **{{ joinerName }}** wants to join the scene.
+{% if reason != "" %}Why the roleplaying AI decided {{ joinerName }} should join the scene: {{ reason }}{% endif %}
 You are the GameMaster AI. Your task is to evaluate whether joining is appropriate and, if so, assign roles for all participants including {{ joinerName }}.
 
 ---

@@ -1,0 +1,65 @@
+{# Decision template: 2-step evaluation for a non-sexual interaction (StartCareScene) between 2 actors.
+   Step 1 identifies the interaction intent (romantic or platonic).
+   Step 2 evaluates consent/willingness for all non-player parties based on that intent. #}
+
+[ state scene_context ]
+    {% if step == 1 %}
+        A roleplaying AI has proposed a non-sexual interaction{% if activity != "" %} ({{ activity }}){% endif %} between {{ actorNames }}.
+        {% if reason != "" %}Why the roleplaying AI decided to initiate this interaction with these participants: {{ reason }}{% endif %}
+        {% if intent != "" %}Suggested Intent: `{{ intent }}`{% endif %}
+        Evaluate which non-sexual interaction intent (`romantic` or `platonic`) best fits this moment.
+    {% else %}
+        A roleplaying AI has proposed a non-sexual `{{ intent }}` interaction{% if activity != "" %} ({{ activity }}){% endif %} between {{ actorNames }}.
+        {% if reason != "" %}Why the roleplaying AI decided to initiate this interaction with these participants: {{ reason }}{% endif %}
+        {% if intent == "romantic" %}
+            The interaction intent is `romantic` — a non-sexual but emotionally intimate approach: flirting, confessing feelings, courting, kissing, cuddling, or expressing affection.
+            Each participant is willing if ALL hold:
+            - No hostility, disgust, or strong discomfort toward the other participant
+            - At least one positive signal: attraction, fondness, curiosity, or openness to romantic affection with the other participant
+            - No dealbreakers: exclusive commitment to someone absent, or strong aversion to romantic attention from this person specifically
+            - "No reason to refuse" is not sufficient — some positive signal toward the other participant must be present
+        {% else %}
+            The interaction intent is `platonic` — a friendly, social, or cooperative approach: friendly hug, companionship, comfort, or a non-romantic gesture.
+            Each participant is willing if ALL hold:
+            - No active hostility or strong aversion toward the other participant
+            - At least one reason to engage: friendliness, shared interest, social openness, boredom, politeness, or prior positive relationship
+            - No dealbreakers: deep-seated hatred, ongoing conflict, or a recent event that would make any interaction unwelcome
+        {% endif %}
+        If a participant's most recent relevant `dialogue` or `npc_thoughts` clearly initiates, permits, or welcomes the interaction, treat willingness for that participant as fully satisfied.
+    {% endif %}
+[ end state ]
+
+[ state participant_profiles ]
+    {% for p in participantsList %}
+    ### {{ p.name }} ({% if p.isInitiator %}initiator{% else %}responder{% endif %}){% if p.isPlayer %} (Player — always willing){% endif %}
+    {{ render_character_profile("tton_gm", p.uuid) }}
+    ---
+    {% endfor %}
+[ end state ]
+
+[ state recent_events ]
+    {{ render_template("helpers\\ostimnet_recent_events") }}
+[ end state ]
+
+{% if step == 1 %}
+    [ question intent choice ]
+        Identify the intent of the proposed non-sexual interaction{% if activity != "" %} ({{ activity }}){% endif %} between {{ actorNames }} based on `participant_profiles` and `recent_events`.
+        [ criteria ]
+            romantic: Romantic — a non-sexual but emotionally intimate approach: flirting, confessing feelings, courting, kissing, cuddling, or expressing tender affection
+            platonic: Platonic — a friendly, social, or cooperative approach: friendly hug, companionship, comfort, or a non-romantic gesture
+        [ end criteria ]
+    [ end question ]
+{% else %}
+    {% for p in participantsList %}
+        {% if not p.isPlayer %}
+            [ question willing_{{ p.key }} noul ]
+                Does {{ p.name }} willingly consent to engage in this `{{ intent }}` interaction{% if activity != "" %} ({{ activity }}){% endif %} with {{ p.partnerName }} right now?
+                Evaluate using the `{{ intent }}` willingness rules in `scene_context`, `participant_profiles`, and `recent_events`.
+                [ criteria ]
+                    true: {{ p.name }} is willing to engage in the `{{ intent }}` interaction with {{ p.partnerName }}
+                    false: {{ p.name }} is unwilling, uncomfortable, or would refuse the `{{ intent }}` interaction with {{ p.partnerName }}
+                [ end criteria ]
+            [ end question ]
+        {% endif %}
+    {% endfor %}
+{% endif %}

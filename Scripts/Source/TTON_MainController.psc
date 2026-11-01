@@ -212,6 +212,7 @@ Event OnSexEvaluationFinished(string eventName, string strArg, float numArg, For
     string intent = OStimNet.JsonGetString(strArg, "intent")
     string sexualPosition = OStimNet.JsonGetString(strArg, "sexualPosition")
     string sexualActivities = OStimNet.JsonGetString(strArg, "sexualActivities")
+    string furn = OStimNet.JsonGetString(strArg, "furniture")
     Actor[] main = OStimNet.JsonGetActorArray(strArg, "main")
     Actor[] secondary = OStimNet.JsonGetActorArray(strArg, "secondary")
     Actor[] excluded = OStimNet.JsonGetActorArray(strArg, "excluded")
@@ -228,7 +229,7 @@ Event OnSexEvaluationFinished(string eventName, string strArg, float numArg, For
     if(numArg == 3.0)
         Debug.Notification("The proposed sexual scene was evaluated positively, but some participants were excluded. Check the logs for details.")
 
-        string json = "{ \"activity\": \"" + sexualActivities + "\", \"intent\": \"" + intent + "\", \"isSexual\": true, \"positions\": \"" + sexualPosition + "\", \"excluded\": " + OStimNet.JsonGetString(strArg, "excluded") + " }"
+        string json = "{ \"activity\": \"" + sexualActivities + "\", \"intent\": \"" + intent + "\", \"isSexual\": true, \"positions\": \"" + sexualPosition + "\", \"furniture\": \"" + furn + "\", \"excluded\": " + OStimNet.JsonGetString(strArg, "excluded") + " }"
         int result = OStimNet.ShowConfirmationModal("StartNewSexPostEval", main, secondary, json)
         bool earlyReturn = false
 
@@ -247,6 +248,14 @@ Event OnSexEvaluationFinished(string eventName, string strArg, float numArg, For
         if(earlyReturn)
             FreeParticipantsOnCancelOrReject(strArg)
             return
+        endif
+    endif
+
+    if(furn && furn != "floor")
+        ObjectReference finalFurniture = TTON_OStimIntegration.FindSuitableFurniture(main[0], furn)
+        if(finalFurniture)
+            TTON_Debug.info("Found suitable furniture for the sexual scene: " + finalFurniture)
+            TTON_Utils.MakeParticipantsWalkToFurniture(PapyrusUtil.MergeActorArray(main, secondary), finalFurniture)
         endif
     endif
 

@@ -1,0 +1,155 @@
+{# Decision template: 1-step evaluation for InviteToYourSex.
+   Evaluates whether non-inviter current participants accept, which invitees are willing,
+   whether the group intent shifts, and the main/secondary role combination. #}
+{% set ostimNetSettings = ostimnet_settings(player.UUID) %}
+{% set enableAggressiveIntent = ostimNetSettings.enableAggressiveIntent %}
+
+[ state participants ]
+    {% for actor in currentActors %}
+        ### {{ decnpc(actor).name }} (currently in scene)
+        {% if actor == player.UUID %}
+            **Player rule:** Don't evaluate {{ player.name }}'s acceptance or willingness. Assume the player always participates.
+        {% else %}
+            {{ render_character_profile("tton_gm", actor) }}
+        {% endif %}
+        ---
+    {% endfor %}
+    {% for actor in invitees %}
+        ### {{ decnpc(actor).name }} (invited)
+        {% if actor == player.UUID %}
+            **Player rule:** Don't evaluate {{ player.name }}'s acceptance or willingness. Assume the player always participates.
+        {% else %}
+            {{ render_character_profile("tton_gm", actor) }}
+        {% endif %}
+        ---
+    {% endfor %}
+[ end state ]
+
+[ state recent_events ]
+    {{ render_template("helpers\\ostimnet_recent_events") }}
+[ end state ]
+
+[ state ongoing_scene ]
+    A `{{ currentIntent }}` sexual scene involving {{ currentActorNames }} is currently underway.
+    {% if sceneDescription != "" %}Current Animation: {{ sceneDescription }}{% endif %}
+    **{{ inviterName }}** (a current participant) is inviting {{ inviteeNames }} to join.
+    {% if reason != "" %}Why the roleplaying AI decided {{ inviterName }} should invite {{ inviteeNames }} to join: {{ reason }}{% endif %}
+
+    ### Acceptance & Willingness Rules for `{{ currentIntent }}`
+    **{{ inviterName }}** is already willing. Evaluate both sides: whether each **other** current participant accepts the invitee(s), and whether each **invitee** is willing to join.
+
+    {% if currentIntent == "romantic" %}
+        **Non-inviter current participants** accept the invitee(s) only if ALL hold:
+        - No hostility, disgust, or strong discomfort toward any invitee
+        - At least one positive motivation to include them: attraction, emotional investment, or genuine desire for their presence
+        - No dealbreakers: exclusive commitment that would be violated by adding the invitee(s)
+        - "No objection" is not sufficient — at least one non-inviter must actively want them there
+
+        **Each invitee** is willing only if ALL hold:
+        - No hostility, disgust, or strong discomfort toward any current participant
+        - At least one positive motivation: genuine attraction, love, or emotional investment toward at least one current participant
+        - No dealbreakers: exclusive commitment to someone absent, or strong moral opposition to the act
+        - "No reason to refuse" is not sufficient — positive emotional investment toward at least one participant must be present
+
+        If the most recent relevant `dialogue` or `npc_thoughts` from this participant clearly permits or welcomes the interaction, treat willingness for this participant as fully satisfied and skip all remaining conditions.
+    {% elif currentIntent == "lustful" %}
+        **Non-inviter current participants** accept the invitee(s) only if ALL hold:
+        - No hostility or disgust toward any invitee (mild dislike is acceptable if overridden by physical interest)
+        - Would welcome or at least not meaningfully resist the invitee(s) joining
+        - No dealbreakers: exclusive emotional commitments that adding the invitee(s) would violate
+
+        **Each invitee** is willing only if ALL hold:
+        - No hostility or disgust toward any current participant (mild dislike is acceptable if overridden by physical attraction)
+        - At least one positive motivation: physical attraction or desire toward at least one participant, adventurous or hedonistic personality, or explicit willingness in recent dialogue
+        - No dealbreakers: exclusive emotional commitments that would be violated by casual sex
+
+        If the most recent relevant `dialogue` or `npc_thoughts` from this participant clearly permits or welcomes the interaction, treat willingness for this participant as fully satisfied and skip all remaining conditions.
+    {% elif currentIntent == "transactional" %}
+        **Non-inviter current participants** accept the invitee(s) if:
+        - They would accept the invitee(s) in the available role (provider or recipient)
+        - The modified arrangement still makes material sense to all parties
+        - No active hostility that would override the material dynamic
+
+        **Each invitee** is willing if:
+        - **As service provider:** They have a material motivation (coin, favor, leverage, desperation), no strong moral opposition to the act, and no active hostility toward current participants that would override the material benefit
+        - **As service recipient:** They have desire or demand for the service and the means or willingness to provide the agreed benefit
+
+        If the most recent relevant `dialogue` or `npc_thoughts` from participant clearly permits or welcomes their role in the interaction, treat willingness for this participant as fully satisfied and skip all remaining conditions.
+    {% elif currentIntent == "dom" %}
+        **Non-inviter current participants** accept the invitee(s) only if:
+        - They would accept the invitee(s) into their established dynamic in a specific role
+        - There is sufficient trust or an established relationship to include a new participant — absence of objection is not enough
+
+        **Each invitee** is willing only if:
+        - They are willing to engage in a dominant/submissive dynamic specifically — general sex willingness is not sufficient
+        - There is sufficient trust or an established dynamic with the current participants — absence of objection is not enough
+        - No hard limits or prior trauma that makes this dynamic unsafe for them
+        - No personality so incompatible with their assigned role that they would refuse even if asked
+
+        If the most recent relevant `dialogue` or `npc_thoughts` from this participant clearly accepts the required power dynamic, treat willingness for this participant as fully satisfied and skip all remaining conditions.
+    {% elif currentIntent == "aggressive" %}
+        {% if enableAggressiveIntent %}
+            Both sides are evaluated asymmetrically — victim consent is never evaluated:
+            - **Non-inviter current participants (aggressors):** Must be willing to include the invitee(s); invitee(s) must be capable of assisting in overpowering victim(s) if joining as aggressor
+            - **Invitee as aggressor:** Include only if plausibly motivated and capable of overpowering victim(s) alongside current aggressors
+            - **Invitee as victim:** Never exclude based on unwillingness. Include any actor the aggressors can plausibly overpower
+        {% endif %}
+    {% endif %}
+
+    ### Role Definitions per Intent
+    {{ render_template("ostimnet_intents\\ostimnet_intents_roles_all") }}
+[ end state ]
+
+{% if checkCurrentConsent %}
+    [ question current_accept noul ]
+        {{ inviterName }} is inviting {{ inviteeNames }} to join the ongoing `{{ currentIntent }}` sexual scene.
+        Evaluate whether the non-inviter current participant(s) ({{ otherCurrentNames }}) accept {{ inviteeNames }} joining based on the Acceptance Rules in `ongoing_scene`, `participants`, and `recent_events`.
+        [ criteria ]
+            true: {{ otherCurrentNames }} accept {{ inviteeNames }} joining the scene
+            false: {{ otherCurrentNames }} refuse and do not accept {{ inviteeNames }} joining the scene
+        [ end criteria ]
+    [ end question ]
+{% endif %}
+
+{% for inv in inviteesList %}
+    {% if not inv.isPlayer %}
+        [ question willing_{{ inv.key }} noul ]
+            {{ inviterName }} is inviting {{ inv.name }} to join the ongoing `{{ currentIntent }}` sexual scene with {{ currentActorNames }}.
+            Evaluate whether {{ inv.name }} is willing to join based on the Willingness Rules in `ongoing_scene`, `participants`, and `recent_events`.
+            [ criteria ]
+                true: {{ inv.name }} is willing to join the scene
+                false: {{ inv.name }} is unwilling and declines the invitation
+            [ end criteria ]
+        [ end question ]
+    {% endif %}
+{% endfor %}
+
+[ question intent choice ]
+    The current intent is `{{ currentIntent }}`, set for the original participants. Determine whether the intent stays `{{ currentIntent }}` or updates for the full group when willing invitees join, based on `participants` and `recent_events`:
+    - **romantic -> lustful:** Downgrade if any newly included actor has no romantic feelings toward any existing participant and no existing participant has romantic feelings toward them.
+    - **lustful -> romantic:** Upgrade only if all newly included actors have deep mutual romantic connections with all existing participants. Very rare.
+    - **lustful / romantic -> transactional:** Only if a material exchange is now the primary driver for at least one participant's involvement and this reframes the whole encounter.
+    - **transactional -> lustful:** Only if the material component becomes irrelevant with the new participants and mutual physical desire takes over.
+    - **dom -> other:** Only if the dominant/submissive structure can no longer hold with the new group composition.
+    - **aggressive -> other:** Do not change.
+    - **other -> aggressive:** Do not set.
+    If none of the above clearly apply, keep `{{ currentIntent }}`.
+        [ criteria ]
+            romantic: {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_romantic_description_short") }}
+            lustful: {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_lustful_description_short") }}
+            transactional: {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_transactional_description_short") }}
+            dom: {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_dom_description_short") }}
+            {% if enableAggressiveIntent -%}
+                aggressive: {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_aggressive_description_short") }}
+            {%- endif %}
+        [ end criteria ]
+[ end question ]
+
+[ question roles choice ]
+    If the invitation proceeds, choose the `main` and `secondary` role combination for all participating actors based on `ongoing_scene`, `participants`, and `recent_events`.
+        [ criteria ]
+            {% for combo in roleCombinations -%}
+                {{ combo.key }}: main: {{ combo.mainNames }}; secondary: {{ combo.secondaryNames }}{% if combo.excludedNames != "" %}; excluded: {{ combo.excludedNames }}{% endif %}
+            {% endfor -%}
+        [ end criteria ]
+[ end question ]

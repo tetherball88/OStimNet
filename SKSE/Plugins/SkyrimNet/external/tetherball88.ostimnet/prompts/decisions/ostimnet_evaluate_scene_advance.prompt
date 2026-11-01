@@ -1,0 +1,57 @@
+{# Decision template: evaluates the next sexual activity and/or position for an active sexual scene. #}
+{% set phaseInfo = ostimnet_thread_phase(first(actors)) %}
+
+[ state current_scene ]
+    A `{{ intent }}` sexual scene involving {{ actorNames }} is currently underway.
+    Main (Active/Leading) Participants: {{ mainActorNames }}
+    Secondary (Receptive/Supporting) Participants: {{ secondaryActorNames }}
+    Current Scene: {% if sceneDescription != "" %}{{ sceneDescription }}{% else %}Active sexual encounter.{% endif %}
+
+    {{ render_template("ostimnet_intents\\ostimnet_intents_description") }}
+    {{ render_template("ostimnet_intents\\ostimnet_intents_preferences") }}
+
+    {% if phaseInfo and (phaseInfo.currentPhase == "foreplay" or phaseInfo.currentPhase == "oral") %}
+        #### Encounter Phase
+        Currently the encounter is in the `{{ phaseInfo.currentPhase }}` phase.
+        - If staying in this phase, use actions from: {{ phaseInfo.currentPhaseActions }}.
+        - Next natural development of the scene is the `{{ phaseInfo.nextPhase }}` phase with actions: {{ phaseInfo.nextPhaseActions }}.
+        - You may also skip the next phase if narratively appropriate.
+    {% endif %}
+[ end state ]
+
+[ state participant_profiles ]
+    {% for p in participantsList %}
+        ### {{ p.name }} ({{ p.role }} participant)
+        {{ render_character_profile("tton_gm", p.uuid) }}
+        ---
+    {% endfor %}
+[ end state ]
+
+[ state recent_events ]
+    {{ render_template("helpers\\ostimnet_recent_events") }}
+[ end state ]
+
+{% if length(activities) > 0 %}
+    [ question activity choice ]
+        Choose the next sexual activity that naturally advances this `{{ intent }}` scene based on `current_scene`, `participant_profiles`, and `recent_events`. Choose `hold` if no specific activity filter is needed or if only the physical position is changing.
+        [ criteria ]
+            {% if not initialAdvance -%}
+                hold: Keep current activity type (or advance by position only)
+            {% endif -%}
+            {% for act in activities -%}
+                {{ act.id }}: {{ act.desc }}
+            {% endfor -%}
+        [ end criteria ]
+    [ end question ]
+{% endif %}
+
+{% if length(positions) > 0 %}
+    [ question position choice ]
+        Select the next physical position to advance the scene based on `current_scene`, `participant_profiles`, and `recent_events`. Vary from the position described in `current_scene` — do not repeat it.
+        [ criteria ]
+            {% for pos in positions -%}
+                {{ pos.id }}: {{ pos.desc }}
+            {% endfor -%}
+        [ end criteria ]
+    [ end question ]
+{% endif %}

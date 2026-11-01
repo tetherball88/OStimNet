@@ -136,7 +136,7 @@ string Function BuildSpectatorFledEventJson(Actor akSpectator) global native
 ;   numArg = 1.0  scene resolved successfully
 ;   numArg = 2.0  LLM decided not enough willing participants (scene=null)
 ;   numArg = 0.0  error (LLM failure or bad response)
-int Function EvaluatePreStartSexualScene(Actor[] akParticipants, string asIntent = "", string evalId = "") global native
+int Function EvaluatePreStartSexualScene(Actor[] akParticipants, string evalId = "", string asReason = "") global native
 
 ; Sends the "ostimnet_evaluate_nonsexual_scene" prompt to the LLM to evaluate whether
 ; a non-sexual scene should start with the given participants.
@@ -150,7 +150,7 @@ int Function EvaluatePreStartSexualScene(Actor[] akParticipants, string asIntent
 ;   numArg = 1.0  start=true, scene should proceed
 ;   numArg = 2.0  start=false, LLM decided scene should not start
 ;   numArg = 0.0  error (LLM failure or bad response)
-int Function EvaluateNonSexualScene(Actor[] akParticipants, string asActivity = "", string asIntent = "", Actor akInitiator = None, string evalId = "") global native
+int Function EvaluateNonSexualScene(Actor[] akParticipants, string asActivity = "", string asIntent = "", Actor akInitiator = None, string evalId = "", string asReason = "") global native
 
 ; Sends the "ostimnet_evaluate_join_ongoing_sex" prompt to the LLM to evaluate whether
 ; akJoiner should be allowed to join an existing running thread.
@@ -163,7 +163,7 @@ int Function EvaluateNonSexualScene(Actor[] akParticipants, string asActivity = 
 ;   numArg = 1.0  accepted — joiner may be added
 ;   numArg = 2.0  declined — current participants refused
 ;   numArg = 0.0  error (LLM failure or bad response)
-int Function EvaluateJoinOngoingSex(Actor akJoiner, int threadID, string evalId = "") global native
+int Function EvaluateJoinOngoingSex(Actor akJoiner, int threadID, string evalId = "", string asReason = "") global native
 
 ; Sends the "ostimnet_evaluate_invite_to_sex" prompt to the LLM to evaluate whether
 ; akInvitees should be invited into an existing running thread by akInviter.
@@ -176,7 +176,7 @@ int Function EvaluateJoinOngoingSex(Actor akJoiner, int threadID, string evalId 
 ;   numArg = 1.0  accepted — at least one invitee may join
 ;   numArg = 2.0  declined — no invitees willing or accepted
 ;   numArg = 0.0  error (LLM failure or bad response)
-int Function EvaluateInviteToSex(Actor akInviter, Actor[] akInvitees, int threadID, string evalId = "") global native
+int Function EvaluateInviteToSex(Actor akInviter, Actor[] akInvitees, int threadID, string evalId = "", string asReason = "") global native
 
 ; Shows a 3-button confirmation dialog for an LLM-initiated action.
 ; Checks per-action cooldowns before showing. Blocks until the player responds.

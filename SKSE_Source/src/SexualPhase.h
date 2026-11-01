@@ -2,6 +2,7 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include "Config.h"
 #include "api/OStimNavigator_PublicAPI.h"
 
 namespace OStimNet {
@@ -97,6 +98,40 @@ inline std::string SexualPhaseToActivityKeywordString(SexualPhase p) {
         case SexualPhase::Sex:        return "vaginalsex,analsex";
         default:                      return "";
     }
+}
+
+// Computes the starting sexual phase before a thread is created, based on config,
+// intent, participant count, player presence, and selected furniture type.
+// Returns std::nullopt when phase tracking is disabled (Config::EnableThreadPhases is false
+// or the intent has an empty phase list).
+inline std::optional<SexualPhase> ResolvePreStartOpeningPhase(
+    OStimNavigatorAPI::Intent intent,
+    size_t actorCount,
+    bool hasPlayer,
+    const std::string& furnitureType) {
+    if (!Config::GetSingleton().EnableThreadPhases()) return std::nullopt;
+
+    const auto& phaseList = IntentToPhaseList(intent);
+    if (phaseList.empty()) return std::nullopt;
+
+    bool undressingEnabled = hasPlayer
+        ? Config::GetSingleton().EnableUndressingPlayer()
+        : Config::GetSingleton().EnableUndressingNpc();
+
+    // Undressing only applies to 2 actors with no furniture ("floor" or "").
+    bool noFurniture = (furnitureType.empty() || furnitureType == "floor");
+    if (actorCount != 2 || !noFurniture) {
+        undressingEnabled = false;
+    }
+
+    size_t startIdx = 0;
+    if (!undressingEnabled &&
+        phaseList[0] == SexualPhase::Undressing &&
+        phaseList.size() > 1) {
+        startIdx = 1;
+    }
+
+    return phaseList[startIdx];
 }
 
 }  // namespace OStimNet

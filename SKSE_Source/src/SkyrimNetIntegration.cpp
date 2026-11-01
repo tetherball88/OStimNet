@@ -1,6 +1,7 @@
 #include "PCH.h"
 
 #include "SkyrimNetIntegration.h"
+#include "SkyrimNetDecisions.h"
 #include "api/OstimNG-API-Thread.h"
 #include "api/OStimNavigator_PublicAPI.h"
 #include "api/SkyrimNet_PublicAPI.h"
@@ -384,12 +385,19 @@ void Register() {
 
     RegisterDecorator(
         "ostimnet_available_positions",
-        "Newline-separated list of all sex positions that exist in at least one loaded OStim scene, "
-        "with human-readable descriptions. Each entry is prefixed with '- '. "
-        "Requires OStimNavigator. Empty when OStimNavigator is not installed.",
-        [](RE::Actor*) -> std::string {
-            if (!ONavGetAllPositions) return "";
-            const char* raw = ONavGetAllPositions();
+        "Comma-separated list of sex positions available for the actor's current OStim thread "
+        "(or all loaded OStim positions if the actor is not in an active thread), "
+        "with human-readable descriptions. Requires OStimNavigator. Empty when OStimNavigator is not installed.",
+        [](RE::Actor* actor) -> std::string {
+            int threadID = actor
+                ? OStimNet::ThreadDataStore::GetSingleton().GetActorThreadID(actor->GetFormID())
+                : -1;
+            const char* raw = nullptr;
+            if (threadID >= 0 && ONavGetThreadPositions) {
+                raw = ONavGetThreadPositions(static_cast<uint32_t>(threadID));
+            } else if (ONavGetAllPositions) {
+                raw = ONavGetAllPositions();
+            }
             if (!raw || raw[0] == '\0') return "";
             try {
                 auto j = nlohmann::json::parse(raw);
@@ -414,11 +422,19 @@ void Register() {
 
     RegisterDecorator(
         "ostimnet_available_sexual_actions",
-        "Comma-separated list of all sexual act type keywords that exist in at least one loaded OStim scene. "
+        "Comma-separated list of sexual act type keywords available for the actor's current OStim thread "
+        "(or all loaded OStim scenes if the actor is not in an active thread). "
         "Requires OStimNavigator. Empty when OStimNavigator is not installed.",
-        [](RE::Actor*) -> std::string {
-            if (!ONavGetAllActions) return "";
-            const char* raw = ONavGetAllActions("sexual");
+        [](RE::Actor* actor) -> std::string {
+            int threadID = actor
+                ? OStimNet::ThreadDataStore::GetSingleton().GetActorThreadID(actor->GetFormID())
+                : -1;
+            const char* raw = nullptr;
+            if (threadID >= 0 && ONavGetThreadActions) {
+                raw = ONavGetThreadActions(static_cast<uint32_t>(threadID), "sexual");
+            } else if (ONavGetAllActions) {
+                raw = ONavGetAllActions("sexual");
+            }
             if (!raw || raw[0] == '\0') return "";
             try {
                 auto j = nlohmann::json::parse(raw);
@@ -801,14 +817,42 @@ void Register() {
             OStimNet::Intent intent = OStimNet::ThreadDataStore::GetSingleton().GetIntent(threadID);
             auto nextPhase = OStimNet::GetNextPhase(intent, *phase);
 
+            auto getPhaseActionsCsv = [threadID](OStimNet::SexualPhase p) -> std::string {
+                if (ONavGetThreadActions) {
+                    const char* raw = ONavGetThreadActions(
+                        static_cast<uint32_t>(threadID), OStimNet::SexualPhaseToName(p));
+                    if (raw && raw[0] != '\0') {
+                        try {
+                            auto arr = nlohmann::json::parse(raw);
+                            if (arr.is_array()) {
+                                std::string out;
+                                for (const auto& item : arr) {
+                                    auto idIt = item.find("id");
+                                    if (idIt == item.end() || !idIt->is_string()) continue;
+                                    const std::string& id = idIt->get_ref<const std::string&>();
+                                    if (id.rfind("cumon", 0) == 0 || id.rfind("3pp_", 0) == 0 ||
+                                        id.rfind("ejaculation_on", 0) == 0 || id.rfind("facial", 0) == 0)
+                                        continue;
+                                    if (!out.empty()) out += ", ";
+                                    out += id;
+                                }
+                                return out;
+                            }
+                        } catch (...) {
+                        }
+                    }
+                }
+                return OStimNet::SexualPhaseToActivityKeywordString(p);
+            };
+
             nlohmann::json j;
             j["currentPhase"]        = OStimNet::SexualPhaseToName(*phase);
             j["nextPhase"]           = nextPhase.has_value()
                                            ? nlohmann::json(OStimNet::SexualPhaseToName(*nextPhase))
                                            : nlohmann::json(nullptr);
-            j["currentPhaseActions"] = OStimNet::SexualPhaseToActivityKeywordString(*phase);
+            j["currentPhaseActions"] = getPhaseActionsCsv(*phase);
             j["nextPhaseActions"]    = nextPhase.has_value()
-                                           ? OStimNet::SexualPhaseToActivityKeywordString(*nextPhase)
+                                           ? getPhaseActionsCsv(*nextPhase)
                                            : "";
             return j.dump();
         });
@@ -816,7 +860,14 @@ void Register() {
 
 // SanitizeLLMJson is defined in JsonService.h and shared across all translation units.
 
-bool EvaluatePreStartSexualScene(const std::vector<RE::FormID>& participantFormIDs, const std::string& intent, const std::string& evalId) {
+bool EvaluatePreStartSexualScene(const std::vector<RE::FormID>& participantFormIDs, const std::string& evalId, const std::string& reason, bool forceChat) {
+    if (!forceChat && SkyrimNetDecisions::IsAvailable()) {
+        return SkyrimNetDecisions::EvaluatePreStartSexualScene(
+            participantFormIDs, evalId, reason,
+            [participantFormIDs, evalId, reason]() {
+                EvaluatePreStartSexualScene(participantFormIDs, evalId, reason, /*forceChat=*/true);
+            });
+    }
     if (!PublicSendCustomPromptToLLM) {
         SKSE::log::warn("EvaluatePreStartSexualScene: PublicSendCustomPromptToLLM unavailable (SkyrimNet v8+ required).");
         return false;
@@ -842,11 +893,83 @@ bool EvaluatePreStartSexualScene(const std::vector<RE::FormID>& participantFormI
     }
 
     // Build context JSON for the prompt template.
+    std::vector<uint32_t> participantFIDs;
+    participantFIDs.reserve(participantFormIDs.size());
+    bool hasPlayer = false;
+    auto* playerRef = RE::PlayerCharacter::GetSingleton();
+    for (RE::FormID fid : participantFormIDs) {
+        participantFIDs.push_back(static_cast<uint32_t>(fid));
+        if (playerRef && playerRef->GetFormID() == fid) hasPlayer = true;
+    }
+
+    auto buildSetupActionCsv = [&](const char* phaseOrTag) -> std::string {
+        const char* raw = nullptr;
+        if (!participantFIDs.empty() && ONavGetSetupActions) {
+            raw = ONavGetSetupActions(participantFIDs.data(), static_cast<uint32_t>(participantFIDs.size()), "", phaseOrTag);
+        } else if (ONavGetAllActions) {
+            raw = ONavGetAllActions("sexual");
+        }
+        if (!raw || raw[0] == '\0') return "";
+        try {
+            auto j = nlohmann::json::parse(raw, nullptr, /*allow_exceptions=*/false);
+            if (j.is_discarded() || !j.is_array()) return "";
+            std::string out;
+            for (const auto& item : j) {
+                if (!item.is_string()) continue;
+                const std::string& id = item.get_ref<const std::string&>();
+                if (id.rfind("cumon", 0) == 0 || id.rfind("3pp_", 0) == 0 ||
+                    id.rfind("ejaculation_on", 0) == 0 || id.rfind("facial", 0) == 0) continue;
+                if (!out.empty()) out += ", ";
+                out += id;
+            }
+            return out;
+        } catch (...) {
+            return "";
+        }
+    };
+
+    auto buildSetupPositionCsv = [&]() -> std::string {
+        const char* raw = nullptr;
+        if (!participantFIDs.empty() && ONavGetSetupPositions) {
+            raw = ONavGetSetupPositions(participantFIDs.data(), static_cast<uint32_t>(participantFIDs.size()), "");
+        } else if (ONavGetAllPositions) {
+            raw = ONavGetAllPositions();
+        }
+        if (!raw || raw[0] == '\0') return "";
+        try {
+            auto j = nlohmann::json::parse(raw, nullptr, /*allow_exceptions=*/false);
+            if (j.is_discarded() || !j.is_array()) return "";
+            std::string out;
+            for (const auto& item : j) {
+                if (!item.is_string()) continue;
+                const std::string& id = item.get_ref<const std::string&>();
+                if (id.empty() || id == "any" || id == "none") continue;
+                if (!out.empty()) out += ", ";
+                out += id;
+            }
+            return out;
+        } catch (...) {
+            return "";
+        }
+    };
+
+    bool phasesEnabled = OStimNet::Config::GetSingleton().EnableThreadPhases();
+    bool undressingEnabled = (hasPlayer
+        ? OStimNet::Config::GetSingleton().EnableUndressingPlayer()
+        : OStimNet::Config::GetSingleton().EnableUndressingNpc()) && (participantFIDs.size() == 2);
+
     nlohmann::json ctx;
-    ctx["actors"]            = actorUUIDs;
-    ctx["actorNames"]        = OStimNet::FormatActorList(actorNameVec);
-    ctx["participant_count"] = static_cast<int>(participantFormIDs.size());
-    ctx["intent"]            = intent;
+    ctx["actors"]              = actorUUIDs;
+    ctx["actorNames"]          = OStimNet::FormatActorList(actorNameVec);
+    ctx["participant_count"]   = static_cast<int>(participantFormIDs.size());
+    ctx["reason"]              = reason;
+    ctx["phasesEnabled"]       = phasesEnabled;
+    ctx["undressingEnabled"]   = undressingEnabled;
+    ctx["foreplayActivities"]  = buildSetupActionCsv("foreplay");
+    ctx["oralActivities"]      = buildSetupActionCsv("oral");
+    ctx["sexActivities"]       = buildSetupActionCsv("sex");
+    ctx["allSexualActivities"] = buildSetupActionCsv("sexual");
+    ctx["availablePositions"]  = buildSetupPositionCsv();
 
     // Also inject flat slots in case the prompt template needs them.
     for (int i = 0; i < 5; ++i) {
@@ -878,7 +1001,7 @@ bool EvaluatePreStartSexualScene(const std::vector<RE::FormID>& participantFormI
 
     auto callbackHolder = std::make_shared<std::function<void(const char*, int)>>();
 
-    *callbackHolder = [callbackHolder, nameToFormID, originalParticipants, intent, evalId,
+    *callbackHolder = [callbackHolder, nameToFormID, originalParticipants, hasPlayer, evalId,
                        contextJson, promptName, llmVariant](const char* response, int success) {
         SKSE::log::info("EvaluatePreStartSexualScene callback: success={}", success);
 
@@ -949,28 +1072,58 @@ bool EvaluatePreStartSexualScene(const std::vector<RE::FormID>& participantFormI
             }
         }
 
-        nlohmann::json result;
-        result["originalParticipants"] = originalParticipants;
-        result["intent"]               = intent;
-        result["evalId"]               = evalId;
-        result["sexualPosition"]       = scene.value("sexualPosition", "");
-        result["sexualActivities"]     = scene.value("sexualActivity", "");
-        result["main"]                 = resolveNames(scene, "mainActors");
-        result["secondary"]            = resolveNames(scene, "secondaryActors");
+        std::string resolvedIntent = scene.value("intent", "");
+        if (resolvedIntent.empty()) resolvedIntent = "lustful";
+        std::string resolvedFurniture = scene.value("furniture", "");
+        if (resolvedFurniture == "floor") resolvedFurniture = "";
+
+        std::string resolvedPosition = scene.value("sexualPosition", "");
+        if (resolvedPosition == "any" || resolvedPosition == "none") resolvedPosition = "";
+
+        std::string resolvedActivity = scene.value("sexualActivity", "");
+        if (resolvedActivity == "generic" || resolvedActivity == "none" || resolvedActivity == "any") {
+            resolvedActivity = "";
+        }
+
+        auto mainFormIDs = resolveNames(scene, "mainActors");
+        auto secFormIDs  = resolveNames(scene, "secondaryActors");
 
         // Guardrail: LLMs sometimes place all actors in mainActors and leave secondaryActors empty.
         // If secondary is empty and main has more than one actor, move the last main actor to secondary.
-        if (result["secondary"].empty() && result["main"].size() > 1) {
+        if (secFormIDs.empty() && mainFormIDs.size() > 1) {
             SKSE::log::info("EvaluatePreStartSexualScene: secondary actors empty with {} main actors — moving last main actor to secondary.",
-                            result["main"].size());
-            result["secondary"].push_back(result["main"].back());
-            result["main"].erase(result["main"].size() - 1);
+                            mainFormIDs.size());
+            secFormIDs.push_back(mainFormIDs.back());
+            mainFormIDs.erase(mainFormIDs.size() - 1);
         }
 
-        // Count total resolved actors and detect if the LLM excluded any.
-        // resolveNames only maps names from the original participants, so the final
-        // set is always a subset — a count difference is sufficient.
-        std::size_t totalActors = result["main"].size() + result["secondary"].size();
+        std::size_t totalActors = mainFormIDs.size() + secFormIDs.size();
+
+        // Enforce phase-specific activity and position rules.
+        auto openingPhase = OStimNet::ResolvePreStartOpeningPhase(
+            OStimNavigatorAPI::IntentFromString(resolvedIntent),
+            totalActors,
+            hasPlayer,
+            resolvedFurniture);
+        if (openingPhase.has_value()) {
+            if (*openingPhase == OStimNet::SexualPhase::Undressing) {
+                resolvedActivity.clear();
+                resolvedPosition.clear();
+            } else if (*openingPhase == OStimNet::SexualPhase::Foreplay ||
+                       *openingPhase == OStimNet::SexualPhase::Oral) {
+                resolvedPosition.clear();
+            }
+        }
+
+        nlohmann::json result;
+        result["originalParticipants"] = originalParticipants;
+        result["intent"]               = resolvedIntent;
+        result["furniture"]            = resolvedFurniture;
+        result["evalId"]               = evalId;
+        result["sexualPosition"]       = resolvedPosition;
+        result["sexualActivities"]     = resolvedActivity;
+        result["main"]                 = std::move(mainFormIDs);
+        result["secondary"]            = std::move(secFormIDs);
         bool actorsExcluded = (totalActors < originalParticipants.size());
 
         // Build excluded FormID array: originalParticipants minus (main ∪ secondary).
@@ -1014,7 +1167,15 @@ bool EvaluatePreStartSexualScene(const std::vector<RE::FormID>& participantFormI
 }
 
 bool EvaluateExternalSexualThread(const std::vector<RE::FormID>& participantFormIDs,
-                                   int threadID) {
+                                   int threadID,
+                                   bool forceChat) {
+    if (!forceChat && SkyrimNetDecisions::IsAvailable()) {
+        return SkyrimNetDecisions::EvaluateExternalSexualThread(
+            participantFormIDs, threadID,
+            [participantFormIDs, threadID]() {
+                EvaluateExternalSexualThread(participantFormIDs, threadID, /*forceChat=*/true);
+            });
+    }
     if (!PublicSendCustomPromptToLLM) {
         SKSE::log::warn("EvaluateExternalSexualThread: PublicSendCustomPromptToLLM unavailable (SkyrimNet v8+ required).");
         return false;
@@ -1187,7 +1348,14 @@ bool EvaluateExternalSexualThread(const std::vector<RE::FormID>& participantForm
     return queued;
 }
 
-bool EvaluateNonSexualScene(const std::vector<RE::FormID>& participantFormIDs, const std::string& activity, const std::string& intent, RE::FormID initiatorFormID, const std::string& evalId) {
+bool EvaluateNonSexualScene(const std::vector<RE::FormID>& participantFormIDs, const std::string& activity, const std::string& intent, RE::FormID initiatorFormID, const std::string& evalId, const std::string& reason, bool forceChat) {
+    if (!forceChat && SkyrimNetDecisions::IsAvailable()) {
+        return SkyrimNetDecisions::EvaluateNonSexualScene(
+            participantFormIDs, activity, intent, initiatorFormID, evalId, reason,
+            [participantFormIDs, activity, intent, initiatorFormID, evalId, reason]() {
+                EvaluateNonSexualScene(participantFormIDs, activity, intent, initiatorFormID, evalId, reason, /*forceChat=*/true);
+            });
+    }
     if (!PublicSendCustomPromptToLLM) {
         SKSE::log::warn("EvaluateNonSexualScene: PublicSendCustomPromptToLLM unavailable (SkyrimNet v8+ required).");
         return false;
@@ -1217,6 +1385,7 @@ bool EvaluateNonSexualScene(const std::vector<RE::FormID>& participantFormIDs, c
     ctx["participant_count"] = static_cast<int>(participantFormIDs.size());
     ctx["activity"]          = activity;
     ctx["intent"]            = intent;
+    ctx["reason"]            = reason;
     if (initiatorFormID != 0) {
         uint64_t uuid = ActorRefIDToUUID(initiatorFormID);
         ctx["initiator"] = uuid != 0 ? uuid : static_cast<uint64_t>(0);
@@ -1356,7 +1525,16 @@ bool EvaluateNonSexualScene(const std::vector<RE::FormID>& participantFormIDs, c
 
 bool EvaluateJoinOngoingSex(RE::FormID joinerFormID,
                             int threadID,
-                            const std::string& evalId) {
+                            const std::string& evalId,
+                            const std::string& reason,
+                            bool forceChat) {
+    if (!forceChat && SkyrimNetDecisions::IsAvailable()) {
+        return SkyrimNetDecisions::EvaluateJoinOngoingSex(
+            joinerFormID, threadID, evalId, reason,
+            [joinerFormID, threadID, evalId, reason]() {
+                EvaluateJoinOngoingSex(joinerFormID, threadID, evalId, reason, /*forceChat=*/true);
+            });
+    }
     if (!PublicSendCustomPromptToLLM) {
         SKSE::log::warn("EvaluateJoinOngoingSex: PublicSendCustomPromptToLLM unavailable (SkyrimNet v8+ required).");
         return false;
@@ -1409,6 +1587,7 @@ bool EvaluateJoinOngoingSex(RE::FormID joinerFormID,
     ctx["currentIntent"]     = currentIntent;
     ctx["threadID"]          = threadID;
     ctx["participant_count"] = static_cast<int>(currentParticipantFormIDs.size()) + 1;
+    ctx["reason"]            = reason;
 
     std::string contextJson = ctx.dump();
     SKSE::log::info("EvaluateJoinOngoingSex: queuing LLM prompt, threadID={}, joiner='{}', currentParticipants={}",
@@ -1523,7 +1702,16 @@ bool EvaluateJoinOngoingSex(RE::FormID joinerFormID,
 bool EvaluateInviteToSex(RE::FormID inviterFormID,
                          const std::vector<RE::FormID>& inviteeFormIDs,
                          int threadID,
-                         const std::string& evalId) {
+                         const std::string& evalId,
+                         const std::string& reason,
+                         bool forceChat) {
+    if (!forceChat && SkyrimNetDecisions::IsAvailable()) {
+        return SkyrimNetDecisions::EvaluateInviteToSex(
+            inviterFormID, inviteeFormIDs, threadID, evalId, reason,
+            [inviterFormID, inviteeFormIDs, threadID, evalId, reason]() {
+                EvaluateInviteToSex(inviterFormID, inviteeFormIDs, threadID, evalId, reason, /*forceChat=*/true);
+            });
+    }
     if (!PublicSendCustomPromptToLLM) {
         SKSE::log::warn("EvaluateInviteToSex: PublicSendCustomPromptToLLM unavailable (SkyrimNet v8+ required).");
         return false;
@@ -1591,6 +1779,7 @@ bool EvaluateInviteToSex(RE::FormID inviterFormID,
     ctx["currentIntent"]     = currentIntent;
     ctx["threadID"]          = threadID;
     ctx["participant_count"] = static_cast<int>(currentParticipantFormIDs.size()) + static_cast<int>(inviteeFormIDs.size());
+    ctx["reason"]            = reason;
 
     std::string contextJson = ctx.dump();
     SKSE::log::info("EvaluateInviteToSex: queuing LLM prompt, threadID={}, inviter='{}', invitees={}",
@@ -1706,7 +1895,15 @@ bool EvaluateInviteToSex(RE::FormID inviterFormID,
 
 bool EvaluateLocationScan(const std::string& contextJson,
                           const std::map<std::string, RE::FormID>& nameToFormID,
-                          uint64_t scanGen) {
+                          uint64_t scanGen,
+                          bool forceChat) {
+    if (!forceChat && SkyrimNetDecisions::IsAvailable()) {
+        return SkyrimNetDecisions::EvaluateLocationScan(
+            contextJson, nameToFormID, scanGen,
+            [contextJson, nameToFormID, scanGen]() {
+                EvaluateLocationScan(contextJson, nameToFormID, scanGen, /*forceChat=*/true);
+            });
+    }
     if (!PublicSendCustomPromptToLLM) {
         SKSE::log::warn("EvaluateLocationScan: PublicSendCustomPromptToLLM is null (SkyrimNet v8+ required), scan skipped");
         return false;
@@ -1790,8 +1987,10 @@ bool EvaluateLocationScan(const std::string& contextJson,
 
         nlohmann::json result;
         result["intent"]           = scene.value("intent", "");
-        result["sexualPosition"]   = scene.value("sexualPosition", "");
-        result["sexualActivities"] = scene.value("sexualActivity", "");
+        std::string sexPos         = scene.value("sexualPosition", "");
+        std::string sexAct         = scene.value("sexualActivity", "");
+        if (sexPos == "any" || sexPos == "generic" || sexPos == "none") sexPos.clear();
+        if (sexAct == "any" || sexAct == "generic" || sexAct == "none") sexAct.clear();
         result["main"]             = resolveNames(scene, "mainActors");
         result["secondary"]        = resolveNames(scene, "secondaryActors");
         result["furniture"]        = scene.value("furniture", "bed");
@@ -1806,6 +2005,31 @@ bool EvaluateLocationScan(const std::string& contextJson,
         }
 
         std::size_t totalActors = result["main"].size() + result["secondary"].size();
+
+        // Enforce phase rules on activity/position for the resolved participants.
+        bool hasPlayer = false;
+        for (const auto& fidVal : result["main"]) {
+            if (fidVal.is_number_unsigned() && fidVal.get<uint32_t>() == 0x14) hasPlayer = true;
+        }
+        for (const auto& fidVal : result["secondary"]) {
+            if (fidVal.is_number_unsigned() && fidVal.get<uint32_t>() == 0x14) hasPlayer = true;
+        }
+        auto openingPhase = OStimNet::ResolvePreStartOpeningPhase(
+            OStimNavigatorAPI::IntentFromString(result["intent"].get<std::string>()),
+            totalActors,
+            hasPlayer,
+            result["furniture"].get<std::string>());
+        if (openingPhase.has_value()) {
+            if (*openingPhase == OStimNet::SexualPhase::Undressing) {
+                sexAct.clear();
+                sexPos.clear();
+            } else if (*openingPhase == OStimNet::SexualPhase::Foreplay ||
+                       *openingPhase == OStimNet::SexualPhase::Oral) {
+                sexPos.clear();
+            }
+        }
+        result["sexualPosition"]   = sexPos;
+        result["sexualActivities"] = sexAct;
         std::size_t suggestedActorsCount = 0;
         if (scene.contains("mainActors") && scene["mainActors"].is_array()) suggestedActorsCount += scene["mainActors"].size();
         if (scene.contains("secondaryActors") && scene["secondaryActors"].is_array()) suggestedActorsCount += scene["secondaryActors"].size();
@@ -1837,7 +2061,14 @@ bool EvaluateLocationScan(const std::string& contextJson,
     return queued;
 }
 
-bool EvaluateScheduledSceneAdvance(int threadID, std::function<void()> onDone) {
+bool EvaluateScheduledSceneAdvance(int threadID, std::function<void()> onDone, bool forceChat) {
+    if (!forceChat && SkyrimNetDecisions::IsAvailable()) {
+        return SkyrimNetDecisions::EvaluateScheduledSceneAdvance(
+            threadID, onDone,
+            [threadID, onDone]() {
+                EvaluateScheduledSceneAdvance(threadID, onDone, /*forceChat=*/true);
+            });
+    }
     if (!PublicSendCustomPromptToLLM) {
         SKSE::log::warn("EvaluateScheduledSceneAdvance: PublicSendCustomPromptToLLM unavailable");
         onDone();
@@ -1935,10 +2166,14 @@ bool EvaluateScheduledSceneAdvance(int threadID, std::function<void()> onDone) {
         }
 
         const auto& scene = resp["scene"];
+        std::string sexPos = scene.value("sexualPosition", "");
+        std::string sexAct = scene.value("sexualActivity", "");
+        if (sexPos == "any" || sexPos == "generic" || sexPos == "none" || sexPos == "hold") sexPos.clear();
+        if (sexAct == "any" || sexAct == "generic" || sexAct == "none" || sexAct == "hold") sexAct.clear();
         nlohmann::json result;
         result["threadID"] = threadID;
-        result["sexualPosition"] = scene.value("sexualPosition", "");
-        result["sexualActivities"] = scene.value("sexualActivity", "");
+        result["sexualPosition"] = sexPos;
+        result["sexualActivities"] = sexAct;
 
         std::string jsonStr = result.dump();
         SKSE::log::info("EvaluateScheduledSceneAdvance: success -> {}", jsonStr);
@@ -1954,7 +2189,14 @@ bool EvaluateScheduledSceneAdvance(int threadID, std::function<void()> onDone) {
     return queued;
 }
 
-bool EvaluatePulloutDecision(int threadID) {
+bool EvaluatePulloutDecision(int threadID, bool forceChat) {
+    if (!forceChat && SkyrimNetDecisions::IsAvailable()) {
+        return SkyrimNetDecisions::EvaluatePulloutDecision(
+            threadID,
+            [threadID]() {
+                EvaluatePulloutDecision(threadID, /*forceChat=*/true);
+            });
+    }
     if (!PublicSendCustomPromptToLLM) {
         SKSE::log::warn("EvaluatePulloutDecision: PublicSendCustomPromptToLLM unavailable");
         PulloutService::GetSingleton().OnLLMFailure(threadID);

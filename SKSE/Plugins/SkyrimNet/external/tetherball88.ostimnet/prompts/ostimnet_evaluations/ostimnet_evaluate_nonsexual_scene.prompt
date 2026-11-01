@@ -1,6 +1,7 @@
 [system]
 ## Context
 A roleplaying AI has proposed a social interaction between {{ actorNames }}.
+{% if reason != "" %}Why the roleplaying AI decided to initiate this interaction with these participants: {{ reason }}{% endif %}
 You are the GameMaster AI. Evaluate whether both actors are willing to engage in this `{{ intent }}` interaction.
 
 ---

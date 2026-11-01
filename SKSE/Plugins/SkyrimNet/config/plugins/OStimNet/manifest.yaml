@@ -54,6 +54,12 @@ schema:
         - memory
         - vision
       category: "General"
+    - name: "Use Jev Decisions for evaluations"
+      path: "tton.gm.useDecisions"
+      type: "bool"
+      description: "When enabled, OStimNet uses SkyrimNet's fast typed Decisions API (Jev) and templates under prompts/decisions/ for scene evaluations instead of regular Game Master LLM chat prompts. Automatically falls back to the Game Master LLM variant if no decisions route is configured in SkyrimNet."
+      defaultValue: true
+      category: "General"
     - name: "Nearby actors scan radius"
       path: "tton.nearbyActors.radius"
       type: "int"
@@ -465,5 +471,3 @@ schema:
       description: "If enabled, when an NPC-only OStim scene is started outside of OStimNet (manually or by third-party mods), prompts the player with selection options for intent and main/secondary actors."
       defaultValue: false
       category: "External scenes"
-
-

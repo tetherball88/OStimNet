@@ -1,0 +1,58 @@
+{# Decision template: 2-step evaluation for an external sexual OStim thread.
+   Step 1 (step == 1): Determine the scene's intent.
+   Step 2 (step == 2): Given the confirmed intent, choose the main/secondary role combination. #}
+{% set ostimNetSettings = ostimnet_settings(player.UUID) %}
+{% set enableAggressiveIntent = ostimNetSettings.enableAggressiveIntent %}
+
+[ state participants ]
+{% for actor in actors %}
+    {% set actorData = decnpc(actor) %}
+    ### {{ actorData.name }} ({{ actorData.gender }} {{ actorData.race }})
+    {{ render_character_profile("tton_gm", actor) }}
+    ---
+{% endfor %}
+Only {{ actorNames }} are participating in this scene.
+[ end state ]
+
+[ state recent_events ]
+{{ render_template("helpers\\ostimnet_recent_events") }}
+[ end state ]
+
+{% if step == 1 %}
+    [ state scene_context ]
+        A sexual scene has started involving {{ actorNames }}.
+        {% if sceneDescription != "" %}Current Animation: {{ sceneDescription }}{% endif %}
+    [ end state ]
+
+    [ question intent choice ]
+        Infer the single most narratively appropriate intent for the ongoing sexual scene involving {{ actorNames }} from `participants`, `recent_events`, and `scene_context`.
+        [ criteria ]
+            romantic: {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_romantic_description_short") }}
+            lustful: {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_lustful_description_short") }}
+            transactional: {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_transactional_description_short") }}
+            dom: {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_dom_description_short") }}
+            {% if enableAggressiveIntent -%}
+                aggressive: {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_aggressive_description_short") }}
+            {% endif %}
+        [ end criteria ]
+    [ end question ]
+{% else %}
+    [ state scene_context ]
+        A `{{ intent }}` sexual scene is currently underway involving {{ actorNames }}.
+        {% if sceneDescription != "" %}Current Animation: {{ sceneDescription }}{% endif %}
+
+        {{ render_template("ostimnet_intents\\ostimnet_intents_description") }}
+
+        Role definition for `{{ intent }}`:
+        {{ render_template("ostimnet_intents\\ostimnet_intents_roles_conditional") }}
+    [ end state ]
+
+    [ question roles choice ]
+        Assign all participants ({{ actorNames }}) to `main` and `secondary` roles for this `{{ intent }}` scene based on the role definition in `scene_context`, `participants`, and `recent_events`.
+        [ criteria ]
+            {% for combo in roleCombinations -%}
+            {{ combo.key }}: main: {{ combo.mainNames }}; secondary: {{ combo.secondaryNames }}
+            {% endfor %}
+        [ end criteria ]
+    [ end question ]
+{% endif %}

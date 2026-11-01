@@ -18,7 +18,7 @@ Only {{ actorNames }} are participants in this scene. Characters mentioned only 
 ## Current Scene
 {{ currentSceneDescription }}
 
-{% set phaseInfo = ostimnet_thread_phase(0) %}
+{% set phaseInfo = ostimnet_thread_phase(first(actors)) %}
 {% if phaseInfo and (phaseInfo.currentPhase == "foreplay" or phaseInfo.currentPhase == "oral") %}
     ## Encounter Phase
     Currently encounter is in {{ phaseInfo.currentPhase }} phase.
@@ -37,12 +37,12 @@ Only {{ actorNames }} are participants in this scene. Characters mentioned only 
 Choose the next sexual position and/or activity that naturally advances this scene.
 
 **Sexual Position** — choose one from:
-{{ ostimnet_available_positions(player.UUID) }}
+{{ ostimnet_available_positions(first(actors)) }}
 - Select based on the participants' personalities, bodies, relationship, and the `{{ intent }}` intent
 - Vary from the position described in the current scene — do not repeat it
 
 **Activity** — choose one if narratively appropriate, or leave empty for a generic scene.
-Available: `foreplay`, `oral`, `vaginalsex`, `analsex`
+Available: {{ ostimnet_available_sexual_actions(first(actors)) }}
 Match to the participants' preferences and the intent `{{ intent }}`.
 
 ---

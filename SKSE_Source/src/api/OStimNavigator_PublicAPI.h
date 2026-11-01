@@ -144,6 +144,8 @@ inline const char* (*ONavGetCumTargets)(const char* sceneId, int actorPosition) 
  */
 #ifndef OSTIMNAVIGATOR_BUILDING
 inline const char* (*ONavGetAllPositions)() = nullptr;
+inline const char* (*ONavGetThreadPositions)(uint32_t threadID) = nullptr;
+inline const char* (*ONavGetSetupPositions)(const uint32_t* actorFormIDs, uint32_t actorCount, const char* furnitureType) = nullptr;
 #endif
 
 /**
@@ -213,6 +215,8 @@ inline const char* (*ONavGetPositionDisplayNames)() = nullptr;
  */
 #ifndef OSTIMNAVIGATOR_BUILDING
 inline const char* (*ONavGetAllActions)(const char* tag) = nullptr;
+inline const char* (*ONavGetThreadActions)(uint32_t threadID, const char* tag) = nullptr;
+inline const char* (*ONavGetSetupActions)(const uint32_t* actorFormIDs, uint32_t actorCount, const char* furnitureType, const char* phaseOrTag) = nullptr;
 #endif
 
 /**
@@ -372,6 +376,12 @@ inline bool ONavFindFunctions() {
     ONavGetAllPositions = reinterpret_cast<const char*(*)()>(
         GetProcAddress(hDLL, "ONavGetAllPositions"));
 
+    ONavGetThreadPositions = reinterpret_cast<const char*(*)(uint32_t)>(
+        GetProcAddress(hDLL, "ONavGetThreadPositions"));
+
+    ONavGetSetupPositions = reinterpret_cast<const char*(*)(const uint32_t*, uint32_t, const char*)>(
+        GetProcAddress(hDLL, "ONavGetSetupPositions"));
+
     ONavGetCanonicalPositions = reinterpret_cast<const char*(*)()>(
         GetProcAddress(hDLL, "ONavGetCanonicalPositions"));
 
@@ -383,6 +393,12 @@ inline bool ONavFindFunctions() {
 
     ONavGetAllActions = reinterpret_cast<const char*(*)(const char*)>(
         GetProcAddress(hDLL, "ONavGetAllActions"));
+
+    ONavGetThreadActions = reinterpret_cast<const char*(*)(uint32_t, const char*)>(
+        GetProcAddress(hDLL, "ONavGetThreadActions"));
+
+    ONavGetSetupActions = reinterpret_cast<const char*(*)(const uint32_t*, uint32_t, const char*, const char*)>(
+        GetProcAddress(hDLL, "ONavGetSetupActions"));
 
     ONavGetSceneActions = reinterpret_cast<const char*(*)(const char*)>(
         GetProcAddress(hDLL, "ONavGetSceneActions"));
