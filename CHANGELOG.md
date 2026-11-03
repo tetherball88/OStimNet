@@ -1,5 +1,28 @@
 # Changelog
 
+## v2.6.0
+
+### Added
+
+- **Faster, more reliable AI scene setup & progression (SkyrimNet Decisions support)** — OStimNet now uses SkyrimNet's **Decisions** system to evaluate and set up scenes step-by-step instead of relying solely on long, complex AI text responses:
+  - Makes scene evaluations significantly faster, more consistent, and far less prone to AI formatting errors—especially with smaller or faster AI models.
+  - Covers all scene evaluations: starting new sexual or affectionate scenes, inviting or joining ongoing scenes, automatic scene progression, near-climax pull-out decisions, spontaneous NPC location scans, and scenes started by external mods.
+  - Enabled by default under **General → Use Jev Decisions for evaluations**. If no Decisions model is configured in SkyrimNet, OStimNet automatically falls back to the standard Game Master AI without any extra setup needed.
+
+### Changed
+
+- **Smarter scene initiation & furniture timing**:
+  - When an NPC decides to initiate a sexual scene during conversation, the dialogue AI now focuses purely on *who* is involved and *why*, leaving the scene's mood (romantic, lustful, transactional, dominant, aggressive), roles, and furniture selection to the dedicated scene setup step.
+  - Characters now wait until the scene evaluation is finished and everyone's willingness is confirmed before walking over to a bed or piece of furniture, rather than walking to a bed before knowing if the scene will actually happen.
+  - Added safeguards so NPCs can no longer accidentally select themselves as their own partner when proposing a scene.
+- **Better story continuity in scene evaluations** — When an NPC proposes a new sexual scene, initiates a non-sexual affection scene (hugging, kissing, cuddling), asks to join an ongoing scene, or invites someone else to join, their reasoning from the conversation is now shared with the scene evaluator so consent checks, mood changes, and role assignments match what just happened in dialogue.
+- **More natural scene phases & animation selection**:
+  - **Phase-aware scene starts** — When a scene begins, OStimNet now automatically matches the opening activity and position to the appropriate starting stage (undressing, foreplay, oral, or intercourse) based on the mood of the encounter, the number of participants, and whether furniture is being used.
+  - **Compatible positions & activities only** — Using updated **OStim Navigator** integration, the AI is now only offered sexual positions and activities that actually exist in your installed animation packs for the current participants and furniture, while filtering out climax-only animations during normal progression.
+  - **Improved animation search fallbacks** — If the AI picks a specific foreplay or oral activity that isn't available for a particular piece of furniture or character pairing, OStimNet now smoothly falls back to broader compatible animations for that stage rather than failing or skipping ahead prematurely.
+
+---
+
 ## v2.5.7
 
 ### Fixed

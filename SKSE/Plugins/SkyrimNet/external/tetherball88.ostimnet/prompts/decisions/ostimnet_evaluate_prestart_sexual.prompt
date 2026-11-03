@@ -59,10 +59,16 @@
     [ end question ]
 
     {% if length(furnitureList) > 0 %}
+        {% set nearbyNPCs = get_nearby_actors_not_in_ostim(player.UUID) %}
         [ question furniture choice ]
-            Select which nearby furniture (or the floor) should be used for this sexual encounter based on `recent_events` and the setting. Prefer beds in buildings (best privacy and comfort) > situational non-bed furniture (when it fits the location and characters) > floor only when outdoors, urgency is overwhelming, or no other option exists.
+            Select which nearby furniture (or `floor` for standing/ground) best fits `recent_events`, the mood, and the characters (do not pick furniture just because its distance is smallest):
+            - Honor any furniture or posture implied in `recent_events`.
+            - Otherwise match the vibe: `bed` for comfort or prolonged intimacy; `chair`, `bench`, `table`, `wall`, etc. for situational variety; `floor` for standing, spontaneous, or ground encounters.
+            {% if length(nearbyNPCs.actorIds) + 1 > length(participantsList) -%}
+            - Uninvolved people are nearby: if these characters want privacy from bystanders, `bed` implies retreating to a private sleeping area.
+            {%- endif %}
             [ criteria ]
-                floor: No furniture — perform the scene on the floor or standing where they are
+                floor: No furniture — standing or ground encounter
                 {% for f in furnitureList -%}
                     {{ f.id }}: {{ f.desc }}
                 {% endfor -%}

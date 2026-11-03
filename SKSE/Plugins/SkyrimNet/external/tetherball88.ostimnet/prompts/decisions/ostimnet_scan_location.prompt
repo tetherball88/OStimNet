@@ -9,17 +9,18 @@
     Time: {{ short_time(gameTime) }}
     {% if step == 1 %}
         You are a scene coordinator for Skyrim's NPC-driven intimate encounters.
-        Evaluate whether a natural, believable intimate scene exists right now among the available characters.
-        This scan simulates the sexual and romantic lives of NPCs independent of the player. The player cannot initiate here; they can only be desired and approached by others.
+        Evaluate whether a natural, believable intimate scene exists among the available characters.
+        This scan simulates the sexual and romantic lives of NPCs independent of the player. NPCs do not initiate on their own in the game engine — this scan gives them agency to slip away together (or alone) even when `recent_events` only shows routine daily activity or ambient dialogue. The player cannot initiate here; they can only be desired and approached by others.
+
+        {{ render_template("helpers\\ostimnet_furniture_bit") }}
 
         Matching Logic:
-        - A viable scene needs a believable reason the initiator would act on desire right now, and no factor strong enough to override it.
         - Evidence (strongest to weakest):
         1. Recent dialogue, actions, or events showing attraction, invitation, tension, or intent
-        2. Established relationship history with a present-moment opportunity
-        3. Strong personality and background compatibility with clear situational opportunity
-        4. Personality or openness alone (not sufficient by itself for a partnered scene)
-        - Privacy & Time: Consider whether the location, time of day, and available furniture support what the character would need.
+        2. Established relationship or sexual history (e.g., lovers, spouses, regular partners) present in the same location
+        3. Personality and background compatibility with a suitable setting
+        4. Personality or sexual openness (supports a partnered scene when combined with tier 3, or a solo scene; not sufficient alone for a partnered scene)
+        - Privacy & Time: Time of day is a soft modifier, not a gate — lovers or compatible characters can sneak away for a quick encounter even during daytime or work hours.{% if length(candidatesList) > 2 %} When other people are present at the location, available `bed` furniture implies private rooms that characters can step away to for discretion.{% endif %}
     {% elif step == 2 %}
         Initiator: {{ initiatorName }}
         Evaluate who {{ initiatorName }} would plausibly approach or engage with right now (or whether {{ initiatorName }} engages in a solo scene), the sexual intent of the encounter, and which nearby furniture they would use.
@@ -30,7 +31,7 @@
         {% else %}
             NPC-only scenes are the default and the priority. Include the player only when {{ initiatorName }}'s profile and recent events give genuine reason to desire or pursue them.
         {% endif %}
-        Mutual desirability, relationships, commitment, and privacy must support the pairing.
+        Mutual desirability, relationships, and commitment must support the pairing.
 
         {{ render_template("ostimnet_intents\\ostimnet_intents_available") }}
     {% elif step == 3 %}
@@ -80,11 +81,11 @@
 
 {% if step == 1 %}
     [ question initiator choice ]
-        Select which NPC (if any) has a genuine, believable reason to initiate an intimate encounter right now based on `scene_context`, `participant_profiles`, and `recent_events`. Choose `none` if no scene should happen right now.
+        Select which NPC (if any) would plausibly initiate an intimate encounter based on `scene_context`, `participant_profiles`, and `recent_events`. Choose `none` if no plausible pairing or solo scene exists among the available characters.
         [ criteria ]
-            none: No intimate scene is genuinely supported right now
+            none: No plausible intimate scene among the available characters
             {% for c in initiatorsList -%}
-                {{ c.key }}: {{ c.name }} initiates an intimate encounter right now
+                {{ c.key }}: {{ c.name }} initiates an intimate encounter
             {% endfor -%}
             [ end criteria ]
     [ end question ]
@@ -116,9 +117,13 @@
 
 {% if length(furnitureList) > 0 %}
     [ question furniture choice ]
-        Select which nearby furniture (or the floor) best fits this encounter.
+        Select which nearby furniture (or `floor` for standing/ground) best fits `recent_events`, the mood, and the characters (do not pick furniture just because its distance is smallest):
+        - Match the vibe: `bed` for comfort or prolonged intimacy; `chair`, `bench`, `table`, `wall`, etc. for situational variety; `floor` for standing, spontaneous, or ground encounters.
+        {% if length(candidatesList) > 2 -%}
+        - Uninvolved people are nearby: if these characters want privacy from bystanders, `bed` implies retreating to a private sleeping area.
+        {%- endif %}
         [ criteria ]
-            floor: No furniture — perform the scene on the floor or standing where they are
+            floor: No furniture — standing or ground encounter
             {% for f in furnitureList -%}
                 {{ f.id }}: {{ f.desc }}
             {% endfor -%}
