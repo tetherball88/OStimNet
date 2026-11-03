@@ -1,2 +1,3 @@
+{% set _furnNearby = get_nearby_actors_not_in_ostim(player.UUID) -%}
 Available furniture: floor, {{ ostimnet_available_furniture_types(player.UUID) }}
-Prefer beds in buildings — they imply privacy. Non-bed furniture is viable and situationally natural — use it when it fits the location and characters. In public indoor spaces, floor means the main hall — avoid it unless the characters support exhibitionism. Outdoor or semi-private locations, floor is fine.
+Choose furniture (or `floor` for standing/ground) based on `recent_events`, mood, and physical dynamic rather than shortest distance: `bed` suits relaxed or prolonged intimacy; `chair`, `bench`, `table`, `wall`, etc. offer situational variety when they fit the moment; `floor` suits standing, spontaneous, or ground encounters.{% if length(_furnNearby.actorIds) > 1 %} Other people are nearby — if the characters want privacy from bystanders, `bed` implies retreating to a private sleeping area.{% endif %}
