@@ -2613,7 +2613,7 @@ bool EvaluateScheduledSceneAdvance(
     ctx["participantsList"]    = std::move(participantsList);
     ctx["eventFilterUUIDs"]    = std::move(eventFilterUUIDs);
     ctx["mainActorNames"]      = OStimNet::FormatActorList(mainNameVec, "Participants");
-    ctx["secondaryActorNames"] = OStimNet::FormatActorList(secNameVec, "Partner");
+    ctx["secondaryActorNames"] = OStimNet::FormatActorList(secNameVec, "");
     ctx["sceneDescription"]    = OStimNet::GetSceneDescription(static_cast<uint32_t>(threadID));
     ctx["intent"]              = OStimNet::IntentToString(store.GetIntent(threadID));
     ctx["initialAdvance"]      = initialAdvance;

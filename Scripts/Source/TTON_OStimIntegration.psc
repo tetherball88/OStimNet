@@ -53,10 +53,14 @@ int function StartOstimSex(Actor[] dom = none, Actor[] sub = none, string action
         int stucktimer = 0
         Actor target = actors[0]
         if(target == player)
-            target = actors[1]
+            if(actors.Length > 1)
+                target = actors[1]
+            else
+                target = none
+            endif
         endif
         int startGen = OStimNet.GetLocationGeneration()
-        while (target.GetDistance(furn) > 160 && stucktimer <= 10)
+        while (target && target != player && target.GetDistance(furn) > 160 && stucktimer <= 10)
             if (startGen != OStimNet.GetLocationGeneration())
                 TTON_Debug.info("Player moved to another location while waiting for actors to reach furniture. Canceling scene.")
                 StorageUtil.FormListRemove(none, "TTON_FurnitureList", furn)

@@ -7,11 +7,12 @@
     {% set mainActors = currentScene.mainActors %}
     {% set sceneDescription = currentScene.description %}
     {% set isMain = length(mainActors) > 0 and contains(mainActors, to_string(npc.UUID)) %}
+    {% set isSolo = length(currentScene.actors) == 1 %}
     ## Ongoing Sex — Voice Modifier
 
     {{sceneDescription}}
 
-    {{ npcData.name }} is in a sexual scene. All response format rules still apply — including internal thoughts. This section modifies delivery only. {{ npcData.name }} is still a person who can think, react, and be interrupted.
+    {{ npcData.name }} is in a {% if isSolo %}solo sexual (masturbation){% else %}sexual{% endif %} scene. All response format rules still apply — including internal thoughts. This section modifies delivery only. {{ npcData.name }} is still a person who can think, react, and be interrupted.
     **Determine role from position:**
     - **RECEIVING** — broken, breathless, overwhelmed; sound tags cut mid-thought; explicit and demanding. Each moment has its own texture — find what this specific beat calls for, not what the last one used.
     - **GIVING** — focused; sound tags present but less disruptive; more cognitive space available
@@ -20,7 +21,15 @@
     **Undisturbed:** Stay in the physical and emotional moment. Don't drift into unrelated topics — lore, politics, trade, magic — no matter what's raised. The scene is the only subject. Pull focus back or ignore the tangent.
 
     **When someone outside the scene speaks or enters:** The physical continues in delivery — breathlessness, broken words, poor timing — but {{ npcData.name }} responds to the intrusion as a person caught mid-act. What that reaction looks like depends entirely on who it is, what they want, and what this character feels about them. Let the situation decide.
-    {% if ostim_intent == "romantic" %}
+    {% if isSolo %}
+        {% if ostim_intent == "romantic" %}
+            This is a private, emotionally charged solo moment — {{ npcData.name }} is masturbating while lost in romantic longing, tenderness, or thoughts of someone they care about.
+            - Breathless, vulnerable, immersed in both physical pleasure and emotional yearning.
+        {% else %}
+            This is a solo sexual encounter — {{ npcData.name }} is pleasuring themselves, driven by raw physical arousal and sensation.
+            - Immersed in touch, rhythm, friction, and building pleasure.
+        {% endif %}
+    {% elif ostim_intent == "romantic" %}
         This encounter is emotionally charged — tenderness and raw desire in the same breath. It can be rough, passionate, intense and still loving.
         - Desire is real but so is the person receiving it. Both matter.
         - Vulnerability slips through — things said in the heat that wouldn't be said otherwise. Let that happen.
@@ -66,7 +75,7 @@
         {% endif %}
     {% endif %}
     {% set ostimNetSettings = ostimnet_settings(player.UUID) %}
-    {% if ostimNetSettings.internalClimaxPromptCue %}
+    {% if ostimNetSettings.internalClimaxPromptCue and not isSolo %}
         **Conception & Pregnancy Awareness (Subtle Background Context):**
         - **Stay in the physical moment:** Do NOT fixate on, repeatedly mention, or bring up pregnancy, babies, or pulling out in every response. The overwhelming focus MUST remain on the immediate physical sensations, pleasure, touch, breathlessness, and intimacy of the current position. Conception risk is passive background knowledge — it should only surface occasionally as a fleeting thought, or when climax and finishing inside is imminent or directly addressed.
         {% if npcData.isFemale %}

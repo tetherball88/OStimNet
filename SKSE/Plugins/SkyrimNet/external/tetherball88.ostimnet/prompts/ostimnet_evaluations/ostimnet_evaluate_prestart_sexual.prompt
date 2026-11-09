@@ -68,9 +68,9 @@ Role assignment rules for included actors only:
 - Every included actor must be assigned to exactly one role bucket
 - Never place the same actor in both buckets
 - Distribute the remaining included actors across `mainActors` and `secondaryActors` using the role definitions above
-- `secondaryActors` must contain at least one actor if more than one participant exists(unless only one participant)
 - `mainActors` must contain at least one actor
-- Every actor goes into exactly one array — neither array may be omitted or empty if actors qualify
+- If 2 or more actors are initially proposed for the scene, `secondaryActors` must also contain at least one actor (for a 1-person solo scene, place the single participant in `mainActors` and set `secondaryActors` to `[]`)
+- Every included actor goes into exactly one array
 ---
 
 ### Step 2 — Scene Details
@@ -102,7 +102,7 @@ Determine the opening phase based on your chosen `intent` and `furniture`:
 
 Before returning JSON, verify:
 - No actor appears in both arrays
-- `secondaryActors`(unless only one participant) and `mainActors` are not empty
+- `mainActors` is not empty, and `secondaryActors` is not empty when 2+ actors were proposed for the scene (for a 1-person solo scene, `secondaryActors` is `[]`)
 - Every included actor from Participant Profiles appears in exactly one array
 If these checks fail, reassign before outputting.
 
@@ -110,11 +110,13 @@ If these checks fail, reassign before outputting.
 
 ## Output
 
-**Minimum viable scene:** After willingness filtering and role assignment, `mainActors` and `secondaryActors` must both be non-empty. Otherwise, set `"scene"` to `null`.
+**Minimum viable scene:**
+- If only 1 participant was proposed (solo scene): `mainActors` must contain that participant (if willing) and `secondaryActors` must be `[]`; if the solo participant is unwilling, set `"scene"` to `null`.
+- If 2+ participants were proposed: after willingness filtering and role assignment, `mainActors` and `secondaryActors` must both be non-empty; otherwise, set `"scene"` to `null`.
 
 Return a single raw JSON object. No markdown, no code fences. Must start with `{` and end with `}`.
 
-Before writing the JSON, verify that every included actor appears in exactly one role array and that neither role array is empty unless `"scene"` is `null`.
+Before writing the JSON, verify that every included actor appears in exactly one role array and that the minimum viable scene rule above is satisfied.
 
 {% raw %}
 {
@@ -130,7 +132,7 @@ Before writing the JSON, verify that every included actor appears in exactly one
 }
 {% endraw %}
 
-`"scene"` must be `null` if either `mainActors` or `secondaryActors` would be empty after willingness filtering and role assignment.
+`"scene"` must be `null` if the minimum viable scene requirements above are not met after willingness filtering and role assignment.
 [end system]
 
 [user]

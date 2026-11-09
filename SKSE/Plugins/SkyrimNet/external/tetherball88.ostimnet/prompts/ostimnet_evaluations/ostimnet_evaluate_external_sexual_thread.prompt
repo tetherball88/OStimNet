@@ -40,9 +40,9 @@ Role assignment rules:
 - Every included actor must be assigned to exactly one role bucket
 - Never place the same actor in both buckets
 - Distribute the actors across `mainActors` and `secondaryActors` using the role definitions above
-- `secondaryActors`(unless only one participant) must contain at least one actor if more than one participant exists
+- `secondaryActors` must contain at least one actor if more than one participant exists (for a single-participant solo scene, set `secondaryActors` to `[]`)
 - `mainActors` must contain at least one actor
-- Every actor goes into exactly one array — neither array may be omitted or empty if actors qualify
+- Every actor goes into exactly one array
 
 ---
 

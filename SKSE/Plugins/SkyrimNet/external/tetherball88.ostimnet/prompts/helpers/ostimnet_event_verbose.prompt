@@ -146,12 +146,18 @@
             {% endif %}
         {% endif %}
 
-        {% if SameMainActors %}
+        {% if not secondaryActorNames or secondaryActorNames == "" or secondaryActorNames == "someone" %}
+            Solo sexual mood of {{mainActorNames}} has shifted from {{oldIntent}} to {{intent}}.
+        {% else if mainActorsSame or SameMainActors %}
             Sexual dynamic between {{mainActorNames}} and {{secondaryActorNames}} has shifted. {{transisionDescription}}
         {% else %}
             {{transisionDescription}} {{mainActorNames}} are now the {{mainActorsRole}}, while {{secondaryActorNames}} are the {{secondaryActorsRole}}.
         {% endif %}
     {% else %}
-        Sexual dynamic remains {{intent}}. {{mainActorNames}} became the {{mainActorsRole}}, while {{secondaryActorNames}} are the {{secondaryActorsRole}}.
+        {% if not secondaryActorNames or secondaryActorNames == "" or secondaryActorNames == "someone" %}
+            Solo sexual mood of {{mainActorNames}} remains {{intent}}.
+        {% else %}
+            Sexual dynamic remains {{intent}}. {{mainActorNames}} became the {{mainActorsRole}}, while {{secondaryActorNames}} are the {{secondaryActorsRole}}.
+        {% endif %}
     {% endif %}
 {% endif %}

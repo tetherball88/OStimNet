@@ -2040,7 +2040,7 @@ bool EvaluateLocationScan(const std::string& contextJson,
             numArg = 3.0f;
             SKSE::log::info("EvaluateLocationScan: result — missing participants (resolved {} of {} suggested) | reason: {}",
                             totalActors, suggestedActorsCount, resp.value("reason", "(none)"));
-        } else if (totalActors >= 2) {
+        } else if (totalActors >= 1 && !result["main"].empty()) {
             numArg = 1.0f;
             SKSE::log::info("EvaluateLocationScan: result — participants found (resolved {}) | reason: {}",
                             totalActors, resp.value("reason", "(none)"));

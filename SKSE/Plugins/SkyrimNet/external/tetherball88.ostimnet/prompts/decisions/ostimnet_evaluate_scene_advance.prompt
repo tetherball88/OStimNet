@@ -4,7 +4,7 @@
 [ state current_scene ]
     A `{{ intent }}` sexual scene involving {{ actorNames }} is currently underway.
     Main (Active/Leading) Participants: {{ mainActorNames }}
-    Secondary (Receptive/Supporting) Participants: {{ secondaryActorNames }}
+    {% if secondaryActorNames != "" %}Secondary (Receptive/Supporting) Participants: {{ secondaryActorNames }}{% else %}Secondary Participants: None (solo scene){% endif %}
     Current Scene: {% if sceneDescription != "" %}{{ sceneDescription }}{% else %}Active sexual encounter.{% endif %}
 
     {{ render_template("ostimnet_intents\\ostimnet_intents_description") }}

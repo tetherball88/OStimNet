@@ -64,7 +64,7 @@ Privacy: Consider whether the location and available furniture support what thes
 
 Time of day is a soft modifier, not a gate. Late night slightly favors encounters; busy daytime hours slightly disfavor them. Do not treat time as a hard requirement.
 
-Scenes with more than two participants are valid. They require more evidence — interconnected relationships, a shared dynamic, or a situation that naturally draws multiple people together. Do not artificially seek groups, but do not exclude them if the evidence supports it.
+Scenes with more than two participants, or solo scenes (a single character masturbating in private), are valid. Multi-partner scenes require more evidence — interconnected relationships, a shared dynamic, or a situation that naturally draws multiple people together. Solo scenes require privacy and clear arousal/desire in the character's profile or recent events.
 
 ---
 
@@ -74,7 +74,7 @@ Choose the best-supported intent, or return no scene. Do not force a scene.
 ### Available intents:
 {{ render_template("ostimnet_intents\\ostimnet_intents_available") }}
 
-Assign mainActors and secondaryActors. Every participant needs individual justification. Minimum 2 participants total, at least one in each role. If you cannot fill both roles with justified participants, return no scene.
+Assign mainActors and secondaryActors. Every participant needs individual justification. For partnered/group scenes (2+ participants), both `mainActors` and `secondaryActors` must be non-empty. For a solo scene (1 participant), place the character in `mainActors` and set `secondaryActors` to `[]`. If you cannot justify the participants, return no scene.
 
 ### If intent is romantic
 {{ render_template("ostimnet_intents_definitions\\ostimnet_intent_romantic_roles") }}

@@ -1,5 +1,19 @@
 # Changelog
 
+## v2.6.1
+
+### Fixed
+
+- **Solo / masturbation scene support & phrasing across modals, evaluations, and events** — Fixed several issues where solo (1-person) sexual scenes were blocked or treated as partnered encounters with placeholder names:
+  - **Confirmation modals & decline notifications** — Fixed confirmation popups and decline events displaying `"<Actor> wants to start a sexual encounter with Someone."` or `"<Actor> will proceed with Someone."` when no partner is present; solo scenes now use natural solo wording (e.g. `"<Actor> wants to start a solo sexual encounter."`, `"<Actor> will proceed alone."`) and no longer append stray partner text to decline messages.
+  - **Furniture wait loop on solo player scenes** — Fixed an out-of-bounds array access in `TTON_OStimIntegration.StartOstimSex` when starting a solo player scene on furniture.
+  - **In-scene intent change menu** — Fixed changing the scene intent from the OStim wheel menu (`TTON_OStimOptions.ChangeIntent`) failing with `"Not enough actors in the scene to change roles"` during solo scenes.
+  - **Joining or inviting into an ongoing solo scene** — Fixed thread continuation detection in `OStimEventListener` when a partner joins or is invited into an active 1-person solo thread, preserving thread state and spectator tracking across the transition.
+  - **AI scene evaluations & location scans** — Resolved contradictory validation rules in pre-start, external thread, and location scan evaluation prompts (and the chat evaluation fallback for location scans) that could reject 1-participant solo scenes, and skipped the redundant role-combination decision step when only one participant is involved.
+  - **Ongoing scene prompts & event logs** — Fixed scheduled scene progression passing `"Partner"` as the secondary participant in solo scenes, added solo-scene handling to `intent_changed` event logs, and updated the ongoing sex voice prompt (`0502_sex.prompt`) to use solo-appropriate delivery instructions and omit two-person pregnancy/pullout cues during solo masturbation.
+
+---
+
 ## v2.6.0
 
 ### Added

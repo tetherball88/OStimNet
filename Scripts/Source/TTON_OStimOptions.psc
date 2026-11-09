@@ -28,6 +28,12 @@ Function ChangeIntent(string intent) global
         return none
     endif
     Actor[] actors = OThread.GetActors(0)
+    if(actors.Length == 1)
+        Actor[] soloMain = PapyrusUtil.ActorArray(1)
+        soloMain[0] = actors[0]
+        OStimNet.SetThreadIntent(0, intent, soloMain)
+        return none
+    endif
     int maxMainActors = actors.Length - 1
     if(maxMainActors < 1) ; there should be at least 1 actor for secondary role
         Debug.Notification("Not enough actors in the scene to change roles.")

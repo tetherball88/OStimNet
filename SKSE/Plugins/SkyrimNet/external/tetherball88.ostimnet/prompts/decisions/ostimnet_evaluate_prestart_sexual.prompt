@@ -89,16 +89,18 @@
         {% endif %}
     {% endfor %}
 
-    [ question roles choice ]
-        Assign the participating actors into `main` and `secondary` role buckets according to the `{{ intent }}` role definitions in `scene_context`, `participant_profiles`, and `recent_events`.
-        - Every participating actor must be assigned to either `main` or `secondary` (neither bucket may be empty when 2+ actors participate).
-        - If any proposed NPC is unwilling, select the combination that lists them under `excluded`.
-        [ criteria ]
-            {% for combo in roleCombinations -%}
-                {{ combo.key }}: main: {{ combo.mainNames }}{% if combo.secondaryNames != "" %}; secondary: {{ combo.secondaryNames }}{% endif %}{% if combo.excludedNames != "" %}; excluded: {{ combo.excludedNames }}{% endif %}
-            {% endfor -%}
-        [ end criteria ]
-    [ end question ]
+    {% if length(roleCombinations) > 1 %}
+        [ question roles choice ]
+            Assign the participating actors into `main` and `secondary` role buckets according to the `{{ intent }}` role definitions in `scene_context`, `participant_profiles`, and `recent_events`.
+            - Every participating actor must be assigned to either `main` or `secondary` (neither bucket may be empty when 2+ actors participate).
+            - If any proposed NPC is unwilling, select the combination that lists them under `excluded`.
+            [ criteria ]
+                {% for combo in roleCombinations -%}
+                    {{ combo.key }}: main: {{ combo.mainNames }}{% if combo.secondaryNames != "" %}; secondary: {{ combo.secondaryNames }}{% endif %}{% if combo.excludedNames != "" %}; excluded: {{ combo.excludedNames }}{% endif %}
+                {% endfor -%}
+            [ end criteria ]
+        [ end question ]
+    {% endif %}
 
     {% if length(activities) > 0 %}
         [ question activity choice ]

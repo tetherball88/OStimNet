@@ -2,8 +2,9 @@
 
 {% set nearbyNPCsJson = get_nearby_actors_not_in_ostim(npc.UUID) %}
 {% set ostimPotentialParticipantsString = nearbyNPCsJson.actorsNameString %}
-{{speakingNpc.name}} initiates NEW sex. Use when explicitly proposing/accepting SEX or intercourse, NOT non-sexual affection (use StartCareScene) {% if is_join_ongoing_sex_available(npc.UUID) == "available" %} or joining existing scenes (use JoinOngoingSex){% endif %}.
-Available partners: {{ostimPotentialParticipantsString}}
+{{speakingNpc.name}} initiates NEW sex (with one or more partners, or solo/masturbation if no partner is selected). Use when explicitly proposing/accepting SEX, intercourse, or solo masturbation, NOT non-sexual affection (use StartCareScene) {% if is_join_ongoing_sex_available(npc.UUID) == "available" %} or joining existing scenes (use JoinOngoingSex){% endif %}.
+{% if ostimPotentialParticipantsString != "" %}Available partners: {{ostimPotentialParticipantsString}}{% else %}Available partners: none (solo/masturbation only){% endif %}
+Leave all partner fields empty for solo/masturbation scenes.
 NEVER select partner only based on watching or being present.
 NEVER select {{speakingNpc.name}} as partner for themselves.
 Select partners only if they are active participants not bystanders or spectating or watching.

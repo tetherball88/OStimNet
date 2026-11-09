@@ -212,7 +212,7 @@ private:
                 _pendingContinuation.reset();  // expired
             } else {
                 const auto& old = pending.oldFormIDs;
-                uint32_t required = static_cast<uint32_t>(old.size()) - 1;
+                uint32_t required = old.size() > 1 ? static_cast<uint32_t>(old.size()) - 1 : 1u;
                 uint32_t matches  = 0;
                 for (uint32_t fid : old)
                     if (std::find(newActors.begin(), newActors.end(), fid) != newActors.end())
@@ -291,7 +291,7 @@ private:
         // Covers both explicit OStimNet continuations and the fallback
         // FormID-overlap detection for non-OStimNet continuations.
         auto formIDs = ThreadRegistry::GetSingleton().GetActorFormIDs(threadID);
-        if (formIDs.size() >= 2) {
+        if (formIDs.size() >= 2 || (!formIDs.empty() && ThreadDataStore::GetSingleton().IsContinuation(threadID))) {
             _pendingContinuation = ContinuationPending{
                 threadID, std::move(formIDs), std::chrono::steady_clock::now()};
         }

@@ -93,7 +93,7 @@ public:
               const char*   paramsJson) {
 
         std::string mainActorList      = mainActors.empty()      ? "Someone" : ThreadDataStore::FormatActorNames(mainActors);
-        std::string secondaryActorList = secondaryActors.empty() ? "Someone" : ThreadDataStore::FormatActorNames(secondaryActors);
+        std::string secondaryActorList = secondaryActors.empty() ? ""        : ThreadDataStore::FormatActorNames(secondaryActors);
         std::string actionTypeLower = actionType ? actionType : "";
         std::transform(actionTypeLower.begin(), actionTypeLower.end(), actionTypeLower.begin(),
                        [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
@@ -337,24 +337,27 @@ private:
                                            const std::string& activity) {
             auto* playerActor  = RE::PlayerCharacter::GetSingleton();
             std::string player = playerActor ? playerActor->GetDisplayFullName() : "the player";
+            std::string withSecondary = secondaryActorList.empty() ? "" : (" with " + secondaryActorList);
             std::string msg;
             if (actionType == "stopsex")
                 msg = mainActorList + " wanted to stop the sexual activity, but " + player + " refused to end it.";
             else if (actionType == "changesexscenepace")
-                msg = mainActorList + " wanted to change the pace of sexual activity with " + secondaryActorList + ", but " + player + " refused the change.";
+                msg = mainActorList + " wanted to change the pace of sexual activity" + withSecondary + ", but " + player + " refused the change.";
             else if (actionType == "joinongoingsex") {
-                msg = mainActorList + " wanted to join " + secondaryActorList + "'s sexual scene, but " + player + " refused to let them in.";
+                std::string targetScene = secondaryActorList.empty() ? "the" : (secondaryActorList + "'s");
+                msg = mainActorList + " wanted to join " + targetScene + " sexual scene, but " + player + " refused to let them in.";
             } else if (actionType == "invitetoyoursex")
                 msg = mainActorList + " wanted to invite more people to the scene, but " + player + " refused.";
             else if (actionType == "changesexsceneposition")
-                msg = mainActorList + " wanted to change the sexual activity with " + secondaryActorList + ", but " + player + " refused.";
+                msg = mainActorList + " wanted to change the sexual activity" + withSecondary + ", but " + player + " refused.";
             else if (actionType == "changesexsceneintent")
-                msg = mainActorList + " wanted to change the sexual intent with " + secondaryActorList + ", but " + player + " refused.";
+                msg = mainActorList + " wanted to change the sexual intent" + withSecondary + ", but " + player + " refused.";
             else if (actionType == "startcarescene")
-                msg = mainActorList + " attempted " + activity + " with " + secondaryActorList + ", " + player + " did not go through with it.";
+                msg = mainActorList + " attempted " + activity + withSecondary + ", " + player + " did not go through with it.";
+            else if (secondaryActorList.empty())
+                msg = mainActorList + " wanted to start a solo sexual encounter, but " + player + " declined.";
             else  // StartNewSex and any unknown action
                 msg = mainActorList + " wanted to start a new sexual encounter with " + secondaryActorList + ", but " + player + " declined the proposal.";
-            msg += " " + secondaryActorList + " ";
             return msg;
         }
 
@@ -440,7 +443,10 @@ private:
             msg = "After evaluation, the participant list has been adjusted.";
             if (!excludedNamesStr.empty())
                 msg += "\n" + excludedNamesStr + " chose not to participate.";
-            msg += "\n" + mainActorList + " will proceed with " + secondaryActorList + ".";
+            if (secondaryActorList.empty())
+                msg += "\n" + mainActorList + " will proceed alone.";
+            else
+                msg += "\n" + mainActorList + " will proceed with " + secondaryActorList + ".";
             if (!activityStr.empty() && !positionsStr.empty()) {
                 msg += "\nActivity: " + activityStr + " (" + positionsStr + ")";
             } else if (!activityStr.empty()) {
@@ -452,7 +458,10 @@ private:
             return msg;
         } else if(actionType == "startnewsexpreeval" || actionType == "startnewsexafterscan") {
             // Pre-evaluation: immediate consent check before anything starts
-            msg = mainActorList + " wants to start a sexual encounter with " + secondaryActorList;
+            if (secondaryActorList.empty())
+                msg = mainActorList + " wants to start a solo sexual encounter";
+            else
+                msg = mainActorList + " wants to start a sexual encounter with " + secondaryActorList;
             if (!furnitureStr.empty() && furnitureStr != "floor" && furnitureStr != "none") {
                 msg += " on a " + furnitureStr;
             }
@@ -462,13 +471,19 @@ private:
             msg += ".";
             return msg;
         } else if (actionType == "joinongoingsex") {
-            msg = mainActorList + " wants to join " + secondaryActorList + " sexual encounter.";
+            if (secondaryActorList.empty())
+                msg = mainActorList + " wants to join the sexual encounter.";
+            else
+                msg = mainActorList + " wants to join " + secondaryActorList + " sexual encounter.";
             if (!intentStr.empty())
                 msg += "\nNew scene intent would be: " + intentStr + ".";
             msg += "\nDo you want to let them in?";
             return msg;
         } else if (actionType == "changesexsceneintent") {
-            msg = mainActorList + " wants to change the intent of the sexual encounter with " + secondaryActorList;
+            msg = mainActorList + " wants to change the intent of the sexual encounter";
+            if (!secondaryActorList.empty()) {
+                msg += " with " + secondaryActorList;
+            }
             if (!intentStr.empty()) {
                 msg += " to " + intentStr;
             }
@@ -476,11 +491,15 @@ private:
             msg += "\nDo you accept this change?";
             return msg;
         } else if (actionType == "invitetoyoursex") {
-            msg = mainActorList + " wants to invite " + secondaryActorList + " to the ongoing sexual encounter.";
+            const std::string& invited = secondaryActorList.empty() ? "someone" : secondaryActorList;
+            msg = mainActorList + " wants to invite " + invited + " to the ongoing sexual encounter.";
             msg += "\nDo you want to accept them?";
             return msg;
         } else if (actionType == "startcarescene") {
-            msg = mainActorList + " wants to start a care scene with " + secondaryActorList;
+            msg = mainActorList + " wants to start a care scene";
+            if (!secondaryActorList.empty()) {
+                msg += " with " + secondaryActorList;
+            }
             if (!activityStr.empty()) {
                 msg += " (" + activityStr + ")";
             }
@@ -496,8 +515,10 @@ private:
         msg = mainActorList;
         msg += " wants to start ";
         msg += !actionType.empty() ? actionType : "an activity";
-        msg += " with ";
-        msg += secondaryActorList;
+        if (!secondaryActorList.empty()) {
+            msg += " with ";
+            msg += secondaryActorList;
+        }
         msg += ".";
 
         if (!activityStr.empty() && !positionsStr.empty()) {
