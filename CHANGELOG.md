@@ -1,5 +1,17 @@
 # Changelog
 
+## v2.6.2
+
+### Added
+
+- **Billyy animation pack descriptions** — Added detailed scene descriptions and updated position metadata for **Billyy's** animation pack(covering male/female dom and spawned furniture modules), giving the AI a clearer understanding of what characters are doing during those scenes for more accurate dialogue and reactions.
+
+### Fixed
+
+- **Scene setup & progression popup errors with limited options** — Fixed a SkyrimNet Decisions error popup (*"offers 1 option(s); at least two are needed"*) that could interrupt scene starts, NPC location scans, or automatic scene progression when only a single compatible activity or position existed for the current participants and furniture. When only one valid option is available, OStimNet now selects it automatically.
+
+---
+
 ## v2.6.1
 
 ### Fixed

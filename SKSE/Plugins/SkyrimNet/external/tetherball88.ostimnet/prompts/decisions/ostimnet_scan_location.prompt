@@ -52,7 +52,7 @@
         #### Role Definitions for `{{ intent }}`
         {{ render_template("ostimnet_intents\\ostimnet_intents_roles_conditional") }}
 
-        {% if length(activities) > 0 %}
+        {% if length(activities) > 1 %}
             #### Activity Preferences for `{{ intent }}`
             {{ render_template("ostimnet_intents\\ostimnet_intents_preferences") }}
         {% endif %}
@@ -156,7 +156,7 @@
         {% endif %}
     {% endfor %}
 
-    {% if length(roleCombinations) > 0 %}
+    {% if length(roleCombinations) > 1 %}
         [ question roles choice ]
             Assign the participating actors into `main` and `secondary` role buckets according to the `{{ intent }}` role definitions in `scene_context`, `participant_profiles`, and `recent_events`.
             [ criteria ]
@@ -167,7 +167,7 @@
         [ end question ]
     {% endif %}
 
-    {% if length(activities) > 0 %}
+    {% if length(activities) > 1 %}
         [ question activity choice ]
             Select the opening{% if openingPhase == "foreplay" %} foreplay{% elif openingPhase == "oral" %} oral{% elif openingPhase == "sex" %} intercourse{% else %} sexual{% endif %} activity for this `{{ intent }}` encounter based on `recent_events` and the participants' preferences.
             [ criteria ]
@@ -178,7 +178,7 @@
         [ end question ]
     {% endif %}
 
-    {% if length(positions) > 0 %}
+    {% if length(positions) > 1 %}
         [ question position choice ]
             Select the opening physical position that best fits `recent_events`, the `{{ intent }}` intent, and the participants' personalities.
             [ criteria ]

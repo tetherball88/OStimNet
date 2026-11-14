@@ -411,6 +411,26 @@ std::string NormalizePositionChoice(const std::string& choice) {
     return choice;
 }
 
+// Extracts a choice answer when multiple options were presented, or automatically
+// picks the lone option's ID when the prompt omitted the question due to having <= 1 option.
+std::string ResolveChoiceOrSingle(
+    const nlohmann::json& ctx,
+    const char* listKey,
+    const nlohmann::json& answers,
+    const char* questionKey,
+    const char* defaultVal,
+    bool forceAskWhenSingle = false) {
+    if (!ctx.contains(listKey) || !ctx[listKey].is_array()) return defaultVal;
+    const auto& items = ctx[listKey];
+    if (items.size() > 1 || (forceAskWhenSingle && items.size() == 1)) {
+        return GetChoiceAnswer(answers, questionKey, defaultVal);
+    }
+    if (items.size() == 1 && items[0].is_object()) {
+        return items[0].value("id", "");
+    }
+    return defaultVal;
+}
+
 struct ActorRoleScore {
     uint32_t    formID     = 0;
     std::string chosenRole;  // "main" or "secondary"
@@ -910,11 +930,8 @@ bool EvaluatePreStartSexualScene(
             for (uint32_t fid : selectedCombo->mainFormIDs)      mainArr.push_back(fid);
             for (uint32_t fid : selectedCombo->secondaryFormIDs) secondaryArr.push_back(fid);
 
-            bool askedActivity = step2Ctx.contains("activities") && step2Ctx["activities"].is_array() && !step2Ctx["activities"].empty();
-            bool askedPosition = step2Ctx.contains("positions") && step2Ctx["positions"].is_array() && !step2Ctx["positions"].empty();
-
-            std::string rawAct  = askedActivity ? GetChoiceAnswer(answers2, "activity", "any") : "";
-            std::string rawPos  = askedPosition ? GetChoiceAnswer(answers2, "position", "any") : "";
+            std::string rawAct  = ResolveChoiceOrSingle(step2Ctx, "activities", answers2, "activity", "any");
+            std::string rawPos  = ResolveChoiceOrSingle(step2Ctx, "positions", answers2, "position", "any");
             std::string normAct = NormalizeActivityChoice(rawAct);
             std::string normPos = NormalizePositionChoice(rawPos);
 
@@ -953,6 +970,23 @@ bool EvaluatePreStartSexualScene(
             float numArg = actorsExcluded ? 3.0f : 1.0f;
             OStimNet::FireModEvent("ostimnet_sexual_evaluation_finished", outStr.c_str(), numArg);
         };
+
+        bool hasStep2Questions = (preStartCombos.size() > 1) ||
+                                 (step2Ctx["activities"].size() > 1) ||
+                                 (step2Ctx["positions"].size() > 1);
+        if (!hasStep2Questions) {
+            for (const auto& s : snaps) {
+                if (!s.isPlayer) {
+                    hasStep2Questions = true;
+                    break;
+                }
+            }
+        }
+        if (!hasStep2Questions) {
+            SKSE::log::info("SkyrimNetDecisions::EvaluatePreStartSexualScene: Step 2 has no questions to ask, resolving directly");
+            (*step2CallbackHolder)("", "{\"answers\":{}}", 1);
+            return;
+        }
 
         bool queued2 = PublicSendCustomDecisionToLLM(
             templateName.c_str(), step2ContextJson.c_str(), kDefaultMaxProbabilities, *step2CallbackHolder);
@@ -2241,11 +2275,8 @@ bool EvaluateLocationScan(
             for (uint32_t fid : selectedCombo->mainFormIDs)      mainArr.push_back(fid);
             for (uint32_t fid : selectedCombo->secondaryFormIDs) secondaryArr.push_back(fid);
 
-            bool askedActivity = step4Ctx.contains("activities") && step4Ctx["activities"].is_array() && !step4Ctx["activities"].empty();
-            bool askedPosition = step4Ctx.contains("positions") && step4Ctx["positions"].is_array() && !step4Ctx["positions"].empty();
-
-            std::string rawAct  = askedActivity ? GetChoiceAnswer(answers4, "activity", "any") : "";
-            std::string rawPos  = askedPosition ? GetChoiceAnswer(answers4, "position", "any") : "";
+            std::string rawAct  = ResolveChoiceOrSingle(step4Ctx, "activities", answers4, "activity", "any");
+            std::string rawPos  = ResolveChoiceOrSingle(step4Ctx, "positions", answers4, "position", "any");
             std::string normAct = NormalizeActivityChoice(rawAct);
             std::string normPos = NormalizePositionChoice(rawPos);
             std::string rawFurn = (resolvedFurniture == "floor" || resolvedFurniture == "none") ? "" : resolvedFurniture;
@@ -2278,6 +2309,23 @@ bool EvaluateLocationScan(
                             numArg, jsonStr);
             OStimNet::FireModEvent("ostimnet_location_scan_result", jsonStr.c_str(), numArg);
         };
+
+        bool hasStep4Questions = (scanCombos.size() > 1) ||
+                                 (step4Ctx["activities"].size() > 1) ||
+                                 (step4Ctx["positions"].size() > 1);
+        if (!hasStep4Questions) {
+            for (size_t i = 1; i < sceneSnaps.size(); ++i) {
+                if (!sceneSnaps[i].isPlayer) {
+                    hasStep4Questions = true;
+                    break;
+                }
+            }
+        }
+        if (!hasStep4Questions) {
+            SKSE::log::info("SkyrimNetDecisions::EvaluateLocationScan: Step 4 has no questions to ask, resolving directly");
+            (*step4CallbackHolder)("", "{\"answers\":{}}", 1);
+            return;
+        }
 
         bool queued4 = PublicSendCustomDecisionToLLM(
             templateName.c_str(), step4ContextJson.c_str(), kDefaultMaxProbabilities, *step4CallbackHolder);
@@ -2629,7 +2677,7 @@ bool EvaluateScheduledSceneAdvance(
 
     auto callbackHolder = std::make_shared<std::function<void(const char*, const char*, int)>>();
     *callbackHolder = [callbackHolder, threadID, initialAdvance, onDone,
-                       contextJson, templateName, fallbackToChat](
+                       ctx, contextJson, templateName, fallbackToChat](
                           const char* /*answer*/, const char* resultJson, int success) {
         if (!g_ostimThreadInterface || !g_ostimThreadInterface->IsThreadValid(static_cast<uint32_t>(threadID)) ||
             !ThreadDataStore::GetSingleton().IsOStimNet(threadID)) {
@@ -2669,8 +2717,9 @@ bool EvaluateScheduledSceneAdvance(
         }
 
         const auto& answers = parsed["answers"];
-        std::string rawAct  = GetChoiceAnswer(answers, "activity", initialAdvance ? "any" : "hold");
-        std::string rawPos  = GetChoiceAnswer(answers, "position", "any");
+        std::string rawAct = ResolveChoiceOrSingle(
+            ctx, "activities", answers, "activity", initialAdvance ? "any" : "hold", !initialAdvance);
+        std::string rawPos = ResolveChoiceOrSingle(ctx, "positions", answers, "position", "any");
 
         std::string normPos = NormalizePositionChoice(rawPos);
         std::string normAct = NormalizeActivityChoice(rawAct);
@@ -2706,6 +2755,14 @@ bool EvaluateScheduledSceneAdvance(
         OStimNet::FireModEvent("ostimnet_scene_change_schedule_finished", jsonStr.c_str(), 1.0f);
         onDone();
     };
+
+    bool askActivity = ctx["activities"].size() > 1 || (!initialAdvance && !ctx["activities"].empty());
+    bool askPosition = ctx["positions"].size() > 1;
+    if (!askActivity && !askPosition) {
+        SKSE::log::info("SkyrimNetDecisions::EvaluateScheduledSceneAdvance: no multi-option questions for thread {}, resolving directly", threadID);
+        (*callbackHolder)("", "{\"answers\":{}}", 1);
+        return true;
+    }
 
     bool queued = PublicSendCustomDecisionToLLM(
         templateName.c_str(), contextJson.c_str(), kDefaultMaxProbabilities, *callbackHolder);

@@ -31,7 +31,7 @@
     {{ render_template("helpers\\ostimnet_recent_events") }}
 [ end state ]
 
-{% if length(activities) > 0 %}
+{% if length(activities) > 1 or (not initialAdvance and length(activities) > 0) %}
     [ question activity choice ]
         Choose the next sexual activity that naturally advances this `{{ intent }}` scene based on `current_scene`, `participant_profiles`, and `recent_events`. Choose `hold` if no specific activity filter is needed or if only the physical position is changing.
         [ criteria ]
@@ -45,7 +45,7 @@
     [ end question ]
 {% endif %}
 
-{% if length(positions) > 0 %}
+{% if length(positions) > 1 %}
     [ question position choice ]
         Select the next physical position to advance the scene based on `current_scene`, `participant_profiles`, and `recent_events`. Vary from the position described in `current_scene` — do not repeat it.
         [ criteria ]
