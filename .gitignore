@@ -11,3 +11,4 @@ tag-push.bat
 /SKSE_Source/build
 crash-*.log
 /debug_history
+/ui-src/node_modules

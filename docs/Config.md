@@ -316,7 +316,7 @@ Controls how OStimNet handles OStim scenes that were started outside of OStimNet
 
 ### Player thread (default: off)
 
-When enabled, starting an external scene that includes the player character opens an interactive menu (`UIListMenu`) to manually configure the scene:
+When enabled, starting an external scene that includes the player character opens an interactive **Magelight UI** modal to manually configure the scene:
 - Choose whether the scene is **Sexual** or **Non-Sexual**.
 - Select the scene **Intent** (Romantic, Lustful, Transactional, Dom, Aggressive, or "Let AI decide").
 - Select which participants are **Main Actors** (initiators/dominants) and **Secondary Actors** (responders/submissives).

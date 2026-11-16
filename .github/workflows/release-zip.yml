@@ -26,6 +26,7 @@ jobs:
 
           zip -r "out/OStimNet_${TAG}.zip" \
             Interface/ \
+            Magelight/ \
             Scripts/ \
             SKSE/ \
             TT_OStimNet.esp \

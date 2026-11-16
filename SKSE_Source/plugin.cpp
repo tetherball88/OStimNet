@@ -12,6 +12,9 @@
 #include "src/LocationScanService.h"
 #include "src/ScheduledEvalService.h"
 #include "src/PulloutService.h"
+#include "src/ui/ModalManager.h"
+#include "src/ui/SessionEpoch.h"
+#include "src/ui/UIManager.h"
 #include <SKSE/InputMap.h>
 
 using namespace SKSE;
@@ -193,6 +196,9 @@ SKSEPluginLoad(const LoadInterface* skse) {
                 switch (message->type) {
                     case SKSE::MessagingInterface::kPreLoadGame:
                         SKSE::log::info("PreLoadGame...");
+                        OStimNet::UI::BumpSessionEpoch();
+                        OStimNet::UI::ModalManager::GetSingleton().Revert();
+                        OStimNet::UI::UIManager::GetSingleton().Revert();
                         OStimNet::Config::GetSingleton().ResetMuteOverride();
                         if (auto* listener = OStimNet::OStimEventListener::GetInstance())
                             listener->Reset();
@@ -201,6 +207,9 @@ SKSEPluginLoad(const LoadInterface* skse) {
 
                     case SKSE::MessagingInterface::kNewGame:
                         SKSE::log::info("New game...");
+                        OStimNet::UI::BumpSessionEpoch();
+                        OStimNet::UI::ModalManager::GetSingleton().Revert();
+                        OStimNet::UI::UIManager::GetSingleton().Revert();
                         OStimNet::Config::GetSingleton().ResetMuteOverride();
                         if (auto* listener = OStimNet::OStimEventListener::GetInstance())
                             listener->Reset();
@@ -251,6 +260,8 @@ SKSEPluginLoad(const LoadInterface* skse) {
                         OStimNet::LocationScanService::GetSingleton().Register();
                         OStimNet::PulloutService::GetSingleton().SyncOStimPulloutSetting();
                         RegisterHotkeyInputSink();
+                        OStimNet::UI::UIManager::GetSingleton().Initialize();
+                        OStimNet::UI::UIManager::GetSingleton().StartListeningMenuEvents();
 
                         break;
                     }

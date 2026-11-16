@@ -14,6 +14,7 @@
 #include "ScheduledEvalService.h"
 #include "PulloutService.h"
 #include "ConfirmationModal.h"
+#include "ui/ThreadSetupModal.h"
 namespace OStimNet {
 
 class OStimEventListener : public RE::BSTEventSink<SKSE::ModCallbackEvent> {
@@ -275,9 +276,9 @@ private:
             : Config::GetSingleton().ExternalScenesNpcThreads();
 
         if (manualSetup) {
-            SKSE::log::info("OStimEventListener: thread {} is non-OStimNet (isPlayer={}), manual setup enabled — firing ostimnet_manual_thread_setup",
+            SKSE::log::info("OStimEventListener: thread {} is non-OStimNet (isPlayer={}), manual setup enabled — opening Magelight setup modal",
                             threadID, isPlayer);
-            FireModEvent("ostimnet_manual_thread_setup", "", static_cast<float>(threadID), nullptr);
+            UI::ThreadSetupModal::GetSingleton().ShowExternalThreadSetup(threadID);
         } else {
             SKSE::log::info("OStimEventListener: thread {} is non-OStimNet, queuing LLM evaluation", threadID);
             SkyrimNetIntegration::EvaluateExternalSexualThread(actorFormIDs, threadID);

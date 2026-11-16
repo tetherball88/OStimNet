@@ -1,10 +1,18 @@
 # AGENTS.md
 
+## Build & Verification Policy
+
+- **C++ & Magelight UI Build Without Path-Hunting:** Never search the filesystem for `cmake.exe`, Visual Studio, `vcpkg`, or `CommonLibSSE`. Activate [.agents/skills/ostimnet-build](.agents/skills/ostimnet-build/SKILL.md) and run:
+  `powershell -NoProfile -ExecutionPolicy Bypass -File ".agents/skills/ostimnet-build/scripts/build.ps1" -Target dll` (or `-Target all` when `ui-src/` also changed; add `-Reconfigure` when changing CMake files).
+- **Locked Target DLL (`SkyrimSE.exe` Open):** If Skyrim is running, `SKSE/Plugins/OStimNet.dll` is locked by Windows, causing CMake's `POST_BUILD` copy (`MSB3073`) to fail *after* `SKSE_Source/build/release/Release/OStimNet.dll` compiles and links cleanly. `build.ps1` detects this automatically—treat compilation as **succeeded**, never retry in a loop, and never kill `SkyrimSE.exe`; simply note that copying the new DLL awaits closing Skyrim.
+- **Papyrus Scripts (`.psc` -> `.pex`):** Do NOT compile Papyrus scripts unless explicitly asked by the user.
+- **Magelight UI Modals Only:** All confirmations, retry/ignore prompts, and scene/role dialogs must use `OStimNet::UI::ModalManager` <-> `ui-src` (`<ModalHost />`), never native `RE::MessageBoxMenu` or `UIExtensions`.
+
 ## Coding Guidelines & Conventions
 
-- **Do Not Build Unless Asked:** Do NOT run C++/CMake builds or compile Papyrus (`.psc` -> `.pex`) scripts unless explicitly asked by the user.
 - **No Unsolicited Alias Functions:** Do NOT create alias functions, duplicate alternative names, or unsolicited wrapper functions for APIs / Papyrus native functions unless explicitly asked by the user. Implement only the exact requested function names.
 - **Minimal & Clean APIs:** Keep Papyrus native declarations and C++ bindings 1:1 and strictly aligned with specified requirements without adding extra naming variations.
+- **PCH & Header Hygiene:** Every `.cpp` under `SKSE_Source/src/` must begin with `#include "PCH.h"`, and headers under `SKSE_Source/src/` must never contain `using namespace`.
 
 ## SkyrimNet Implementation Guides
 

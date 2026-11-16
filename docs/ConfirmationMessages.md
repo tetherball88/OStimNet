@@ -2,7 +2,7 @@
 
 Welcome to the guide on **Confirmation Messages** in OStimNet! 💖 We know that when NPCs start getting handsy or want to switch things up, you want to stay in control! That's exactly what this feature is for. Let's dive in! 🚀
 
-> ⚠️ **When you see Skyrim message boxes NEVER use mouse to answer them, it will make sometimes your camera to fly away, it is known issue without known solution. Use keyboard hotkeys to select confirmation option.**
+> 🎮 **Magelight UI Modals:** OStimNet displays confirmation dialogs using **Magelight UI**, supporting mouse clicks, keyboard navigation (`WASD` / `Arrows` / `Tab`, `Enter` / `Space` / `E` to confirm), and controller input cleanly without engine camera quirks.
 
 ## 🤔 What Are Confirmation Messages?
 

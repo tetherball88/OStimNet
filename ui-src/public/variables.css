@@ -1,0 +1,268 @@
+/* =====================================================================
+   UI Dashboard — Design Tokens & User Settings
+   =====================================================================
+   THEME: "Candlelit Amber" — warm gold on deep warm-black surfaces.
+   Slick and modern in layout, medieval-fantasy in color and mood.
+   No cold colors (no blue, no teal, no neon). Every tint is warm.
+
+   USER: edit --ui-font-size to scale the ENTIRE window up/down.
+
+   RULES FOR IMPLEMENTERS (LLM / dev):
+   ─────────────────────────────────────────────────────────────────────
+   1. NEVER hardcode a color, size, radius or shadow — always use a token.
+   2. NEVER use px in components. rem for layout, em for icon/inline sizes.
+   3. Pick tokens by SEMANTIC role (what the element IS), not by value.
+   4. Accent (--accent-*) is for EMPHASIS ONLY: active states, key values,
+      primary buttons, selected items. If everything is gold, nothing is.
+      Default state of the UI is calm: dark surfaces + parchment text.
+   5. Interactive elements MUST use the state tokens (hover/active/focus).
+      Do not invent new rgba() values for states.
+   ===================================================================== */
+:root {
+    /* =================================================================
+     1. MASTER SCALE
+     ================================================================= */
+    /* Base size — everything in the UI scales from this one value.
+     clamp(min, preferred, max): grows with screen width between bounds.
+     Applied ONLY on `html { font-size: calc(var(--ui-font-size) * var(--ui-scale, 1)) }`. */
+    --ui-font-size: clamp(18px, 1.25vw, 30px);
+
+    /* Accessibility scale multiplier (1 = 100%, 0.75 = 75%, 1.5 = 150%).
+     Scales all fonts, icons, spacing, and window elements proportionally.
+     Can also be adjusted in-game via Dashboard Header or General Settings. */
+    --ui-scale: 1;
+
+    /* =================================================================
+     2. TYPOGRAPHY
+     ================================================================= */
+    --font-ui: 'MARAS', sans-serif;
+
+    /* Type scale — pick by role, not by eye:
+     --text-xs   → footnotes, timestamps, badge counts, table captions
+     --text-sm   → secondary labels, list item metadata, input hints
+     --text-base → DEFAULT body text, list items, buttons, inputs
+     --text-lg   → section headings, emphasized stat values
+     --text-xl   → tab titles, panel headings
+     --text-2xl  → window title ONLY (one per screen)                */
+    --text-xs: 0.75rem;
+    --text-sm: 0.875rem;
+    --text-base: 1rem;
+    --text-lg: 1.25rem;
+    --text-xl: 1.5rem;
+    --text-2xl: 2rem;
+
+    /* Line heights: --leading-normal for body/paragraphs,
+     --leading-tight for headings and big numeric values. */
+    --leading-normal: 1.5;
+    --leading-tight: 1.2;
+
+    /* Letter spacing for headings/labels in CAPS (gives the engraved,
+     "carved in stone" look). Apply ONLY with uppercase text. */
+    --tracking-wide: 0.08em;
+
+    /* =================================================================
+     3. SURFACES (backgrounds) — from back to front
+     =================================================================
+     Layering order (back → front):
+     overlay → window → panel → panel-raised / inset
+     Never skip layers (no raised panel directly on the overlay).   */
+
+    /* Dim layer between the game and the window. Single flat rgba
+     element — NEVER backdrop-filter/blur. Set to `transparent`
+     to disable dimming entirely. */
+    --overlay-bg: rgba(10, 6, 2, 0.45);
+
+    /* The dashboard window itself. Warm black (brown undertone —
+     never pure #000, that reads cold). */
+    --window-bg: rgba(16, 12, 7, 0.92);
+
+    /* Panels/cards INSIDE the window: stat cards, list containers,
+     sidebar. Slightly lighter than window = perceived elevation. */
+    --panel-bg: rgba(28, 22, 13, 0.75);
+
+    /* Raised/highlighted panel: selected card, active tab body,
+     dropdown & tooltip background. One step above --panel-bg. */
+    --panel-raised-bg: rgba(38, 30, 18, 0.90);
+
+    /* Inset/recessed areas: input fields, progress bar tracks,
+     scrollbar track, code/console areas. Darker than its parent =
+     appears "carved in". */
+    --inset-bg: rgba(0, 0, 0, 0.35);
+
+    /* =================================================================
+     4. BORDERS & DIVIDERS
+     =================================================================
+     Hierarchy: divider < subtle < strong < accent-border.
+     Default borders are FAINT — strong gold borders only on
+     focused/selected elements.                                    */
+
+    /* Hairline separators: between list rows, table rows, menu items.
+     Barely visible on purpose. */
+    --border-divider: rgba(200, 168, 75, 0.10);
+
+    /* Default border for panels, cards, inputs at rest. */
+    --border-subtle: rgba(200, 168, 75, 0.18);
+
+    /* Emphasized border: window outer frame, hovered cards,
+     hovered inputs. */
+    --border-strong: rgba(200, 168, 75, 0.35);
+
+    /* Full-strength accent border: selected item, active tab
+     underline, focused input. Pairs with --shadow-glow. */
+    --border-accent: rgba(232, 201, 106, 0.70);
+
+    /* =================================================================
+     5. TEXT COLORS — parchment hierarchy
+     =================================================================
+     Contrast decreases with importance. Never use pure #fff.      */
+
+    /* Primary: headings, values, list item names, button labels. */
+    --text-primary: #f0e6d2;
+
+    /* Secondary: descriptions, sublabels, table cell text. */
+    --text-secondary: #c9bda3;
+
+    /* Muted: placeholders, timestamps, captions, disabled-adjacent
+     hints. Do NOT use for anything the user must read to act. */
+    --text-muted: #8f8368;
+
+    /* Disabled state text (pair with --interactive-disabled-bg). */
+    --text-disabled: rgba(240, 230, 210, 0.35);
+
+    /* Text ON gold backgrounds (e.g. primary button label).
+     Dark warm brown — gold-on-gold is unreadable. */
+    --text-on-accent: #241a08;
+
+    /* =================================================================
+     6. ACCENT — Skyrim gold (USE SPARINGLY)
+     =================================================================
+     For: primary buttons, active tab, selected list item, key stat
+     values, links, icons that indicate an active state.
+     NOT for: body text, borders of resting elements, backgrounds
+     of large areas.                                               */
+
+    --accent: #c8a84b;
+    /* Base gold: icons, active text, primary button bg */
+    --accent-bright: #e8c96a;
+    /* Hover state of accent elements; highlighted values */
+    --accent-deep: #9a7d33;
+    /* Pressed/active state; visited/secondary emphasis */
+
+    /* Translucent accent fills — for backgrounds, never text: */
+    --accent-soft: rgba(200, 168, 75, 0.15);
+    /* selected row bg, active nav item bg, badge bg */
+    --accent-faint: rgba(200, 168, 75, 0.07);
+    /* hover bg on rows/menu items — the DEFAULT hover fill */
+
+    /* =================================================================
+     7. INTERACTIVE STATES
+     =================================================================
+     Every clickable element uses these. Do not invent new values.
+     State order: rest → hover → active(pressed) → focus / disabled */
+
+    --interactive-hover-bg: var(--accent-faint);
+    /* rows, menu items, ghost buttons on hover */
+    --interactive-active-bg: var(--accent-soft);
+    /* pressed / currently selected */
+    --interactive-disabled-bg: rgba(200, 168, 75, 0.04);
+    /* disabled buttons/inputs */
+
+    /* Focus ring: keyboard/gamepad navigation indicator. Use as
+     `box-shadow: 0 0 0 var(--focus-ring-width) var(--focus-ring)`.
+     Every focusable element MUST show it. */
+    --focus-ring: rgba(232, 201, 106, 0.55);
+    --focus-ring-width: 0.125rem;
+
+    /* =================================================================
+     8. STATUS COLORS — warm variants only
+     =================================================================
+     Use for: status text, status icons, thin indicator bars, badge
+     tints. Use the -soft version for their backgrounds.
+     Do NOT use status colors decoratively.                        */
+
+    --status-danger: #c05038;
+    /* errors, destructive buttons, low-health warnings (brick red) */
+    --status-danger-soft: rgba(192, 80, 56, 0.15);
+    --status-success: #8fa963;
+    /* confirmations, completed states, buffs (moss green — NEVER mint/teal) */
+    --status-success-soft: rgba(143, 169, 99, 0.15);
+    --status-warning: #d08a3e;
+    /* caution, pending, expiring effects (ember orange) */
+    --status-warning-soft: rgba(208, 138, 62, 0.15);
+
+    /* =================================================================
+     9. WINDOW GEOMETRY
+     ================================================================= */
+    --window-width: min(56rem, 92vw);
+    /* rem = scales with font; vw cap = never overflows screen */
+    --window-max-height: min(42rem, 90vh);
+    --window-padding: 1.5rem;
+    /* inner padding of the window body */
+
+    /* =================================================================
+     10. RADII
+     =================================================================
+     Small and consistent — large radii read "mobile app", not
+     "medieval". Never exceed --radius-lg on rectangles.           */
+    --radius-sm: 0.25rem;
+    /* badges, small buttons, input fields */
+    --radius-md: 0.375rem;
+    /* DEFAULT: cards, panels, buttons */
+    --radius-lg: 0.5rem;
+    /* the window itself, modals */
+    --radius-full: 9999px;
+    /* pills, circular icon buttons, progress bar ends */
+
+    /* =================================================================
+     11. SHADOWS & GLOW (GPU-cheap — small blur radii only)
+     ================================================================= */
+    /* Window drop shadow — the ONLY large shadow allowed. */
+    --shadow-window: 0 0.5rem 2rem rgba(0, 0, 0, 0.6);
+
+    /* Raised elements: dropdowns, tooltips, popovers. */
+    --shadow-raised: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.45);
+
+    /* Gold glow: ONLY on focused/selected elements, paired with
+     --border-accent. Never on resting elements, never animated
+     in a loop. */
+    --shadow-glow: 0 0 0.5rem rgba(200, 168, 75, 0.25);
+
+    /* =================================================================
+     12. MOTION
+     =================================================================
+     Animate ONLY transform & opacity. No infinite loops.          */
+    --transition-fast: 120ms ease-out;
+    /* hover feedback, color/opacity changes */
+    --transition-base: 200ms ease-out;
+    /* open/close, tab switches, expand/collapse */
+
+    /* =================================================================
+     13. SPACING SCALE
+     =================================================================
+     --space-1  → icon↔label gaps, badge padding
+     --space-2  → padding inside small buttons/inputs, tight row gaps
+     --space-3  → gaps between related items in a group
+     --space-4  → DEFAULT: card padding, gaps between components
+     --space-6  → gaps between sections inside a panel
+     --space-8  → gaps between major dashboard regions             */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+
+    /* =================================================================
+     14. Z-INDEX LAYERS — use these, never arbitrary numbers
+     ================================================================= */
+    --z-overlay: 10;
+    /* dim layer */
+    --z-window: 20;
+    /* dashboard window */
+    --z-modal: 50;
+    /* standalone or blocking confirmation modals */
+    --z-dropdown: 60;
+    /* selects, menus, popovers (above both dashboard and modals) */
+    --z-tooltip: 70;
+    /* tooltips — always on top */
+}

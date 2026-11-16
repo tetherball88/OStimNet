@@ -4,8 +4,6 @@
 
 This integration mod creates a powerful bridge between **SkyrimNet** AI framework and **OStim** adult framework for Skyrim, enabling natural language control over intimate encounters. Simply chat with NPCs and the AI will intelligently interpret your dialogue to initiate, modify, or end intimate scenes! 🗣️💬
 
-> ⚠️ **When you see Skyrim message boxes NEVER use mouse to answer them, it will make sometimes your camera to fly away, it is known issue without known solution. Use keyboard hotkeys to select confirmation option.**
-
 > 📝 **NOTE**: This integration does NOT alter the main SkyrimNet prompt to make NPCs more sexually forward or explicit. NPCs will maintain their established personalities and relationship boundaries. The mod simply adds capabilities for the AI to understand and interact with OStim functionality when appropriate within character.
 
 ## ✨ Features
@@ -33,7 +31,7 @@ This integration mod creates a powerful bridge between **SkyrimNet** AI framewor
 - [OCum Ascended](https://www.nexusmods.com/skyrimspecialedition/mods/77506) - Uses it to generate better female orgams descriptions, adds descriptions for cum overlay on npcs in their appearance description
 - [PapyrusUtil SE](https://www.nexusmods.com/skyrimspecialedition/mods/13048) - Modders Scripting Utility Functions
 - [powerofthree's Papyrus Extender](https://www.nexusmods.com/skyrimspecialedition/mods/22854) - Scripting utility
-- [UIExtensions](https://www.nexusmods.com/skyrimspecialedition/mods/17561) - for certain communication menus(manually select intent and/or main/secondary actors)
+- [Magelight UI](https://www.nexusmods.com/skyrimspecialedition/mods/177790) *(or latest Magelight UI)* - Powers in-game confirmation, retry, and scene setup modals (mouse, keyboard, and controller friendly)
 
 ## 🔧 How It Works
 

@@ -65,14 +65,9 @@ Actor[] Function GetSecondaryActors(int ThreadID) global native
 ; Secondary actors are derived automatically from the remaining thread participants.
 Function SetThreadIntent(int ThreadID, string intent, Actor[] mainActors) global native
 
-; Claims an external (pending) OStim thread with player-selected intent, roles, and sexual flag.
-Function ClaimExternalThread(int ThreadID, string intent, Actor[] mainActors, bool isSexual = true) global native
-
-; Fallback: invokes SkyrimNet LLM evaluation to determine intent and roles for a pending thread.
-Function EvaluateExternalSexualThread(int ThreadID, Actor[] actors) global native
-
-; Discards an external thread if setup was cancelled.
-Function CancelExternalThread(int ThreadID) global native
+; Opens the Magelight UI modal to reassign primary/secondary actor roles (and optionally change intent) for an active thread.
+; Pass newIntent = "" to keep the current intent and only change roles.
+Function ShowThreadRolesModal(int ThreadID, string newIntent = "") global native
 
 
 ; Call BEFORE OThreadBuilder.Start() when you already know intent, sexual flag,

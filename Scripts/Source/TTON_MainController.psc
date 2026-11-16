@@ -48,7 +48,6 @@ Function Maintenance()
 
     RegisterForModEvent("ostimnet_location_scan_result", "OnLocationScanResult")
     RegisterForModEvent("ostimnet_scene_change_schedule_finished", "OnGmSceneAdvanceFinished")
-    RegisterForModEvent("ostimnet_manual_thread_setup", "OnManualThreadSetup")
 
     TTON_Events.RegisterEvents()
     TTON_Spectators.CleanAllSpectatorsStorage()
@@ -135,12 +134,6 @@ EndEvent
 Event OStimNetDecline(string eventName, string strArg, float numArg, Form akSpeaker)
     TTON_Debug.debug("Received OStimNet decline event: " + strArg)
     TTON_Events.SendSkyrimNetEvent(strArg, akSpeaker)
-EndEvent
-
-Event OnManualThreadSetup(string eventName, string strArg, float numArg, Form sender)
-    int ThreadID = numArg as int
-    TTON_Debug.debug("Received ostimnet_manual_thread_setup event, thread id: " + ThreadID)
-    TTON_OStimOptions.SetupExternalThread(ThreadID)
 EndEvent
 
 Event OStimStart(string eventName, string strArg, float numArg, Form sender)
@@ -235,14 +228,17 @@ Event OnSexEvaluationFinished(string eventName, string strArg, float numArg, For
 
         if(result == -1)
             TTON_Debug.warn("Failed to show confirmation modal for StartNewSexPostEval action.")
+            earlyReturn = true
         endif
 
         if(result == 1 || result == 2)
             TTON_Debug.warn("Player declined StartNewSexPostEval action.")
+            earlyReturn = true
         endif
 
         if(result == 3)
             TTON_Debug.warn("Action StartNewSexPostEval is on cooldown for " + TTON_Utils.GetActorName(main[0]) + ".")
+            earlyReturn = true
         endif
 
         if(earlyReturn)

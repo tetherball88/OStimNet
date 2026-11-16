@@ -16,6 +16,7 @@
 #include "api/OStimNavigator_PublicAPI.h"
 #include "api/OstimNG-API-Thread.h"
 #include "api/SkyrimNet_PublicAPI.h"
+#include "ui/RetryModal.h"
 
 #include <algorithm>
 #include <cmath>
@@ -269,53 +270,17 @@ nlohmann::json BuildFurnitureArrayJson(RE::Actor* centerActor) {
     return arr;
 }
 
-struct DecisionRetryCallback : RE::IMessageBoxCallback {
-    std::function<void()> retry;
-    std::function<void()> ignore;
-    DecisionRetryCallback(std::function<void()> r, std::function<void()> i)
-        : retry(std::move(r)), ignore(std::move(i)) {}
-    void Run(std::uint8_t a_msg) override {
-        if (static_cast<int>(a_msg) == 0) retry();
-        else                               ignore();
-    }
-};
-
 void ShowDecisionRetryModal(
     const std::string& evaluationType,
     const std::string& description,
     std::function<void()> onRetry,
     std::function<void()> onIgnore) {
-    auto* taskIF = SKSE::GetTaskInterface();
-    if (!taskIF) {
-        SKSE::log::error("ShowDecisionRetryModal: no task interface, falling back to ignore");
-        onIgnore();
-        return;
-    }
-    taskIF->AddTask([evaluationType, description,
-                     onRetry  = std::move(onRetry),
-                     onIgnore = std::move(onIgnore)]() mutable {
-        auto* factory = RE::MessageDataFactoryManager::GetSingleton();
-        auto* ifStr   = RE::InterfaceStrings::GetSingleton();
-        auto* creator = factory ? factory->GetCreator<RE::MessageBoxData>(ifStr->messageBoxData) : nullptr;
-        if (!creator) {
-            onIgnore();
-            return;
-        }
-        auto* msgData = creator->Create();
-        if (!msgData) {
-            onIgnore();
-            return;
-        }
-        std::string body =
-            "OStimNet: Jev Decision request failed (" + evaluationType + ").\n" + description +
-            "\n\nChoose Retry to try again, or Ignore to skip this evaluation.";
-        msgData->bodyText = body.c_str();
-        msgData->buttonText.push_back(RE::BSString("Retry"));
-        msgData->buttonText.push_back(RE::BSString("Ignore"));
-        msgData->cancelButtonIndex = 1;
-        msgData->callback = RE::make_smart<DecisionRetryCallback>(std::move(onRetry), std::move(onIgnore));
-        RE::MessageBoxMenu::QueueMessage(msgData);
-    });
+    OStimNet::UI::RetryModal::Show(
+        "Jev Decision Request Failed",
+        evaluationType,
+        description,
+        std::move(onRetry),
+        std::move(onIgnore));
 }
 
 // Inspects a failed decision response (`success == 0`) to determine if we should
