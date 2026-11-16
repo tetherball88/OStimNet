@@ -17,7 +17,7 @@ parameterMapping:
     description: Activity from list
   - type: dynamic
     name: intent
-    description: romantic|platonic
+    description: romantic|platonic|lustful|transactional
   - type: dynamic
     name: initiator
     description: Actor's display name who initiated the scene.

@@ -64,8 +64,8 @@ Runs when a bystander attempts to join an ongoing scene on their own (`JoinOngoi
 
 ### Non-Sexual Scene Evaluation (`ostimnet_evaluate_nonsexual_scene`)
 Used for care scenes initiated by `StartCareScene` (hugging, kissing).
-- **Platonic vs Romantic:** Evaluates willingness based on the softer dynamics of platonic or romantic intents.
-- **No Positions:** Focuses on assigning initiator/responder roles without selecting complex sexual positions.
+- **Intent & Willingness:** Evaluates intent (`platonic`, `romantic`, `lustful`, or `transactional`) and participant willingness based on the corresponding intent rules.
+- **Role Assignment:** Assigns `initiator`/`responder` roles for `platonic`, `romantic`, and `lustful`, or `service recipient`/`service provider` roles for `transactional`, without selecting complex sexual positions.
 
 ---
 

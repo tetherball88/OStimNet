@@ -18,19 +18,19 @@ Non-sexual physical care — a hug, a comforting embrace, a friendly gesture. Th
 
 ### Romantic
 
-Two (or more) people who have genuine emotional investment in each other. The scene is as much about connection as it is about sex. Romantic is the only sexual intent that also applies to [care actions](Actions.md#startcarescene) — a hug or a kiss between two people who care about each other uses the same intent label.
+Two (or more) people who have genuine emotional investment in each other. The scene is as much about connection as it is about sex. Romantic applies to both sexual encounters and [care actions](Actions.md#startcarescene) — a hug or a kiss between two people who care about each other uses the same intent label.
 
 **Roles:** The actor(s) who drives the encounter is the **initiator**; the other(s) are **responders**. Neither role implies dominance — it's just about who made the first move.
 
 **Willing if:** The NPC has a positive signal toward their partner — attraction, fondness, curiosity, something that actively draws them in. The absence of a reason to refuse is not enough. An NPC who is merely neutral won't agree to a romantic scene.
 
-**Scenes selected:** Animations tagged romantic, lustful, or platonic(for care actions) — anything with a soft or emotionally open dynamic. Or with no intent tag (generic scenes)
+**Scenes selected:** Animations tagged romantic, lustful, or platonic (for care actions) — anything with a soft or emotionally open dynamic. Or with no intent tag (generic scenes)
 
 ---
 
 ### Lustful
 
-Purely physical desire. The actors want each other, but there's no emotional investment required.
+Purely physical desire. The actors want each other, with no emotional investment required. Applies to both sexual scenes and sensual [care actions](Actions.md#startcarescene) (hugging, kissing).
 
 **Roles:** Same initiator/responder structure as romantic, but the LLM isn't looking for emotional connection — only physical interest.
 
@@ -42,11 +42,11 @@ Purely physical desire. The actors want each other, but there's no emotional inv
 
 ### Transactional
 
-Sex as an exchange. One actor provides a service; the other receives it in return for something material — coin, a favour, leverage, or situational desperation.
+Intimacy or affection as an exchange. One actor provides a service; the other receives it in return for something material — coin, a favour, leverage, or situational desperation. Applies to both sexual scenes and [care actions](Actions.md#startcarescene) (hugging, kissing).
 
 **Roles:** The **service recipient** gets what they want; the **service provider** delivers it and expects something in return. The main actor is the recipient.
 
-**Willing if:** The provider has sufficient motivation for the exchange — the material benefit makes sense given their situation. Strong moral opposition can still block it, but it needs to be genuinely strong. The recipient's willingness is evaluated separately (they're usually the one initiating).
+**Willing if:** The provider has sufficient motivation for the exchange — the material benefit makes sense given their situation. Strong moral opposition can still block it, but it needs to be genuinely strong. The recipient's willingness is evaluated separately (they're usually the one initiating, or requesting the attention).
 
 **Scenes selected:** Animations tagged transactional, lustful, or romantic, or with no intent tag (generic scenes).
 

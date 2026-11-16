@@ -45,6 +45,8 @@ const SEXUAL_INTENT_OPTIONS: SelectOption[] = [
 const NON_SEXUAL_INTENT_OPTIONS: SelectOption[] = [
   { value: 'platonic', label: 'Platonic' },
   { value: 'romantic', label: 'Romantic' },
+  { value: 'lustful', label: 'Lustful' },
+  { value: 'transactional', label: 'Transactional' },
 ]
 
 function getRoleLabel(intent: string): string {
@@ -86,7 +88,12 @@ export const ExternalThreadSetupModal: React.FC<CustomModalTemplateProps> = ({
     const normalized = nextType === 'non_sexual' ? 'non_sexual' : 'sexual'
     setSceneType(normalized)
     if (normalized === 'non_sexual') {
-      if (intent !== 'platonic' && intent !== 'romantic') {
+      if (
+        intent !== 'platonic' &&
+        intent !== 'romantic' &&
+        intent !== 'lustful' &&
+        intent !== 'transactional'
+      ) {
         setIntent('platonic')
       }
     } else if (intent === 'platonic') {

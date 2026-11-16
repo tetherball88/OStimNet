@@ -1,13 +1,14 @@
 {# Decision template: 2-step evaluation for a non-sexual interaction (StartCareScene) between 2 actors.
-   Step 1 identifies the interaction intent (romantic or platonic).
-   Step 2 evaluates consent/willingness for all non-player parties based on that intent. #}
+   Step 1 identifies the interaction intent (romantic, platonic, lustful, or transactional).
+   Step 2 evaluates consent/willingness for all non-player parties (and recipient/provider roles for transactional) based on that intent. #}
 
 [ state scene_context ]
     {% if step == 1 %}
         A roleplaying AI has proposed a non-sexual interaction{% if activity != "" %} ({{ activity }}){% endif %} between {{ actorNames }}.
         {% if reason != "" %}Why the roleplaying AI decided to initiate this interaction with these participants: {{ reason }}{% endif %}
         {% if intent != "" %}Suggested Intent: `{{ intent }}`{% endif %}
-        Evaluate which non-sexual interaction intent (`romantic` or `platonic`) best fits this moment.
+        Evaluate which non-sexual interaction intent (`romantic`, `platonic`, `lustful`, or `transactional`) best fits this moment.
+        {% if activity == "kissing" %}Note: `kissing` requires `romantic`, `lustful`, or `transactional` intent (not `platonic`).{% endif %}
     {% else %}
         A roleplaying AI has proposed a non-sexual `{{ intent }}` interaction{% if activity != "" %} ({{ activity }}){% endif %} between {{ actorNames }}.
         {% if reason != "" %}Why the roleplaying AI decided to initiate this interaction with these participants: {{ reason }}{% endif %}
@@ -18,6 +19,18 @@
             - At least one positive signal: attraction, fondness, curiosity, or openness to romantic affection with the other participant
             - No dealbreakers: exclusive commitment to someone absent, or strong aversion to romantic attention from this person specifically
             - "No reason to refuse" is not sufficient — some positive signal toward the other participant must be present
+        {% elif intent == "lustful" %}
+            The interaction intent is `lustful` — a physically charged, sensual non-sexual closeness (such as a heated kiss or sensual embrace) driven by physical attraction without emotional strings.
+            Each participant is willing if ALL hold:
+            - No hostility or disgust toward the other participant; mild dislike is acceptable if clearly overridden by physical attraction
+            - At least one positive motivation: physical attraction or desire toward the other participant, flirtatious or hedonistic personality, or explicit willingness in recent dialogue
+            - No dealbreakers: exclusive emotional commitment to someone absent that the actor would not violate, or strong aversion to sensual contact from this person
+        {% elif intent == "transactional" %}
+            The interaction intent is `transactional` — non-sexual physical affection (such as a kiss, hug, or cuddle) given or received in exchange for coin, favors, leverage, or service, without expectation of emotional connection.
+            Roles: `main` = service recipient(s) receiving the affection and providing the benefit; `secondary` = service provider(s) delivering the affection in return for benefit.
+            Each participant is willing if their role-specific motivation is present:
+            - Potential service provider (`secondary`): explicit or implicit material motivation such as coin, favor, leverage, or desperation; no strong moral aversion to the act; no active hostility that overrides the benefit
+            - Potential service recipient (`main`): desire or demand for the physical attention and the means or willingness to provide the agreed benefit
         {% else %}
             The interaction intent is `platonic` — a friendly, social, or cooperative approach: friendly hug, companionship, comfort, or a non-romantic gesture.
             Each participant is willing if ALL hold:
@@ -45,8 +58,10 @@
     [ question intent choice ]
         Identify the intent of the proposed non-sexual interaction{% if activity != "" %} ({{ activity }}){% endif %} between {{ actorNames }} based on `participant_profiles` and `recent_events`.
         [ criteria ]
-            romantic: Romantic — a non-sexual but emotionally intimate approach: flirting, confessing feelings, courting, kissing, cuddling, or expressing tender affection
-            platonic: Platonic — a friendly, social, or cooperative approach: friendly hug, companionship, comfort, or a non-romantic gesture
+            romantic: Romantic — emotionally affectionate, tender intimacy: kissing, cuddling, courting, or expressing genuine romantic warmth
+            platonic: Platonic — friendly, social, or comforting gesture with no romantic or sensual undertones: friendly hug, comfort, or camaraderie
+            lustful: Lustful — physically charged, sensual gesture (heated kiss, sensual embrace) driven by physical attraction without emotional strings
+            transactional: Transactional — non-sexual physical affection (kiss, hug, cuddle) given or received in exchange for coin, favors, leverage, or service
         [ end criteria ]
     [ end question ]
 {% else %}
@@ -62,4 +77,15 @@
             [ end question ]
         {% endif %}
     {% endfor %}
+
+    {% if intent == "transactional" and length(roleCombinations) > 1 %}
+        [ question roles choice ]
+            Assign {{ actorNames }} into `main` (service recipient) and `secondary` (service provider) roles for this `transactional` interaction based on `scene_context`, `participant_profiles`, and `recent_events`.
+            [ criteria ]
+                {% for combo in roleCombinations -%}
+                    {{ combo.key }}: main (recipient): {{ combo.mainNames }}; secondary (provider): {{ combo.secondaryNames }}
+                {% endfor -%}
+            [ end criteria ]
+        [ end question ]
+    {% endif %}
 {% endif %}

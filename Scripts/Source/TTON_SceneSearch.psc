@@ -422,7 +422,9 @@ string Function SearchCareScene(Actor[] actors, string intent = "", string origi
     string AllActorTagsForAll = "standing"
 
     string SceneTagBlacklist = ""
-    if(intent != "")
+    if(intent == "transactional")
+        SceneTagBlacklist = "platonic,dom,aggressive"
+    elseif(intent != "")
         SceneTagBlacklist = BlacklistOtherIntents(intent)
     endif
 
@@ -430,6 +432,29 @@ string Function SearchCareScene(Actor[] actors, string intent = "", string origi
         ActionWhitelistActors = initatorIndex, \
         AnyActionType = activity, \
         AllSceneTags = intent, \
+        SceneTagBlacklist = SceneTagBlacklist, \
+        AllActorTagsForAll = AllActorTagsForAll, \
+        ActionBlacklistTypes = ActionBlacklistTypes \
+    )
+
+    if(sceneId)
+        return sceneId
+    endif
+
+    sceneId = SearchCareSceneBase(actors, \
+        ActionWhitelistActors = initatorIndex, \
+        AnyActionType = activity, \
+        SceneTagBlacklist = SceneTagBlacklist, \
+        AllActorTagsForAll = AllActorTagsForAll, \
+        ActionBlacklistTypes = ActionBlacklistTypes \
+    )
+
+    if(sceneId)
+        return sceneId
+    endif
+
+    sceneId = SearchCareSceneBase(actors, \
+        AnyActionType = activity, \
         SceneTagBlacklist = SceneTagBlacklist, \
         AllActorTagsForAll = AllActorTagsForAll, \
         ActionBlacklistTypes = ActionBlacklistTypes \

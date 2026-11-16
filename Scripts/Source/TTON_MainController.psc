@@ -281,12 +281,23 @@ Event OnNonSexEvaluationFinished(string eventName, string strArg, float numArg, 
     endif
     string intent = OStimNet.JsonGetString(strArg, "intent")
     string activity = OStimNet.JsonGetString(strArg, "activity")
-    Actor[] main = OActorUtil.EmptyArray()
-    Actor[] secondary = OActorUtil.EmptyArray()
-    main = OStimNet.JsonGetActorArray(strArg, "main")
-    secondary = OStimNet.JsonGetActorArray(strArg, "secondary")
+    Actor initiator = OStimNet.JsonGetActor(strArg, "initiator")
+    Actor[] main = OStimNet.JsonGetActorArray(strArg, "main")
+    Actor[] secondary = OStimNet.JsonGetActorArray(strArg, "secondary")
+    if(main.Length == 0 || secondary.Length == 0)
+        TTON_Debug.warn("Non-sex evaluation finished: missing main or secondary actors.")
+        FreeParticipantsOnCancelOrReject(strArg)
+        return
+    endif
 
-    TTON_OStimIntegration.StartOStimCaring(main[0], secondary[0], activity, intent)
+    Actor participant = secondary[0]
+    if(!initiator)
+        initiator = main[0]
+    elseif(initiator == secondary[0])
+        participant = main[0]
+    endif
+
+    TTON_OStimIntegration.StartOStimCaring(initiator, participant, activity, intent, main[0], secondary[0])
 EndEvent
 
 Event OnJoinSexEvaluationFinished(string eventName, string strArg, float numArg, Form sender)

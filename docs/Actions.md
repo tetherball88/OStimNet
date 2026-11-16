@@ -42,8 +42,8 @@ Initiates a non-sexual physical caring scene (hugging, kissing). Not for affecti
 - ⏳ Action is not on cooldown
 
 **Notes:**
-- 🫂 Hugging is available for both romantic and platonic intent
-- 💋 Kissing is only available for romantic intent
+- 🫂 Hugging is available for `platonic`, `romantic`, `lustful`, and `transactional` intents
+- 💋 Kissing is available for `romantic`, `lustful`, and `transactional` intents
 - ⏱️ Care scenes end automatically after a configurable duration (default: 20 seconds)
 
 ---

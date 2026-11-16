@@ -85,7 +85,8 @@ Function StartCareSceneExecute(Actor akActor, Actor participant1, string activit
     ; When player is secondary it means npc is initiating the care scene,
     ; in that case we can directly start the scene
     ; since player confirmation already happened in the modal.
-    if(secondary == player)
+    ; Transactional scenes still run evaluation to assign recipient (main) vs provider (secondary) roles.
+    if(secondary == player && intent != "transactional")
         TTON_OStimIntegration.StartOStimCaring(main, secondary, activity, intent)
     else
         Debug.Notification("Finalizing care scene details before starting the scene...")

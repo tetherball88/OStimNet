@@ -112,7 +112,7 @@ int function StartOstimSex(Actor[] dom = none, Actor[] sub = none, string action
     return newThreadID
 endfunction
 
-int Function StartOStimCaring(Actor initiator, Actor participant, string actions = "", string intent = "") global
+int Function StartOStimCaring(Actor initiator, Actor participant, string actions = "", string intent = "", Actor mainActor = none, Actor secondaryActor = none) global
     Actor player = TTON_JData.GetPlayer()
     int i = 0
     if(!initiator || !participant)
@@ -149,8 +149,14 @@ int Function StartOStimCaring(Actor initiator, Actor participant, string actions
     OThreadBuilder.NoPlayerControl(builderID)
 
     OThreadBuilder.SetStartingAnimation(builderID, newScene)
-    Actor[] careMain = OActorUtil.ToArray(initiator)
-    Actor[] careSecondary = OActorUtil.ToArray(participant)
+    Actor effectiveMain = initiator
+    Actor effectiveSecondary = participant
+    if(mainActor && secondaryActor)
+        effectiveMain = mainActor
+        effectiveSecondary = secondaryActor
+    endif
+    Actor[] careMain = OActorUtil.ToArray(effectiveMain)
+    Actor[] careSecondary = OActorUtil.ToArray(effectiveSecondary)
     int claimToken = OStimNet.ClaimThread(intent, false, careMain, careSecondary)
     int newThreadID = OThreadBuilder.Start(builderID)
     OStimNet.ConfirmThread(claimToken, newThreadID)

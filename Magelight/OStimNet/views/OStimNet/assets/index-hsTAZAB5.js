@@ -17896,7 +17896,9 @@ var __privateSet = (obj, member, value, setter) => (__accessCheck(obj, member, "
   ];
   const NON_SEXUAL_INTENT_OPTIONS = [
     { value: "platonic", label: "Platonic" },
-    { value: "romantic", label: "Romantic" }
+    { value: "romantic", label: "Romantic" },
+    { value: "lustful", label: "Lustful" },
+    { value: "transactional", label: "Transactional" }
   ];
   function getRoleLabel(intent) {
     switch (intent) {
@@ -17931,7 +17933,7 @@ var __privateSet = (obj, member, value, setter) => (__accessCheck(obj, member, "
       const normalized = nextType === "non_sexual" ? "non_sexual" : "sexual";
       setSceneType(normalized);
       if (normalized === "non_sexual") {
-        if (intent !== "platonic" && intent !== "romantic") {
+        if (intent !== "platonic" && intent !== "romantic" && intent !== "lustful" && intent !== "transactional") {
           setIntent("platonic");
         }
       } else if (intent === "platonic") {

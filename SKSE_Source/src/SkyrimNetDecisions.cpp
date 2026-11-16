@@ -1302,22 +1302,37 @@ bool EvaluateNonSexualScene(
             return;
         }
 
-        std::string resolvedIntent = GetChoiceAnswer(
-            parsed["answers"], "intent", intent.empty() ? "romantic" : intent);
-        if (resolvedIntent != "romantic" && resolvedIntent != "platonic") {
-            resolvedIntent = (intent == "platonic") ? "platonic" : "romantic";
+        auto isValidCareIntent = [](const std::string& s) {
+            return s == "romantic" || s == "platonic" || s == "lustful" || s == "transactional";
+        };
+        std::string fallbackIntent = isValidCareIntent(intent) ? intent : "romantic";
+        std::string resolvedIntent = GetChoiceAnswer(parsed["answers"], "intent", fallbackIntent);
+        if (!isValidCareIntent(resolvedIntent)) {
+            resolvedIntent = fallbackIntent;
         }
 
         SKSE::log::info("SkyrimNetDecisions::EvaluateNonSexualScene Step 1 resolved intent='{}', queuing Step 2 (consent)",
                         resolvedIntent);
 
+        std::vector<RoleCombination> roleCombos;
+        nlohmann::json roleCombinationsJson = nlohmann::json::array();
+        if (resolvedIntent == "transactional" && parties.size() >= 2) {
+            std::vector<RoleActorItem> roleActors;
+            roleActors.reserve(parties.size());
+            for (const auto& p : parties) {
+                roleActors.push_back(RoleActorItem{static_cast<uint32_t>(p.formID), p.name});
+            }
+            roleCombos = BuildRoleCombinations(roleActors, roleCombinationsJson);
+        }
+
         nlohmann::json step2Ctx = baseCtx;
-        step2Ctx["step"]   = 2;
-        step2Ctx["intent"] = resolvedIntent;
+        step2Ctx["step"]             = 2;
+        step2Ctx["intent"]           = resolvedIntent;
+        step2Ctx["roleCombinations"] = std::move(roleCombinationsJson);
         std::string step2ContextJson = step2Ctx.dump();
 
         auto step2CallbackHolder = std::make_shared<std::function<void(const char*, const char*, int)>>();
-        *step2CallbackHolder = [step2CallbackHolder, parties, participantFormIDs, origParticipants, initiatorFormID,
+        *step2CallbackHolder = [step2CallbackHolder, parties, roleCombos, participantFormIDs, origParticipants, initiatorFormID,
                                 resolvedIntent, activity, evalId, step2ContextJson, templateName, fallbackToChat](
                                    const char* step2Answer, const char* step2ResultJson, int step2Success) {
             SKSE::log::info("SkyrimNetDecisions::EvaluateNonSexualScene Step 2 callback: success={}, firstAnswer='{}'",
@@ -1384,14 +1399,46 @@ bool EvaluateNonSexualScene(
                 return;
             }
 
-            auto mainArr = nlohmann::json::array();
-            if (initiatorFormID != 0)
-                mainArr.push_back(static_cast<uint32_t>(initiatorFormID));
-
+            auto mainArr      = nlohmann::json::array();
             auto secondaryArr = nlohmann::json::array();
-            for (RE::FormID fid : participantFormIDs) {
-                if (fid != initiatorFormID)
-                    secondaryArr.push_back(static_cast<uint32_t>(fid));
+
+            if (resolvedIntent == "transactional" && !roleCombos.empty()) {
+                std::string defaultComboKey = roleCombos[0].key;
+                for (const auto& c : roleCombos) {
+                    if (std::find(c.mainFormIDs.begin(), c.mainFormIDs.end(), static_cast<uint32_t>(initiatorFormID)) !=
+                        c.mainFormIDs.end()) {
+                        defaultComboKey = c.key;
+                        break;
+                    }
+                }
+                std::string chosenRoleKey = GetChoiceAnswer(answers2, "roles", defaultComboKey);
+                const RoleCombination* selectedCombo = nullptr;
+                for (const auto& c : roleCombos) {
+                    if (c.key == chosenRoleKey) {
+                        selectedCombo = &c;
+                        break;
+                    }
+                }
+                if (!selectedCombo) {
+                    for (const auto& c : roleCombos) {
+                        if (c.key == defaultComboKey) {
+                            selectedCombo = &c;
+                            break;
+                        }
+                    }
+                }
+                if (!selectedCombo) selectedCombo = &roleCombos[0];
+
+                for (uint32_t fid : selectedCombo->mainFormIDs)      mainArr.push_back(fid);
+                for (uint32_t fid : selectedCombo->secondaryFormIDs) secondaryArr.push_back(fid);
+            } else {
+                if (initiatorFormID != 0)
+                    mainArr.push_back(static_cast<uint32_t>(initiatorFormID));
+
+                for (RE::FormID fid : participantFormIDs) {
+                    if (fid != initiatorFormID)
+                        secondaryArr.push_back(static_cast<uint32_t>(fid));
+                }
             }
 
             nlohmann::json result;

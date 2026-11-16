@@ -1379,7 +1379,7 @@ bool EvaluateNonSexualScene(const std::vector<RE::FormID>& participantFormIDs, c
 
     auto callbackHolder = std::make_shared<std::function<void(const char*, int)>>();
 
-    *callbackHolder = [callbackHolder, initiatorFormID, participantFormIDs, intent, activity, evalId,
+    *callbackHolder = [callbackHolder, nameToFormID, initiatorFormID, participantFormIDs, intent, activity, evalId,
                        contextJson, promptName, llmVariant](const char* response, int success) {
         SKSE::log::info("EvaluateNonSexualScene callback: success={}", success);
 
@@ -1431,6 +1431,20 @@ bool EvaluateNonSexualScene(const std::vector<RE::FormID>& participantFormIDs, c
             return;
         }
 
+        auto isValidCareIntent = [](const std::string& s) {
+            return s == "romantic" || s == "platonic" || s == "lustful" || s == "transactional";
+        };
+        std::string resolvedIntent = isValidCareIntent(intent) ? intent : "romantic";
+        if (resp.contains("intent") && resp["intent"].is_string()) {
+            std::string respIntent = resp["intent"].get<std::string>();
+            std::transform(respIntent.begin(), respIntent.end(), respIntent.begin(), [](unsigned char c) {
+                return static_cast<char>(std::tolower(c));
+            });
+            if (isValidCareIntent(respIntent)) {
+                resolvedIntent = std::move(respIntent);
+            }
+        }
+
         // Build originalParticipants array once — reused in all result branches.
         auto origParticipants = nlohmann::json::array();
         for (RE::FormID fid : participantFormIDs)
@@ -1441,7 +1455,7 @@ bool EvaluateNonSexualScene(const std::vector<RE::FormID>& participantFormIDs, c
             SKSE::log::info("EvaluateNonSexualScene: LLM returned start=false (scene should not start).");
             nlohmann::json noStartResult;
             noStartResult["start"]                = false;
-            noStartResult["intent"]               = intent;
+            noStartResult["intent"]               = resolvedIntent;
             noStartResult["evalId"]               = evalId;
             noStartResult["activity"]             = activity;
             noStartResult["originalParticipants"] = origParticipants;
@@ -1450,20 +1464,42 @@ bool EvaluateNonSexualScene(const std::vector<RE::FormID>& participantFormIDs, c
             return;
         }
 
-        // main = initiator; secondary = all other participants
-        auto mainArr = nlohmann::json::array();
-        if (initiatorFormID != 0)
-            mainArr.push_back(static_cast<uint32_t>(initiatorFormID));
-
+        auto mainArr      = nlohmann::json::array();
         auto secondaryArr = nlohmann::json::array();
-        for (RE::FormID fid : participantFormIDs) {
-            if (fid != initiatorFormID)
-                secondaryArr.push_back(static_cast<uint32_t>(fid));
+
+        if (resolvedIntent == "transactional") {
+            auto mainFormIDs = JsonService::ResolveNamesToFormIDs(resp, "mainActors", nameToFormID, "EvaluateNonSexualScene");
+            auto secFormIDs  = JsonService::ResolveNamesToFormIDs(resp, "secondaryActors", nameToFormID, "EvaluateNonSexualScene");
+
+            if (secFormIDs.empty() && mainFormIDs.size() > 1) {
+                secFormIDs.push_back(mainFormIDs.back());
+                mainFormIDs.erase(mainFormIDs.size() - 1);
+            } else if (mainFormIDs.empty() && secFormIDs.size() > 1) {
+                mainFormIDs.push_back(secFormIDs.front());
+                secFormIDs.erase(0);
+            }
+
+            if ((!mainFormIDs.empty() && !secFormIDs.empty()) ||
+                (participantFormIDs.size() == 1 && !mainFormIDs.empty())) {
+                mainArr      = std::move(mainFormIDs);
+                secondaryArr = std::move(secFormIDs);
+            }
+        }
+
+        if (mainArr.empty() && secondaryArr.empty()) {
+            // main = initiator; secondary = all other participants
+            if (initiatorFormID != 0)
+                mainArr.push_back(static_cast<uint32_t>(initiatorFormID));
+
+            for (RE::FormID fid : participantFormIDs) {
+                if (fid != initiatorFormID)
+                    secondaryArr.push_back(static_cast<uint32_t>(fid));
+            }
         }
 
         nlohmann::json result;
         result["start"]                = true;
-        result["intent"]               = intent;
+        result["intent"]               = resolvedIntent;
         result["evalId"]               = evalId;
         result["activity"]             = activity;
         result["main"]                 = std::move(mainArr);
