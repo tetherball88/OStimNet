@@ -4,6 +4,7 @@
 #include "Config.h"
 #include "KeywordUtils.h"
 #include "ModEventDispatch.h"
+#include "OVirginityService.h"
 #include "SkyrimNetIntegration.h"
 #include "ThreadRegistry.h"
 
@@ -285,7 +286,23 @@ void LocationScanService::RunScan(bool force) {
 
     std::string contextJson = BuildContextJson();
     _lastScanTime = std::chrono::steady_clock::now();
-    SkyrimNetIntegration::EvaluateLocationScan(contextJson, nameToFormID, _generation.load(std::memory_order_relaxed));
+    const uint64_t scanGen = _generation.load(std::memory_order_relaxed);
+    if (OVirginityService::GetSingleton().IsLoaded()) {
+        std::vector<RE::FormID> scanFormIDs;
+        scanFormIDs.reserve(nameToFormID.size());
+        for (const auto& [name, fid] : nameToFormID) {
+            scanFormIDs.push_back(fid);
+        }
+        OVirginityService::GetSingleton().EnsureActorsResolved(
+            scanFormIDs,
+            [contextJson = std::move(contextJson), nameToFormID = std::move(nameToFormID), scanGen]() {
+                if (LocationScanService::GetSingleton().GetGeneration() != scanGen) return;
+                SkyrimNetIntegration::EvaluateLocationScan(contextJson, nameToFormID, scanGen);
+            },
+            false);
+    } else {
+        SkyrimNetIntegration::EvaluateLocationScan(contextJson, nameToFormID, scanGen);
+    }
 }
 
 // -----------------------------------------------------------------------------

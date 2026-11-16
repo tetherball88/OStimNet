@@ -30,6 +30,9 @@ EndFunction
 ; isFemDom - if true, means female actors are dominant, if false means male actors are dominant. Only used if intent is dom or aggressive.
 string Function SceneSexSearch(Actor[] actors, bool forceFurn = false, string furnType = "", string actionType = "", string sexualPositions = "", string threadIntent = "", bool isStart = false, bool isFemDom = false, bool isPlayerThread = false, bool usePhase = false) global
     TTON_Debug.debug("SceneSearch called with parameters: forceFurn=" + forceFurn + ", furnType=" + furnType + ", actionType=" + actionType + ", sexualPositions=" + sexualPositions + ", threadIntent=" + threadIntent + ", isStart=" + isStart + ", isFemDom=" + isFemDom)
+    if(furnType == "none" || furnType == "floor")
+        furnType = ""
+    endif
     bool useIntent = SkyrimNetApi.GetConfigBool("Plugin_OStimNet", "tton.settings.ostimScenesIntentRule", true)
     string ActorTagBlacklistForAll = ""
     string AnyActorTagForAny = ""
@@ -85,7 +88,9 @@ string Function SceneSexSearch(Actor[] actors, bool forceFurn = false, string fu
         AnyActorTagForAny = standingPerActor
     endif
 
+    string actionBlacklist = ""
     if(actionType != "")
+        actionBlacklist = OStimNet.GetActionBlacklistForActivity(actionType)
         AnyActionType = actionType
     elseif(usePhase && phase == "sex")
         AnyActionType = "intercourse"
@@ -106,15 +111,23 @@ string Function SceneSexSearch(Actor[] actors, bool forceFurn = false, string fu
         endif
     endif
 
-    if(sexualPositions != "" && OStimNet.IsValidPosition(sexualPositions))
-        AnySceneTag = sexualPositions
+    string resolvedPosition = ""
+    if(sexualPositions != "")
+        resolvedPosition = OStimNet.GetSexualPositionFromTags(PapyrusUtil.StringSplit(sexualPositions, ","))
+        if(resolvedPosition != "")
+            AnySceneTag = resolvedPosition
+        endif
     endif
 
     string sceneId = ""
 
     if(usePhase && (phase == "undressing" || phase == "foreplay"))
         if(actionType != "")
-            TTON_Debug.debug("Searching for specific foreplay scene with parameters: FurnitureType=" + furnType + ", ActorTagBlacklistForAll=" + ActorTagBlacklistForAll + ", AnyActorTagForAny=" + AnyActorTagForAny + ", ActionType=" + actionType + ", SceneTagBlacklist=" + SceneTagBlacklist + excludeFemdom + ", AllSceneTags=" + AllSceneTags)
+            string foreplayBlacklist = actionBlacklist
+            if(foreplayBlacklist == "")
+                foreplayBlacklist = "oral,intercourse"
+            endif
+            TTON_Debug.debug("Searching for specific foreplay scene with parameters: FurnitureType=" + furnType + ", ActorTagBlacklistForAll=" + ActorTagBlacklistForAll + ", AnyActorTagForAny=" + AnyActorTagForAny + ", ActionType=" + actionType + ", SceneTagBlacklist=" + SceneTagBlacklist + excludeFemdom + ", AllSceneTags=" + AllSceneTags + ", ActionBlacklistTypes=" + foreplayBlacklist)
             sceneId = OLibrary.GetRandomSceneSuperloadCSV(actors, \
                 FurnitureType = furnType, \
                 ActorTagBlacklistForAll = ActorTagBlacklistForAll, \
@@ -122,7 +135,7 @@ string Function SceneSexSearch(Actor[] actors, bool forceFurn = false, string fu
                 AnyActionType = actionType, \
                 SceneTagBlacklist = SceneTagBlacklist + excludeFemdom, \
                 AllSceneTags = AllSceneTags, \
-                ActionBlacklistTypes = "oral,intercourse" \
+                ActionBlacklistTypes = foreplayBlacklist \
             )
             if(sceneId)
                 return sceneId
@@ -133,7 +146,7 @@ string Function SceneSexSearch(Actor[] actors, bool forceFurn = false, string fu
                     AnyActionType = actionType, \
                     SceneTagBlacklist = SceneTagBlacklist + excludeFemdom, \
                     AllSceneTags = AllSceneTags, \
-                    ActionBlacklistTypes = "oral,intercourse" \
+                    ActionBlacklistTypes = foreplayBlacklist \
                 )
                 if(sceneId)
                     return sceneId
@@ -142,7 +155,7 @@ string Function SceneSexSearch(Actor[] actors, bool forceFurn = false, string fu
             sceneId = OLibrary.GetRandomSceneSuperloadCSV(actors, \
                 FurnitureType = furnType, \
                 AnyActionType = actionType, \
-                ActionBlacklistTypes = "oral,intercourse" \
+                ActionBlacklistTypes = foreplayBlacklist \
             )
             if(sceneId)
                 return sceneId
@@ -240,7 +253,7 @@ string Function SceneSexSearch(Actor[] actors, bool forceFurn = false, string fu
         endif
     endif
 
-    TTON_Debug.debug("Searching for scene with parameters: FurnitureType=" + furnType + ", ActorTagBlacklistForAll=" + ActorTagBlacklistForAll + ", AnyActorTagForAny=" + AnyActorTagForAny + ", ActionType=" + AnyActionType + ", SceneTagBlacklist=" + SceneTagBlacklist + excludeFemdom + ", AnySceneTag=" + AnySceneTag + ", AllSceneTags=" + AllSceneTags)
+    TTON_Debug.debug("Searching for scene with parameters: FurnitureType=" + furnType + ", ActorTagBlacklistForAll=" + ActorTagBlacklistForAll + ", AnyActorTagForAny=" + AnyActorTagForAny + ", ActionType=" + AnyActionType + ", SceneTagBlacklist=" + SceneTagBlacklist + excludeFemdom + ", AnySceneTag=" + AnySceneTag + ", AllSceneTags=" + AllSceneTags + ", ActionBlacklistTypes=" + actionBlacklist)
     sceneId = OLibrary.GetRandomSceneSuperloadCSV(actors, \
         FurnitureType = furnType, \
         ActorTagBlacklistForAll = ActorTagBlacklistForAll, \
@@ -248,11 +261,46 @@ string Function SceneSexSearch(Actor[] actors, bool forceFurn = false, string fu
         AnyActionType = AnyActionType, \
         SceneTagBlacklist = SceneTagBlacklist + excludeFemdom, \
         AnySceneTag = AnySceneTag, \
-        AllSceneTags = AllSceneTags \
+        AllSceneTags = AllSceneTags, \
+        ActionBlacklistTypes = actionBlacklist \
     )
 
     if(sceneId)
         return sceneId
+    endif
+
+    ; standing fallback - foreplay/oral scenes often put "standing" in actor tags instead of scene tags
+    bool standingFallbackExhausted = false
+    if(resolvedPosition == "standing" && ActorTagBlacklistForAll == "")
+        TTON_Debug.debug("No scene with scene tag 'standing' found, trying all-actors standing stance fallback: FurnitureType=" + furnType + ", ActionType=" + AnyActionType + ", AllActorTagsForAll=" + standingPerActor + ", ActionBlacklistTypes=" + actionBlacklist)
+        sceneId = OLibrary.GetRandomSceneSuperloadCSV(actors, \
+            FurnitureType = furnType, \
+            AllActorTagsForAll = standingPerActor, \
+            AnyActionType = AnyActionType, \
+            SceneTagBlacklist = SceneTagBlacklist + excludeFemdom, \
+            AllSceneTags = AllSceneTags, \
+            ActionBlacklistTypes = actionBlacklist \
+        )
+        if(sceneId)
+            return sceneId
+        endif
+
+        TTON_Debug.debug("Trying any-actor standing stance fallback: FurnitureType=" + furnType + ", ActionType=" + AnyActionType + ", AnyActorTagForAny=" + standingPerActor + ", ActionBlacklistTypes=" + actionBlacklist)
+        sceneId = OLibrary.GetRandomSceneSuperloadCSV(actors, \
+            FurnitureType = furnType, \
+            AnyActorTagForAny = standingPerActor, \
+            AnyActionType = AnyActionType, \
+            SceneTagBlacklist = SceneTagBlacklist + excludeFemdom, \
+            AllSceneTags = AllSceneTags, \
+            ActionBlacklistTypes = actionBlacklist \
+        )
+        if(sceneId)
+            return sceneId
+        endif
+
+        AnySceneTag = ""
+        AnyActorTagForAny = ""
+        standingFallbackExhausted = true
     endif
 
     ; relaxation step 1 - priority differs by context:
@@ -276,7 +324,7 @@ string Function SceneSexSearch(Actor[] actors, bool forceFurn = false, string fu
 
     ; relaxation step 1 search - skipped if nothing changed (would duplicate call 1)
     if(relaxedInStep2)
-        TTON_Debug.debug("Searching for scene with relaxed requirements: FurnitureType=" + furnType + ", ActorTagBlacklistForAll=" + ActorTagBlacklistForAll + ", AnyActorTagForAny=" + AnyActorTagForAny + ", ActionType=" + AnyActionType + ", SceneTagBlacklist=" + SceneTagBlacklist + excludeFemdom + ", AnySceneTag=" + AnySceneTag + ", AllSceneTags=" + AllSceneTags)
+        TTON_Debug.debug("Searching for scene with relaxed requirements: FurnitureType=" + furnType + ", ActorTagBlacklistForAll=" + ActorTagBlacklistForAll + ", AnyActorTagForAny=" + AnyActorTagForAny + ", ActionType=" + AnyActionType + ", SceneTagBlacklist=" + SceneTagBlacklist + excludeFemdom + ", AnySceneTag=" + AnySceneTag + ", AllSceneTags=" + AllSceneTags + ", ActionBlacklistTypes=" + actionBlacklist)
         sceneId = OLibrary.GetRandomSceneSuperloadCSV(actors, \
             FurnitureType = furnType, \
             ActorTagBlacklistForAll = ActorTagBlacklistForAll, \
@@ -284,7 +332,8 @@ string Function SceneSexSearch(Actor[] actors, bool forceFurn = false, string fu
             AnyActionType = AnyActionType, \
             SceneTagBlacklist = SceneTagBlacklist + excludeFemdom, \
             AnySceneTag = AnySceneTag, \
-            AllSceneTags = AllSceneTags \
+            AllSceneTags = AllSceneTags, \
+            ActionBlacklistTypes = actionBlacklist \
         )
 
         if(sceneId)
@@ -316,14 +365,15 @@ string Function SceneSexSearch(Actor[] actors, bool forceFurn = false, string fu
 
     ; relaxation step 2 search - all positional filters dropped; dom/aggressive uses performer check instead of scene tags
     ; always runs for dom/aggressive intent (performer is a new filter dimension), skipped otherwise if nothing changed
-    if(AnyActionPerformer != "" || relaxedInStep2 || relaxedInStep3)
-        TTON_Debug.debug("Searching for scene with all positional filters relaxed: FurnitureType=" + furnType + ", ActionType=" + AnyActionType + ", SceneTagBlacklist=" + SceneTagBlacklist + ", AnySceneTag=" + AnySceneTag + ", AnyActionPerformer=" + AnyActionPerformer)
+    if(AnyActionPerformer != "" || relaxedInStep2 || relaxedInStep3 || standingFallbackExhausted)
+        TTON_Debug.debug("Searching for scene with all positional filters relaxed: FurnitureType=" + furnType + ", ActionType=" + AnyActionType + ", SceneTagBlacklist=" + SceneTagBlacklist + ", AnySceneTag=" + AnySceneTag + ", AnyActionPerformer=" + AnyActionPerformer + ", ActionBlacklistTypes=" + actionBlacklist)
         sceneId = OLibrary.GetRandomSceneSuperloadCSV(actors, \
             FurnitureType = furnType, \
             AnyActionType = AnyActionType, \
             SceneTagBlacklist = SceneTagBlacklist, \
             AnySceneTag = AnySceneTag, \
-            AnyActionPerformer = AnyActionPerformer \
+            AnyActionPerformer = AnyActionPerformer, \
+            ActionBlacklistTypes = actionBlacklist \
         )
 
         if(sceneId)
@@ -335,6 +385,23 @@ string Function SceneSexSearch(Actor[] actors, bool forceFurn = false, string fu
 
     ; try relax action type requirement if no scene found
     if(actionType != "")
+        if(actionBlacklist != "")
+            TTON_Debug.warn("No scene found with actionType='" + actionType + "', trying any sexual action within phase (ActionBlacklistTypes=" + actionBlacklist + "): FurnitureType=" + furnType + ", AnyActionPerformer=" + AnyActionPerformer + ", SceneTagBlacklist=" + SceneTagBlacklist)
+            AnyActionType = "sexual"
+            sceneId = OLibrary.GetRandomSceneSuperloadCSV(actors, \
+                FurnitureType = furnType, \
+                AnyActionType = AnyActionType, \
+                AnyActionPerformer = AnyActionPerformer, \
+                SceneTagBlacklist = SceneTagBlacklist, \
+                ActionBlacklistTypes = actionBlacklist \
+            )
+
+            if(sceneId)
+                return sceneId
+            endif
+            actionBlacklist = ""
+        endif
+
         TTON_Debug.warn("No scene found with all positional filters relaxed: FurnitureType=" + furnType + ", ActionType=" + actionType + ", AnyActionPerformer=" + AnyActionPerformer + ", SceneTagBlacklist=" + SceneTagBlacklist)
         AnyActionType = "sexual"
         sceneId = OLibrary.GetRandomSceneSuperloadCSV(actors, \

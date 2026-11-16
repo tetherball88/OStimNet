@@ -11,6 +11,7 @@
 #include "src/LocationScanService.h"
 #include "src/PulloutService.h"
 #include "src/Config.h"
+#include "src/SexualPhase.h"
 #include "src/ui/ThreadSetupModal.h"
 
 namespace OStimNet::Papyrus::PapyrusFunctions {
@@ -529,13 +530,24 @@ static void RegisterLatentFixed(RE::BSScript::IVirtualMachine* vm,
     // string found (e.g. "missionary", "doggystyle"). Returns "" if no position tag is present.
     RE::BSFixedString GetSexualPositionFromTags(RE::StaticFunctionTag*, std::vector<std::string> tags) {
         for (const std::string& raw : tags) {
-            std::string tag(raw);
+            size_t first = 0;
+            size_t last = raw.size();
+            auto isWs = [](unsigned char c) { return c == ' ' || c == '\t' || c == '\r' || c == '\n'; };
+            while (first < last && isWs(static_cast<unsigned char>(raw[first]))) ++first;
+            while (last > first && isWs(static_cast<unsigned char>(raw[last - 1]))) --last;
+            std::string tag = raw.substr(first, last - first);
             std::transform(tag.begin(), tag.end(), tag.begin(), [](unsigned char c) { return std::tolower(c); });
             std::string resolved;
             if (OStimNavigatorAPI::ResolvePosition(tag, resolved))
                 return RE::BSFixedString(resolved.c_str());
         }
         return RE::BSFixedString("");
+    }
+
+    // Papyrus native: string Function GetActionBlacklistForActivity(string asActivity) global
+    RE::BSFixedString GetActionBlacklistForActivity(RE::StaticFunctionTag*, RE::BSFixedString activity) {
+        std::string blacklist = OStimNet::GetActionBlacklistForActivity(activity.c_str());
+        return RE::BSFixedString(blacklist.c_str());
     }
 
     // Papyrus native: string Function BuildSpectatorAddedEventJson(Actor spectator) global native
@@ -641,6 +653,7 @@ static void RegisterLatentFixed(RE::BSScript::IVirtualMachine* vm,
         vm->RegisterFunction("CheckAndSetActionCooldown", "OStimNet", CheckAndSetActionCooldown);
         vm->RegisterFunction("IsValidPosition", "OStimNet", IsValidPosition);
         vm->RegisterFunction("GetSexualPositionFromTags", "OStimNet", GetSexualPositionFromTags);
+        vm->RegisterFunction("GetActionBlacklistForActivity", "OStimNet", GetActionBlacklistForActivity);
         vm->RegisterFunction("GetThreadIntent", "OStimNet", GetThreadIntent);
         vm->RegisterFunction("GetThreadPhase", "OStimNet", GetThreadPhase);
         vm->RegisterFunction("GetThreadPhaseActivityKeywords", "OStimNet", GetThreadPhaseActivityKeywords);

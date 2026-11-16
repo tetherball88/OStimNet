@@ -1,0 +1,22 @@
+name: tton_virginity_lost
+description: Immediate in-character reaction when an actor loses their virginity during an intimate scene
+eventCriteria:
+  eventType: tton_event
+  schemaConditions:
+    - fieldPath: tton_type
+      operator: equals
+      value: virginity_lost
+      caseSensitive: false
+    - fieldPath: skipTrigger
+      operator: equals
+      value: false
+    - fieldPath: speaker
+      operator: not_equals
+      value: ""
+audience: nearby_npcs
+response:
+  type: direct_narration
+  content: "{% if event_json.virginActorName == originator %}{{ originator }} has just lost their virginity{% if event_json.partnerActorName != \"\" %} to {{ event_json.partnerActorName }}{% endif %}. React immediately in character according to {{ originator }}'s own personality, attitude toward losing their virginity, and the circumstances of the encounter.{% else %}{{ event_json.virginActorName }} has just lost their virginity to {{ originator }}. {{ originator }} reacts in character to realizing this is {{ event_json.virginActorName }}'s first time.{% endif %}"
+enabled: true
+cooldownSeconds: 30
+priority: 9

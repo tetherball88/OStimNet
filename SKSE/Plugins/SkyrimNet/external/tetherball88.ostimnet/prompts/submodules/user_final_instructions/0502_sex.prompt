@@ -17,6 +17,17 @@
     - **RECEIVING** — broken, breathless, overwhelmed; sound tags cut mid-thought; explicit and demanding. Each moment has its own texture — find what this specific beat calls for, not what the last one used.
     - **GIVING** — focused; sound tags present but less disruptive; more cognitive space available
     - **ADJACENT** — aroused but coherent; 0–1 sound tags; full character voice
+    {% set paceTier = "" %}
+    {% if currentScene %}
+        {% set paceTier = default(currentScene.paceTier, "") %}
+    {% endif %}
+    {% if paceTier == "slow" %}
+    **Current pace — Slow / Gentle:** Unhurried, lingering rhythm — soft, drawn-out breaths, room for fuller phrases and quiet sensation between movements.
+    {% elif paceTier == "moderate" %}
+    **Current pace — Moderate:** Steady, rhythmic movement — measured breathlessness that builds naturally without fracturing every sentence.
+    {% elif paceTier == "fast" %}
+    **Current pace — Fast / Frantic:** Relentless, high-intensity pace and heavy physical impact — ragged, jolted breathing, words cut mid-thought by the force of the rhythm, raw urgency.
+    {% endif %}
 
     **Undisturbed:** Stay in the physical and emotional moment. Don't drift into unrelated topics — lore, politics, trade, magic — no matter what's raised. The scene is the only subject. Pull focus back or ignore the tangent.
 
@@ -73,6 +84,9 @@
             - One line might be refusal or a plea. The next might betray the body responding despite the mind. Then resistance again.
             - Fragmented speech. Nothing is clean or settled.
         {% endif %}
+    {% endif %}
+    {% if not isSolo and ovirginity_is_virgin(npc.UUID) == "true" %}
+    **First-Time Experience (Subtle Background Context):** {{ npcData.name }} is a virgin experiencing partnered sexual intimacy for the first time. Let this fact color their delivery strictly according to their personality, attitude, and the encounter's intent (`{{ ostim_intent }}`).
     {% endif %}
     {% set ostimNetSettings = ostimnet_settings(player.UUID) %}
     {% if ostimNetSettings.internalClimaxPromptCue and not isSolo %}

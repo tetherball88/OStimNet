@@ -208,6 +208,21 @@ Function ChangeSexScenePositionExecute(Actor akActor, Actor initiator, string ac
         return
     endif
 
+    if(sexualPosition != "")
+        sexualPosition = OStimNet.GetSexualPositionFromTags(PapyrusUtil.StringSplit(sexualPosition, ","))
+    endif
+
+    if(activity != "" && sexualPosition != "")
+        string actionBlacklist = OStimNet.GetActionBlacklistForActivity(activity)
+        if(actionBlacklist != "" && actionBlacklist != "intercourse" && sexualPosition != "standing")
+            TTON_Debug.debug("ChangeSexScenePosition: clearing non-applicable position '" + sexualPosition + "' for foreplay activity '" + activity + "'.")
+            sexualPosition = ""
+        elseif(actionBlacklist == "intercourse" && sexualPosition != "sixtynine" && sexualPosition != "facesitting" && sexualPosition != "standing" && sexualPosition != "lap" && sexualPosition != "spooning")
+            TTON_Debug.debug("ChangeSexScenePosition: clearing non-applicable position '" + sexualPosition + "' for oral activity '" + activity + "'.")
+            sexualPosition = ""
+        endif
+    endif
+
     int cooldownResult = OStimNet.CheckAndSetActionCooldown("ChangeSexScenePosition", OActorUtil.ToArray(initiator))
     if(cooldownResult == 1)
         TTON_Debug.warn("Action ChangeSexScenePosition is on cooldown for " + TTON_Utils.GetActorName(akActor) + ".")

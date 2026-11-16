@@ -281,6 +281,23 @@ public:
         return false;
     }
 
+    static float GetTotalPlayerCrimeGold() {
+        auto* player = RE::PlayerCharacter::GetSingleton();
+        if (!player) return 0.0f;
+        float total = 0.0f;
+        for (const auto& [faction, gold] : player->GetCrimeValue().crimeGoldMap) {
+            if (faction) {
+                total += gold.violentCur + gold.nonViolentCur;
+            }
+        }
+        return total;
+    }
+
+    float GetPlayerCrimeGoldAtStart(int threadID) const {
+        auto it = _threads.find(threadID);
+        return it != _threads.end() ? it->second.playerCrimeGoldAtStart : 0.0f;
+    }
+
     // Returns the threadID of the thread containing the player character, or nullopt if none.
     std::optional<int> GetPlayerThreadID() const {
         if (g_ostimThreadInterface) {
@@ -434,6 +451,10 @@ public:
         state.actors.formIDs = formIDs;
         state.actors.ptrs   = std::move(ptrs);
         state.actors.names  = std::move(names);
+        if (!state.crimeGoldSnapshotted) {
+            state.playerCrimeGoldAtStart = GetTotalPlayerCrimeGold();
+            state.crimeGoldSnapshotted   = true;
+        }
         return formIDs;
     }
 
@@ -914,6 +935,10 @@ public:
 
         // Copy sexual phase — continuation always inherits the predecessor's phase.
         nw.sexualPhase = old.sexualPhase;
+        if (oldThreadID != newThreadID) {
+            nw.playerCrimeGoldAtStart = old.playerCrimeGoldAtStart;
+            nw.crimeGoldSnapshotted   = old.crimeGoldSnapshotted;
+        }
 
         // Clear override fields — consumed above or irrelevant for same-ID restarts.
         nw.overrideIntent         = Intent::Unset;
@@ -1003,6 +1028,8 @@ private:
         int                     claimToken       = -1;
         std::string             currentPosition;
         int32_t                 currentSpeed     = -1;
+        float                   playerCrimeGoldAtStart = 0.0f;
+        bool                    crimeGoldSnapshotted   = false;
         std::chrono::steady_clock::time_point pendingSince;
 
         // --- sexual phase (nullopt = phases disabled for this thread) ---

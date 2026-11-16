@@ -10,6 +10,9 @@ eventCriteria:
     - fieldPath: skipTrigger
       operator: equals
       value: false
+    - fieldPath: interrupted
+      operator: equals
+      value: false
     - fieldPath: speaker
       operator: not_equals
       value: ""

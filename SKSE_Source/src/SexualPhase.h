@@ -1,7 +1,15 @@
 #pragma once
+#include <algorithm>
+#include <cctype>
+#include <filesystem>
+#include <fstream>
 #include <optional>
 #include <string>
+#include <string_view>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
+#include <nlohmann/json.hpp>
 #include "Config.h"
 #include "api/OStimNavigator_PublicAPI.h"
 
@@ -132,6 +140,155 @@ inline std::optional<SexualPhase> ResolvePreStartOpeningPhase(
     }
 
     return phaseList[startIdx];
+}
+
+// Computes the OStim ActionBlacklistTypes CSV string appropriate for the requested
+// activity keyword(s), preventing higher-phase scenes (which often carry foreplay or
+// oral actions as secondary entries) from matching a foreplay or oral search.
+// Returns "" for intercourse/unrestricted/unrecognized activities.
+inline std::string GetActionBlacklistForActivity(std::string_view activityCsv) {
+    struct ActionPhaseCache {
+        std::unordered_map<std::string, std::unordered_set<std::string>> actionTags;
+        std::unordered_map<std::string, std::string> aliasToCanonical;
+    };
+
+    static const ActionPhaseCache cache = []() {
+        ActionPhaseCache out;
+        auto toLower = [](std::string_view sv) {
+            std::string s(sv);
+            std::transform(s.begin(), s.end(), s.begin(),
+                           [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+            return s;
+        };
+
+        const std::filesystem::path actionsDir("Data/SKSE/Plugins/OStim/actions");
+        std::error_code ec;
+        if (std::filesystem::exists(actionsDir, ec) && std::filesystem::is_directory(actionsDir, ec)) {
+            std::filesystem::recursive_directory_iterator it(
+                actionsDir, std::filesystem::directory_options::skip_permission_denied, ec);
+            for (; !ec && it != std::filesystem::recursive_directory_iterator(); it.increment(ec)) {
+                if (!it->is_regular_file(ec)) continue;
+                const auto& path = it->path();
+                if (toLower(path.extension().string()) != ".json") continue;
+
+                std::ifstream file(path, std::ios::binary);
+                if (!file.is_open()) continue;
+
+                auto j = nlohmann::json::parse(file, nullptr, /*allow_exceptions=*/false);
+                if (j.is_discarded() || !j.is_object()) continue;
+
+                std::string canonical = toLower(path.stem().string());
+                if (canonical.empty()) continue;
+
+                auto& tagSet = out.actionTags[canonical];
+                if (j.contains("tags") && j["tags"].is_array()) {
+                    for (const auto& item : j["tags"]) {
+                        if (item.is_string()) {
+                            std::string tag = toLower(item.get_ref<const std::string&>());
+                            if (!tag.empty()) tagSet.insert(std::move(tag));
+                        }
+                    }
+                }
+                if (j.contains("aliases") && j["aliases"].is_array()) {
+                    for (const auto& item : j["aliases"]) {
+                        if (item.is_string()) {
+                            std::string alias = toLower(item.get_ref<const std::string&>());
+                            if (!alias.empty()) out.aliasToCanonical.try_emplace(std::move(alias), canonical);
+                        }
+                    }
+                }
+            }
+        }
+
+        if (out.actionTags.empty() && ONavGetAllActions) {
+            auto loadFromONav = [&](const char* tagFilter, const char* impliedTag) {
+                const char* raw = ONavGetAllActions(tagFilter);
+                if (!raw || raw[0] == '\0') return;
+                auto arr = nlohmann::json::parse(raw, nullptr, /*allow_exceptions=*/false);
+                if (arr.is_discarded() || !arr.is_array()) return;
+                for (const auto& item : arr) {
+                    if (!item.is_string()) continue;
+                    std::string name = toLower(item.get_ref<const std::string&>());
+                    if (name.empty()) continue;
+                    auto& tagSet = out.actionTags[name];
+                    if (impliedTag && impliedTag[0] != '\0') {
+                        tagSet.insert(impliedTag);
+                    }
+                }
+            };
+            loadFromONav("sexual", nullptr);
+            loadFromONav("oral", "oral");
+            loadFromONav("intercourse", "intercourse");
+        }
+
+        SKSE::log::info("OStimActionPhaseCache: loaded {} action(s) and {} alias(es)",
+                        out.actionTags.size(), out.aliasToCanonical.size());
+        return out;
+    }();
+
+    int maxRank = 0;
+    bool hasOralTaggedForeplay = false;
+
+    size_t start = 0;
+    while (start <= activityCsv.size()) {
+        const size_t comma = activityCsv.find(',', start);
+        std::string_view rawTok = (comma == std::string_view::npos)
+            ? activityCsv.substr(start)
+            : activityCsv.substr(start, comma - start);
+
+        auto isWs = [](char c) { return c == ' ' || c == '\t' || c == '\r' || c == '\n'; };
+        while (!rawTok.empty() && isWs(rawTok.front())) rawTok.remove_prefix(1);
+        while (!rawTok.empty() && isWs(rawTok.back()))  rawTok.remove_suffix(1);
+
+        if (!rawTok.empty()) {
+            std::string tok(rawTok);
+            std::transform(tok.begin(), tok.end(), tok.begin(),
+                           [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+
+            if (tok == "sexual" || tok == "any" || tok == "generic" || tok == "intercourse") {
+                return "";
+            }
+
+            auto aliasIt = cache.aliasToCanonical.find(tok);
+            const std::string& canonical = (aliasIt != cache.aliasToCanonical.end()) ? aliasIt->second : tok;
+
+            auto tagIt = cache.actionTags.find(canonical);
+            if (tagIt != cache.actionTags.end()) {
+                const auto& tags = tagIt->second;
+                if (tags.contains("intercourse")) {
+                    return "";
+                } else if (tags.contains("oral")) {
+                    if (canonical == "lickingnipple" || canonical == "suckingnipple") {
+                        maxRank = std::max(maxRank, 1);
+                        hasOralTaggedForeplay = true;
+                    } else {
+                        maxRank = std::max(maxRank, 2);
+                    }
+                } else {
+                    maxRank = std::max(maxRank, 1);
+                }
+            } else {
+                if (tok == "oral" || tok == "fellatio" || tok == "cunnilingus" || tok == "anilingus") {
+                    maxRank = std::max(maxRank, 2);
+                } else if (tok == "foreplay" || tok == "undressing") {
+                    maxRank = std::max(maxRank, 1);
+                }
+            }
+        }
+
+        if (comma == std::string_view::npos) break;
+        start = comma + 1;
+    }
+
+    if (maxRank == 1) {
+        return hasOralTaggedForeplay
+            ? "fellatio,cunnilingus,anilingus,testicularlicking,intercourse"
+            : "oral,intercourse";
+    }
+    if (maxRank == 2) {
+        return "intercourse";
+    }
+    return "";
 }
 
 }  // namespace OStimNet

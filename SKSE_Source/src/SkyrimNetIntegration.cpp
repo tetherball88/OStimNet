@@ -13,6 +13,7 @@
 #include "ActorUtils.h"
 #include "LocationScanService.h"
 #include "PulloutService.h"
+#include "OVirginityService.h"
 #include "ui/RetryModal.h"
 
 #include <algorithm>
@@ -94,6 +95,22 @@ uint64_t ActorRefIDToUUID(RE::FormID refFormID) {
 
 
 
+std::string ComputeThreadPaceTier(int threadID, bool isSexual) {
+    if (!isSexual || !g_ostimThreadInterface) return "";
+    uint32_t uid = static_cast<uint32_t>(threadID);
+    if (!g_ostimThreadInterface->IsThreadValid(uid) || g_ostimThreadInterface->IsTransition(uid)) return "";
+    if (OStimNet::ThreadDataStore::GetSingleton().GetSexualPhase(threadID) == OStimNet::SexualPhase::Undressing) {
+        return "";
+    }
+    int32_t maxSpeed = g_ostimThreadInterface->GetMaxSpeed(uid);
+    if (maxSpeed <= 0) return "";
+    int32_t currentSpeed = std::clamp(g_ostimThreadInterface->GetCurrentSpeed(uid), 0, maxSpeed);
+    float norm = static_cast<float>(currentSpeed) / static_cast<float>(maxSpeed);
+    if (norm <= 0.25f) return "slow";
+    if (norm >= 0.66f) return "fast";
+    return "moderate";
+}
+
 // Builds the JSON object for a single active scene (shared by ostimnet_active_scenes
 // and ostimnet_actor_scene).
 nlohmann::json BuildSceneJson(const OStimNet::ThreadDataStore::ActiveSceneInfo& scene) {
@@ -102,7 +119,9 @@ nlohmann::json BuildSceneJson(const OStimNet::ThreadDataStore::ActiveSceneInfo& 
     s["description"] = OStimNet::GetSceneDescription(static_cast<uint32_t>(scene.threadID));
     s["intent"]      = OStimNet::IntentToString(OStimNet::ThreadDataStore::GetSingleton().GetIntent(scene.threadID));
     auto sexual      = OStimNet::ThreadDataStore::GetSingleton().GetSexual(scene.threadID);
-    s["isSexual"]    = sexual.value_or(false);
+    bool isSexualVal = sexual.value_or(false);
+    s["isSexual"]    = isSexualVal;
+    s["paceTier"]    = ComputeThreadPaceTier(scene.threadID, isSexualVal);
 
     auto actors = nlohmann::json::array();
     for (auto formID : scene.actorFormIDs) {
@@ -185,6 +204,15 @@ void Register() {
         "Sentences are space-separated. Empty when no cum is applied.",
         [](RE::Actor* actor) -> std::string {
             return OStimNet::GetOCumDescription(actor);
+        });
+
+    RegisterDecorator(
+        "ovirginity_is_virgin",
+        "Returns 'true' if the actor is tracked as a virgin by OVirginity Reflowered, "
+        "'false' if non-virgin, or '' if OVirginity is not installed or the actor is ineligible.",
+        [](RE::Actor* actor) -> std::string {
+            auto val = OStimNet::OVirginityService::GetSingleton().GetCachedVirginity(actor);
+            return val.has_value() ? (*val ? "true" : "false") : "";
         });
 
     RegisterDecorator(
@@ -815,13 +843,14 @@ void Register() {
             j["nextPhaseActions"]    = nextPhase.has_value()
                                            ? getPhaseActionsCsv(*nextPhase)
                                            : "";
+            j["hasVirgin"]           = OStimNet::OVirginityService::GetSingleton().ThreadHasActiveVirgin(threadID);
             return j.dump();
         });
 }
 
 // SanitizeLLMJson is defined in JsonService.h and shared across all translation units.
 
-bool EvaluatePreStartSexualScene(const std::vector<RE::FormID>& participantFormIDs, const std::string& evalId, const std::string& reason, bool forceChat) {
+static bool EvaluatePreStartSexualSceneImpl(const std::vector<RE::FormID>& participantFormIDs, const std::string& evalId, const std::string& reason, bool forceChat) {
     if (!forceChat && SkyrimNetDecisions::IsAvailable()) {
         return SkyrimNetDecisions::EvaluatePreStartSexualScene(
             participantFormIDs, evalId, reason,
@@ -1127,9 +1156,31 @@ bool EvaluatePreStartSexualScene(const std::vector<RE::FormID>& participantFormI
     return queued;
 }
 
-bool EvaluateExternalSexualThread(const std::vector<RE::FormID>& participantFormIDs,
-                                   int threadID,
-                                   bool forceChat) {
+bool EvaluatePreStartSexualScene(const std::vector<RE::FormID>& participantFormIDs, const std::string& evalId, const std::string& reason, bool forceChat) {
+    if (!forceChat && OStimNet::OVirginityService::GetSingleton().IsLoaded()) {
+        OStimNet::OVirginityService::GetSingleton().EnsureActorsResolved(
+            participantFormIDs,
+            [participantFormIDs, evalId, reason]() {
+                if (!EvaluatePreStartSexualSceneImpl(participantFormIDs, evalId, reason, false)) {
+                    nlohmann::json fail;
+                    nlohmann::json orig = nlohmann::json::array();
+                    for (RE::FormID fid : participantFormIDs) {
+                        orig.push_back(static_cast<uint32_t>(fid));
+                    }
+                    fail["originalParticipants"] = std::move(orig);
+                    fail["evalId"] = evalId;
+                    OStimNet::FireModEvent("ostimnet_sexual_evaluation_finished", fail.dump().c_str(), 0.0f);
+                }
+            },
+            false);
+        return true;
+    }
+    return EvaluatePreStartSexualSceneImpl(participantFormIDs, evalId, reason, forceChat);
+}
+
+static bool EvaluateExternalSexualThreadImpl(const std::vector<RE::FormID>& participantFormIDs,
+                                              int threadID,
+                                              bool forceChat) {
     if (!forceChat && SkyrimNetDecisions::IsAvailable()) {
         return SkyrimNetDecisions::EvaluateExternalSexualThread(
             participantFormIDs, threadID,
@@ -1307,6 +1358,21 @@ bool EvaluateExternalSexualThread(const std::vector<RE::FormID>& participantForm
     if (!queued)
         SKSE::log::warn("EvaluateExternalSexualThread: PublicSendCustomPromptToLLM returned false (immediate failure).");
     return queued;
+}
+
+bool EvaluateExternalSexualThread(const std::vector<RE::FormID>& participantFormIDs,
+                                   int threadID,
+                                   bool forceChat) {
+    if (!forceChat && OStimNet::OVirginityService::GetSingleton().IsLoaded()) {
+        OStimNet::OVirginityService::GetSingleton().EnsureActorsResolved(
+            participantFormIDs,
+            [participantFormIDs, threadID]() {
+                EvaluateExternalSexualThreadImpl(participantFormIDs, threadID, false);
+            },
+            false);
+        return true;
+    }
+    return EvaluateExternalSexualThreadImpl(participantFormIDs, threadID, forceChat);
 }
 
 bool EvaluateNonSexualScene(const std::vector<RE::FormID>& participantFormIDs, const std::string& activity, const std::string& intent, RE::FormID initiatorFormID, const std::string& evalId, const std::string& reason, bool forceChat) {
@@ -1520,11 +1586,11 @@ bool EvaluateNonSexualScene(const std::vector<RE::FormID>& participantFormIDs, c
     return queued;
 }
 
-bool EvaluateJoinOngoingSex(RE::FormID joinerFormID,
-                            int threadID,
-                            const std::string& evalId,
-                            const std::string& reason,
-                            bool forceChat) {
+static bool EvaluateJoinOngoingSexImpl(RE::FormID joinerFormID,
+                                       int threadID,
+                                       const std::string& evalId,
+                                       const std::string& reason,
+                                       bool forceChat) {
     if (!forceChat && SkyrimNetDecisions::IsAvailable()) {
         return SkyrimNetDecisions::EvaluateJoinOngoingSex(
             joinerFormID, threadID, evalId, reason,
@@ -1696,12 +1762,48 @@ bool EvaluateJoinOngoingSex(RE::FormID joinerFormID,
     return queued;
 }
 
-bool EvaluateInviteToSex(RE::FormID inviterFormID,
-                         const std::vector<RE::FormID>& inviteeFormIDs,
-                         int threadID,
-                         const std::string& evalId,
-                         const std::string& reason,
-                         bool forceChat) {
+bool EvaluateJoinOngoingSex(RE::FormID joinerFormID,
+                            int threadID,
+                            const std::string& evalId,
+                            const std::string& reason,
+                            bool forceChat) {
+    if (!forceChat && OStimNet::OVirginityService::GetSingleton().IsLoaded()) {
+        std::vector<RE::FormID> allFormIDs;
+        const auto& currentActorPtrs = OStimNet::ThreadDataStore::GetSingleton().GetActorPtrs(threadID);
+        allFormIDs.reserve(currentActorPtrs.size() + 1);
+        for (RE::Actor* a : currentActorPtrs) {
+            if (a) allFormIDs.push_back(a->GetFormID());
+        }
+        if (joinerFormID != 0) allFormIDs.push_back(joinerFormID);
+
+        OStimNet::OVirginityService::GetSingleton().EnsureActorsResolved(
+            allFormIDs,
+            [joinerFormID, threadID, evalId, reason]() {
+                if (!EvaluateJoinOngoingSexImpl(joinerFormID, threadID, evalId, reason, false)) {
+                    nlohmann::json fail;
+                    fail["threadID"] = threadID;
+                    fail["joiner"] = static_cast<uint32_t>(joinerFormID);
+                    fail["evalId"] = evalId;
+                    nlohmann::json cur = nlohmann::json::array();
+                    for (RE::Actor* a : OStimNet::ThreadDataStore::GetSingleton().GetActorPtrs(threadID)) {
+                        if (a) cur.push_back(static_cast<uint32_t>(a->GetFormID()));
+                    }
+                    fail["currentParticipants"] = std::move(cur);
+                    OStimNet::FireModEvent("ostimnet_join_sex_evaluation_finished", fail.dump().c_str(), 0.0f);
+                }
+            },
+            false);
+        return true;
+    }
+    return EvaluateJoinOngoingSexImpl(joinerFormID, threadID, evalId, reason, forceChat);
+}
+
+static bool EvaluateInviteToSexImpl(RE::FormID inviterFormID,
+                                    const std::vector<RE::FormID>& inviteeFormIDs,
+                                    int threadID,
+                                    const std::string& evalId,
+                                    const std::string& reason,
+                                    bool forceChat) {
     if (!forceChat && SkyrimNetDecisions::IsAvailable()) {
         return SkyrimNetDecisions::EvaluateInviteToSex(
             inviterFormID, inviteeFormIDs, threadID, evalId, reason,
@@ -1888,6 +1990,49 @@ bool EvaluateInviteToSex(RE::FormID inviterFormID,
     if (!queued)
         SKSE::log::warn("EvaluateInviteToSex: PublicSendCustomPromptToLLM returned false (immediate failure).");
     return queued;
+}
+
+bool EvaluateInviteToSex(RE::FormID inviterFormID,
+                         const std::vector<RE::FormID>& inviteeFormIDs,
+                         int threadID,
+                         const std::string& evalId,
+                         const std::string& reason,
+                         bool forceChat) {
+    if (!forceChat && OStimNet::OVirginityService::GetSingleton().IsLoaded()) {
+        std::vector<RE::FormID> allFormIDs;
+        const auto& currentActorPtrs = OStimNet::ThreadDataStore::GetSingleton().GetActorPtrs(threadID);
+        allFormIDs.reserve(currentActorPtrs.size() + 1 + inviteeFormIDs.size());
+        for (RE::Actor* a : currentActorPtrs) {
+            if (a) allFormIDs.push_back(a->GetFormID());
+        }
+        if (inviterFormID != 0) allFormIDs.push_back(inviterFormID);
+        allFormIDs.insert(allFormIDs.end(), inviteeFormIDs.begin(), inviteeFormIDs.end());
+
+        OStimNet::OVirginityService::GetSingleton().EnsureActorsResolved(
+            allFormIDs,
+            [inviterFormID, inviteeFormIDs, threadID, evalId, reason]() {
+                if (!EvaluateInviteToSexImpl(inviterFormID, inviteeFormIDs, threadID, evalId, reason, false)) {
+                    nlohmann::json fail;
+                    fail["threadID"] = threadID;
+                    fail["inviter"] = static_cast<uint32_t>(inviterFormID);
+                    fail["evalId"] = evalId;
+                    nlohmann::json inv = nlohmann::json::array();
+                    for (RE::FormID fid : inviteeFormIDs) {
+                        inv.push_back(static_cast<uint32_t>(fid));
+                    }
+                    fail["invitees"] = std::move(inv);
+                    nlohmann::json cur = nlohmann::json::array();
+                    for (RE::Actor* a : OStimNet::ThreadDataStore::GetSingleton().GetActorPtrs(threadID)) {
+                        if (a) cur.push_back(static_cast<uint32_t>(a->GetFormID()));
+                    }
+                    fail["currentParticipants"] = std::move(cur);
+                    OStimNet::FireModEvent("ostimnet_invite_sex_evaluation_finished", fail.dump().c_str(), 0.0f);
+                }
+            },
+            false);
+        return true;
+    }
+    return EvaluateInviteToSexImpl(inviterFormID, inviteeFormIDs, threadID, evalId, reason, forceChat);
 }
 
 bool EvaluateLocationScan(const std::string& contextJson,

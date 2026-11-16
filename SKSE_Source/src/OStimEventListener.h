@@ -13,6 +13,7 @@
 #include "OCumOverlayReader.h"
 #include "ScheduledEvalService.h"
 #include "PulloutService.h"
+#include "OVirginityService.h"
 #include "ConfirmationModal.h"
 #include "ui/ThreadSetupModal.h"
 namespace OStimNet {
@@ -85,6 +86,7 @@ public:
         ThreadDataStore::GetSingleton().ClearAll();
         ScheduledEvalService::GetSingleton().Reset();
         PulloutService::GetSingleton().Reset();
+        OVirginityService::GetSingleton().Reset();
         ConfirmationModal::GetSingleton().Reset();
         SKSE::log::info("OStimEventListener: reset on game load.");
     }
@@ -95,7 +97,13 @@ public:
         _suppressNextSpeedChange.erase(threadID);
         _skipNextSceneTrigger.erase(threadID);
         ThreadDataStore::GetSingleton().ClearThread(threadID);
+        OVirginityService::GetSingleton().ClearThread(threadID);
         SKSE::log::info("OStimEventListener: thread {} cancelled and cleared", threadID);
+    }
+
+    /// Suppresses the next scene-change narration trigger for `threadID` (e.g. after virginity loss).
+    void MarkSkipNextSceneTrigger(int threadID) {
+        _skipNextSceneTrigger.insert(threadID);
     }
 
 
@@ -110,11 +118,13 @@ protected:
         if (!event) return RE::BSEventNotifyControl::kContinue;
 
         const std::string name(event->eventName);
+        const bool isVirginityLost = (name.rfind("ovirginity_lost", 0) == 0);
         if (name != "ostim_thread_start" &&
             name != "ostim_thread_scenechanged" &&
             name != "ostim_thread_speedchanged" &&
             name != "ostim_actor_orgasm" &&
-            name != "ostim_thread_end") {
+            name != "ostim_thread_end" &&
+            !isVirginityLost) {
             return RE::BSEventNotifyControl::kContinue;
         }
 
@@ -123,7 +133,7 @@ protected:
         const RE::FormID senderID = event->sender ? event->sender->GetFormID() : 0;
 
         if (auto* taskIF = SKSE::GetTaskInterface()) {
-            taskIF->AddTask([this, name, numArg, strArg, senderID]() {
+            taskIF->AddTask([this, name, numArg, strArg, senderID, isVirginityLost]() {
                 if (name == "ostim_thread_start") {
                     HandleStart(numArg);
                 } else if (name == "ostim_thread_scenechanged") {
@@ -136,6 +146,8 @@ protected:
                     OnClimax(numArg, strArg.c_str(), actor);
                 } else if (name == "ostim_thread_end") {
                     HandleEnd(numArg);
+                } else if (isVirginityLost) {
+                    OVirginityService::GetSingleton().OnOVirginityLostModEvent();
                 }
             });
         }
@@ -228,6 +240,7 @@ private:
             SKSE::log::info("OStimEventListener: thread {} is continuation of thread {}", threadID, sourceID);
             ThreadDataStore::GetSingleton().CopyStateForContinuation(sourceID, threadID, preUpdateFormIDs);
             OnThreadContinued(sourceID, threadID);
+            OVirginityService::GetSingleton().TransferForContinuation(sourceID, threadID, newActors);
             // Carry non-participant spectators over; drop the ones who just joined the scene.
             for (auto [specID, targetID] : ThreadRegistry::GetSingleton().TransferSpectatorsForContinuation(sourceID, threadID, newActors))
                 DebounceQueue::FireRemoveSpectatorEvent(specID, targetID, sourceID);
@@ -243,6 +256,7 @@ private:
         // deferral, so the events don't slip through while we wait for Papyrus metadata.
         _suppressNextSceneChange.insert(threadID);
         _suppressNextSpeedChange.insert(threadID);
+        OVirginityService::GetSingleton().OnThreadStart(threadID, newActors);
 
         // --- Fast path: ClaimThread/ConfirmThread already arrived (Phase-2 protocol) ---
         // ConfirmClaim binds a pre-allocated claim token to this threadID.
@@ -287,14 +301,21 @@ private:
 
     // Called when ostim_thread_end fires.
     void HandleEnd(int threadID) {
+        const bool isCont = ThreadDataStore::GetSingleton().IsContinuation(threadID);
+        const std::string interruptReason = isCont ? "" : DetectThreadInterruptionReason(threadID);
+
         // Capture formIDs before marking the thread ended.
-        // Record as pending continuation if the thread had \u22652 actors.
+        // Record as pending continuation if the thread had \u22652 actors, unless interrupted.
         // Covers both explicit OStimNet continuations and the fallback
         // FormID-overlap detection for non-OStimNet continuations.
-        auto formIDs = ThreadRegistry::GetSingleton().GetActorFormIDs(threadID);
-        if (formIDs.size() >= 2 || (!formIDs.empty() && ThreadDataStore::GetSingleton().IsContinuation(threadID))) {
-            _pendingContinuation = ContinuationPending{
-                threadID, std::move(formIDs), std::chrono::steady_clock::now()};
+        if (interruptReason.empty()) {
+            auto formIDs = ThreadRegistry::GetSingleton().GetActorFormIDs(threadID);
+            if (formIDs.size() >= 2 || (!formIDs.empty() && isCont)) {
+                _pendingContinuation = ContinuationPending{
+                    threadID, std::move(formIDs), std::chrono::steady_clock::now()};
+            }
+        } else {
+            _pendingContinuation.reset();
         }
         ThreadRegistry::GetSingleton().SetPhase(threadID, ThreadPhase::Ended);
         if (!ThreadRegistry::GetSingleton().HasActiveThreads()) {
@@ -306,14 +327,14 @@ private:
         // for a dead OStim thread.
         ScheduledEvalService::GetSingleton().OnThreadEnd(threadID);
 
-        if (ThreadDataStore::GetSingleton().IsContinuation(threadID)) {
+        if (isCont) {
             SKSE::log::info("OStimEventListener: thread {} end suppressed (continuation)", threadID);
             // Do not clear — data is preserved for CopyStateForContinuation in HandleStart.
             // Spectators are kept too: HandleStart transfers them to the new thread, or the
             // pending-continuation expiry releases them if no continuation arrives.
         } else {
-            SKSE::log::info("OStimEventListener: thread {} ended", threadID);
-            OnThreadEnd(threadID);
+            SKSE::log::info("OStimEventListener: thread {} ended (interruptReason='{}')", threadID, interruptReason);
+            OnThreadEnd(threadID, interruptReason);
             ThreadDataStore::GetSingleton().ClearThread(threadID);
         }
     }
@@ -345,6 +366,7 @@ private:
         } else {
             SKSE::log::info("OStimEventListener: thread {} ONavIsIdle/ONavIsIntro/ONavIsTransit not resolved or sceneID null, skipping filter", threadID);
         }
+        OVirginityService::GetSingleton().OnSceneChanged(threadID, sceneID ? sceneID : "");
         _dq.PostSceneChange(threadID, sceneID ? sceneID : "");
         SKSE::log::info("OStimEventListener: thread {} scene change pending ({})", threadID, sceneID ? sceneID : "");
     }
@@ -534,22 +556,94 @@ private:
         FireModEvent("ostimnet_climax", json.c_str(), static_cast<float>(threadID), speaker);
     }
 
+    // Detects whether an ending OStim thread was forcibly interrupted by combat or arrest
+    // rather than stopping naturally. Returns "arrest", "combat", or "".
+    std::string DetectThreadInterruptionReason(int threadID) const {
+        auto& store = ThreadDataStore::GetSingleton();
+        const auto& actorPtrs = store.GetActorPtrs(threadID);
+
+        std::unordered_set<RE::FormID> participantIDs;
+        for (RE::Actor* a : actorPtrs) {
+            if (a) participantIDs.insert(a->GetFormID());
+        }
+
+        // Arrest checks take priority so violent/resisted bounty arrests classify as "arrest".
+        for (RE::Actor* a : actorPtrs) {
+            if (!a) continue;
+            if (auto* proc = a->GetActorRuntimeData().currentProcess; proc && proc->IsArrested()) {
+                return "arrest";
+            }
+        }
+
+        if (store.IsPlayerThread(threadID) &&
+            ThreadDataStore::GetTotalPlayerCrimeGold() > store.GetPlayerCrimeGoldAtStart(threadID) + 0.5f) {
+            return "arrest";
+        }
+
+        std::vector<RE::Actor*> activeHostiles;
+        if (auto* pl = RE::ProcessLists::GetSingleton()) {
+            for (auto& handle : pl->highActorHandles) {
+                if (!handle) continue;
+                auto otherPtr = handle.get();
+                RE::Actor* other = otherPtr.get();
+                if (!other || participantIDs.contains(other->GetFormID()) || other->IsDead()) continue;
+
+                if (other->IsGuard()) {
+                    if (auto* proc = other->GetActorRuntimeData().currentProcess; proc && proc->arrestTarget != 0) {
+                        RE::TESObjectREFRPtr targetRef;
+                        if (RE::TESObjectREFR::LookupByHandle(proc->arrestTarget, targetRef) && targetRef &&
+                            participantIDs.contains(targetRef->GetFormID())) {
+                            return "arrest";
+                        }
+                    }
+                }
+                if (other->IsInCombat()) {
+                    activeHostiles.push_back(other);
+                }
+            }
+        }
+
+        for (RE::Actor* a : actorPtrs) {
+            if (!a) continue;
+            if (a->IsInCombat() || a->IsDead() || a->IsInBleedout()) {
+                return "combat";
+            }
+        }
+
+        for (RE::Actor* hostile : activeHostiles) {
+            for (RE::Actor* participant : actorPtrs) {
+                if (participant && hostile->IsCombatTarget(participant)) {
+                    return "combat";
+                }
+            }
+        }
+
+        return "";
+    }
+
     // Fired when any OStim thread ends (after continuation check).
     // Fires papyrus mod event: ostimnet_stop
     //   numArg = threadID  |  strArg = ""  |  sender = None
-    void OnThreadEnd(int threadID) {
-        SKSE::log::info("OStimEventListener: thread {} ended", threadID);
+    void OnThreadEnd(int threadID, const std::string& interruptReason = "") {
+        SKSE::log::info("OStimEventListener: thread {} ended (interruptReason='{}')", threadID, interruptReason);
         PulloutService::GetSingleton().OnThreadEnd(threadID);
+        OVirginityService::GetSingleton().OnThreadEnd(threadID);
         _suppressNextSceneChange.erase(threadID);  // clean up if thread ended before first scene change
         _suppressNextSpeedChange.erase(threadID);   // clean up if thread ended before first speed change
         _skipNextSceneTrigger.erase(threadID);     // clean up if thread ended before the marked scene change
-        _dq.FlushSceneChange(threadID);
-        _dq.FlushClimax(threadID);
-        _dq.FlushSpeedChange(threadID);
+        if (!interruptReason.empty()) {
+            _dq.CancelSceneChange(threadID);
+            _dq.FlushClimax(threadID);
+            _dq.CancelSpeedChange(threadID);
+        } else {
+            _dq.FlushSceneChange(threadID);
+            _dq.FlushClimax(threadID);
+            _dq.FlushSpeedChange(threadID);
+        }
         for (auto [specID, targetID] : ThreadRegistry::GetSingleton().TakeSpectators(threadID))
             DebounceQueue::FireRemoveSpectatorEvent(specID, targetID, threadID);
         RE::Actor* speaker = SelectSpeakerActor(threadID, Config::GetSingleton().CommentGenderPriority());
-        std::string json = EventPayloadBuilder::BuildStop(threadID, speaker);
+        std::string json = EventPayloadBuilder::BuildStop(threadID, speaker, interruptReason);
         FireModEvent("ostimnet_stop", json.c_str(), static_cast<float>(threadID), speaker);
     }
 };

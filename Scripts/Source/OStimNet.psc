@@ -201,6 +201,10 @@ bool Function IsValidPosition(string asPosition) global native
 ; string found (e.g. "missionary", "doggystyle"). Returns "" if no position tag is present.
 string Function GetSexualPositionFromTags(string[] tags) global native
 
+; Returns comma-separated OStim action types/tags to blacklist so higher-phase scenes
+; do not match when searching for a foreplay or oral activity. Returns "" for intercourse/unrestricted.
+string Function GetActionBlacklistForActivity(string asActivity) global native
+
 ; Builds a tton_event JSON payload for a spectator_added event.
 ; threadID is resolved from the spectator's tracked entry; msg is built from actor display names;
 ; skipTrigger is taken from the plugin's mute setting. Returns "" if the spectator is not tracked.

@@ -1,0 +1,17 @@
+name: tton_virginity_lost_diary
+description: Private diary reflection after an encounter where virginity was lost
+eventCriteria:
+  eventType: tton_event
+  schemaConditions:
+    - fieldPath: tton_type
+      operator: equals
+      value: virginity_lost_diary
+      caseSensitive: false
+audience: originator
+response:
+  type: diary_entry
+  content: "{% if event_json.virginIsOriginator %}{{ event_json.msg }} Write in your private diary in your own voice about losing your virginity{% if event_json.partnerActorName != \"\" %} to {{ event_json.partnerActorName }}{% endif %} and how you actually feel about the experience and them based on your personality.{% else %}{{ event_json.msg }} Write in your private diary in your own voice about being {{ event_json.virginActorName }}'s first sexual partner and what, if anything, it meant to you.{% endif %}"
+  targetScope: triggering_actor
+enabled: false
+cooldownSeconds: 0
+priority: 5

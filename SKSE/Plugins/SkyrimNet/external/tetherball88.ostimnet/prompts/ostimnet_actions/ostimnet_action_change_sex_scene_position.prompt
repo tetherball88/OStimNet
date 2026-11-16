@@ -8,4 +8,4 @@
     You can decide to skip next phase and select any actions from available activities.
 {% endif %}
 Available activities: {{ostimnet_available_sexual_actions(npc.UUID)}}
-Available positions: {{ostimnet_available_positions(npc.UUID)}}
+Available positions (for intercourse scenes, or standing/sixtynine/facesitting; leave sexualPosition empty for other foreplay/oral activities): {{ostimnet_available_positions(npc.UUID)}}

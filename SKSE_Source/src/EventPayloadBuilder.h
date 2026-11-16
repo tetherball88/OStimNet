@@ -177,9 +177,24 @@ inline std::string BuildClimax(int threadID, const DebounceQueue::ClimaxBatchDat
 
 // --- ostimnet_stop ----------------------------------------------------------
 
-inline std::string BuildStop(int threadID, RE::Actor* speaker = nullptr) {
+inline std::string BuildStop(int threadID, RE::Actor* speaker = nullptr, const std::string& interruptReason = "") {
+    auto& store = ThreadDataStore::GetSingleton();
     std::string speakerName = ThreadDataStore::GetActorDisplayName(speaker, "");
-    return BuildBaseEventJson("sex_stop", "", threadID, Config::GetSingleton().IsMuted(), speakerName).dump();
+    const bool interrupted = !interruptReason.empty();
+    std::string msg;
+    if (interrupted) {
+        std::string names = ThreadDataStore::FormatActorNames(store.GetActorPtrs(threadID));
+        if (names.empty()) names = "participants";
+        if (interruptReason == "arrest") {
+            msg = "The intimate encounter involving " + names + " was abruptly cut short by crime and guard intervention.";
+        } else {
+            msg = "The intimate encounter involving " + names + " was abruptly interrupted by sudden combat and danger.";
+        }
+    }
+    nlohmann::json j = BuildBaseEventJson("sex_stop", msg, threadID, Config::GetSingleton().IsMuted(), speakerName);
+    j["interrupted"]     = interrupted;
+    j["interruptReason"] = interruptReason;
+    return j.dump();
 }
 
 // --- ostimnet_spectator_added -----------------------------------------------
@@ -259,6 +274,70 @@ inline std::string BuildPullout(int threadID, RE::Actor* giver, RE::Actor* recei
         msg = "Pulled out just before climaxing inside.";
     }
     return BuildBaseEventJson("pullout", msg, threadID, Config::GetSingleton().IsMuted(), giverName).dump();
+}
+
+// --- ostimnet_virginity_lost ------------------------------------------------
+namespace detail {
+inline const char* GetPossessivePronoun(RE::Actor* actor) {
+    if (actor) {
+        if (auto* base = actor->GetActorBase()) {
+            auto sex = base->GetSex();
+            if (sex == RE::SEX::kFemale) return "her";
+            if (sex == RE::SEX::kMale) return "his";
+        }
+    }
+    return "their";
+}
+}  // namespace detail
+
+inline std::string BuildVirginityLost(int threadID, RE::Actor* virginActor, RE::Actor* partnerActor, RE::Actor* speaker) {
+    std::string virginName = ThreadDataStore::GetActorDisplayName(virginActor, "Someone");
+    std::string partnerName = partnerActor ? ThreadDataStore::GetActorDisplayName(partnerActor, "") : "";
+    std::string speakerName = ThreadDataStore::GetActorDisplayName(speaker, "");
+
+    bool isFemaleVirgin = false;
+    if (virginActor) {
+        if (auto* base = virginActor->GetActorBase()) {
+            isFemaleVirgin = (base->GetSex() == RE::SEX::kFemale);
+        }
+    }
+    const char* possessive = detail::GetPossessivePronoun(virginActor);
+
+    std::string msg = !partnerName.empty()
+        ? (virginName + " just lost " + possessive + " virginity to " + partnerName + ".")
+        : (virginName + " just lost " + possessive + " virginity.");
+
+    nlohmann::json j = BuildBaseEventJson("virginity_lost", msg, threadID, Config::GetSingleton().IsMuted(), speakerName);
+    j["virginActorName"] = virginName;
+    j["partnerActorName"] = partnerName;
+    j["isFemaleVirgin"] = isFemaleVirgin;
+    return j.dump();
+}
+
+// --- ostimnet_virginity_lost_diary ------------------------------------------
+inline std::string BuildVirginityLostDiary(int threadID, RE::Actor* virginActor, RE::Actor* partnerActor, RE::Actor* diaryActor) {
+    std::string virginName = ThreadDataStore::GetActorDisplayName(virginActor, "Someone");
+    std::string partnerName = partnerActor ? ThreadDataStore::GetActorDisplayName(partnerActor, "") : "";
+    std::string diaryName = ThreadDataStore::GetActorDisplayName(diaryActor, "");
+
+    const char* possessive = detail::GetPossessivePronoun(virginActor);
+    bool virginIsOriginator = (virginActor && diaryActor && virginActor->GetFormID() == diaryActor->GetFormID());
+
+    std::string msg;
+    if (virginIsOriginator) {
+        msg = !partnerName.empty()
+            ? (virginName + " lost " + possessive + " virginity to " + partnerName + ".")
+            : (virginName + " lost " + possessive + " virginity.");
+    } else {
+        std::string actorLabel = !diaryName.empty() ? diaryName : (!partnerName.empty() ? partnerName : "Someone");
+        msg = actorLabel + " was " + virginName + "'s very first sexual partner.";
+    }
+
+    nlohmann::json j = BuildBaseEventJson("virginity_lost_diary", msg, threadID, Config::GetSingleton().IsMuted(), diaryName);
+    j["virginActorName"] = virginName;
+    j["partnerActorName"] = partnerName;
+    j["virginIsOriginator"] = virginIsOriginator;
+    return j.dump();
 }
 
 }  // namespace OStimNet::EventPayloadBuilder

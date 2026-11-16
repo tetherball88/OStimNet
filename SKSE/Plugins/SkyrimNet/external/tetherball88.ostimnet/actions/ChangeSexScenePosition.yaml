@@ -18,7 +18,7 @@ parameterMapping:
     optional: true
   - type: dynamic
     name: sexualPosition
-    description: Sexual position from Available positions, exact keyword match required. Leave empty to keep current position.
+    description: Sexual position from Available positions, exact keyword match required. Leave empty to keep current position, or when selecting a foreplay activity (unless requesting standing).
     optional: true
   - type: dynamic
     name: reasoning

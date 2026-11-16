@@ -194,23 +194,42 @@ EndFunction
 Function OStimChangeScene(Actor akActor, string activity, string sexualPosition, string intent) global
     int ThreadID = OActor.GetSceneID(akActor)
     string furn = OThread.GetFurnitureType(ThreadID)
-    bool forceFurn = furn != ""
+    if(furn == "none" || furn == "floor")
+        furn = ""
+    endif
+    bool forceFurn = true
 
     Actor[] actors = OThread.GetActors(ThreadID)
     if(activity == "")
         string currentSceneId = OThread.GetScene(ThreadID)
-        int[] allActivities = OMetadata.FindAllActionsCSV(currentSceneId, "sexual")
-        int selectedActivity = Utility.RandomInt(0, allActivities.Length - 1)
-        activity = OMetadata.GetActionType(currentSceneId, allActivities[selectedActivity])
+        int[] allActivities = OMetadata.FindAllActionsCSV(currentSceneId, "intercourse")
+        if(allActivities.Length == 0)
+            allActivities = OMetadata.FindAllActionsCSV(currentSceneId, "fellatio,cunnilingus,anilingus,testicularlicking")
+        endif
+        if(allActivities.Length == 0)
+            allActivities = OMetadata.FindAllActionsCSV(currentSceneId, "sexual")
+        endif
+        if(allActivities.Length > 0)
+            int selectedActivity = Utility.RandomInt(0, allActivities.Length - 1)
+            activity = OMetadata.GetActionType(currentSceneId, allActivities[selectedActivity])
+        endif
     endif
-    if(sexualPosition == "")
+    string actionBlacklist = ""
+    if(activity != "")
+        actionBlacklist = OStimNet.GetActionBlacklistForActivity(activity)
+    endif
+    if(sexualPosition == "" && actionBlacklist == "")
         string[] tags = OMetadata.GetSceneTags(OThread.GetScene(ThreadID))
         sexualPosition = OStimNet.GetSexualPositionFromTags(tags)
     endif
     if(intent == "")
         intent = OStimNet.GetThreadIntent(ThreadID)
     endif
-    bool isFemdom = OStimNet.GetMainActors(ThreadID)[0].GetActorBase().GetSex() == 1
+    bool isFemdom = false
+    Actor[] mainActors = OStimNet.GetMainActors(ThreadID)
+    if(mainActors.Length > 0 && mainActors[0])
+        isFemdom = mainActors[0].GetActorBase().GetSex() == 1
+    endif
     string sceneId = TTON_SceneSearch.SceneSexSearch(actors, forceFurn, furn, activity, sexualPosition, intent, false, isFemdom, ThreadID == 0, false)
     ; try to navigate to new scene
     ; if no scene with requested action type skup this scene change

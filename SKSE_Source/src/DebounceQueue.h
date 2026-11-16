@@ -210,6 +210,13 @@ public:
         _speedChangeCb(threadID, speed);
     }
 
+    // Cancel any pending speed change for a thread without firing it.
+    void CancelSpeedChange(int threadID) {
+        std::lock_guard<std::mutex> lk(_mutex);
+        _pendingSpeed.erase(threadID);
+        CancelUnderLock({EventType::SpeedChange, threadID});
+    }
+
     // =========================================================================
     // Cancel all pending debounced events for a thread (no firing).
     // Call from HandleEnd when you want to suppress stale events without firing.

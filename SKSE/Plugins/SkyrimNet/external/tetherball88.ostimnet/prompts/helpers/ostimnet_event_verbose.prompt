@@ -54,28 +54,36 @@
 {% else if tton_type == "climax" %}
     {{msg}}
 {% else if tton_type == "sex_stop" %}
-    {% if not secondaryActorNames or secondaryActorNames == "" or secondaryActorNames == "someone" %}
-        {% if isSexual %}
-            Solo sexual activity of {{mainActorNames}} has finished. Participant returned to their state before encounter, they don't participate in any sexual activities at this moment. Their dressed state returned to initial state.
+    {% if default(interrupted, false) %}
+        {% if interruptReason == "arrest" %}
+            The intimate encounter involving {{mainActorNames}}{% if secondaryActorNames and secondaryActorNames != "" and secondaryActorNames != "someone" %} and {{secondaryActorNames}}{% endif %} was abruptly broken up by crime and guard intervention before finishing. Participants hastily dressed and are no longer in any intimate activity.
         {% else %}
-            Intimate activity of {{mainActorNames}} has finished. Participant returned to their state before encounter.
+            The intimate encounter involving {{mainActorNames}}{% if secondaryActorNames and secondaryActorNames != "" and secondaryActorNames != "someone" %} and {{secondaryActorNames}}{% endif %} was abruptly interrupted mid-act by sudden combat and danger. Participants broke apart immediately, returned to their dressed state, and are dealing with the threat.
         {% endif %}
-    {% else if isSexual %}
-      Sexual encounter between {{mainActorNames}} and {{secondaryActorNames}} has finished. Participants returned to their state before encounter, they don't participate in any sexualactivities at this moment. Their dressed state returned to initial state.
-      {% if intent == "dom" %}
-        The dominance and submission between {{mainActorNames}} and {{secondaryActorNames}} existed within that encounter and ended with it. They return to themselves now, as equals.
-      {% endif %}
     {% else %}
-      {% if intent == "platonic" %}
-        Friendly platonic activity has finished. There is no platonic activity between {{mainActorNames}} and {{secondaryActorNames}} anymore at this moment.
-      {% else if intent == "romantic" %}
-        Romantic activity has finished. There is no romantic activity between {{mainActorNames}} and {{secondaryActorNames}} anymore at this moment.
-      {% else if intent == "lustful" %}
-        Sensual physical activity has finished. There is no ongoing physical activity between {{mainActorNames}} and {{secondaryActorNames}} anymore at this moment.
-      {% else if intent == "transactional" %}
-        Transactional physical activity has finished. There is no ongoing physical activity between {{mainActorNames}} and {{secondaryActorNames}} anymore at this moment.
-      {% endif %}
-      The encounter is fully concluded and should not be revisited or re-initiated unless actors explicitly and unambiguously propose it again. Do not use StartNewSex or StartCareScene based on prior encounter history alone.
+        {% if not secondaryActorNames or secondaryActorNames == "" or secondaryActorNames == "someone" %}
+            {% if isSexual %}
+                Solo sexual activity of {{mainActorNames}} has finished. Participant returned to their state before encounter, they don't participate in any sexual activities at this moment. Their dressed state returned to initial state.
+            {% else %}
+                Intimate activity of {{mainActorNames}} has finished. Participant returned to their state before encounter.
+            {% endif %}
+        {% else if isSexual %}
+          Sexual encounter between {{mainActorNames}} and {{secondaryActorNames}} has finished. Participants returned to their state before encounter, they don't participate in any sexualactivities at this moment. Their dressed state returned to initial state.
+          {% if intent == "dom" %}
+            The dominance and submission between {{mainActorNames}} and {{secondaryActorNames}} existed within that encounter and ended with it. They return to themselves now, as equals.
+          {% endif %}
+        {% else %}
+          {% if intent == "platonic" %}
+            Friendly platonic activity has finished. There is no platonic activity between {{mainActorNames}} and {{secondaryActorNames}} anymore at this moment.
+          {% else if intent == "romantic" %}
+            Romantic activity has finished. There is no romantic activity between {{mainActorNames}} and {{secondaryActorNames}} anymore at this moment.
+          {% else if intent == "lustful" %}
+            Sensual physical activity has finished. There is no ongoing physical activity between {{mainActorNames}} and {{secondaryActorNames}} anymore at this moment.
+          {% else if intent == "transactional" %}
+            Transactional physical activity has finished. There is no ongoing physical activity between {{mainActorNames}} and {{secondaryActorNames}} anymore at this moment.
+          {% endif %}
+          The encounter is fully concluded and should not be revisited or re-initiated unless actors explicitly and unambiguously propose it again. Do not use StartNewSex or StartCareScene based on prior encounter history alone.
+        {% endif %}
     {% endif %}
 {% else if tton_type == "sex_continue_thread" %}
     {{msg}}
@@ -88,6 +96,8 @@
 {% else if tton_type == "partner_near_edge" %}
     {{msg}}
 {% else if tton_type == "pullout" %}
+    {{msg}}
+{% else if tton_type == "virginity_lost" %}
     {{msg}}
 {% else if tton_type == "intent_changed" %}
     {% if intent == "romantic" %}
