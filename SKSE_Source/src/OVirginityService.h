@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <chrono>
 #include <functional>
 #include <mutex>
@@ -23,8 +24,13 @@ public:
         return instance;
     }
 
+    /// Resolves and caches `OVirginityQuest` and `ActorTypeNPC` once on `kDataLoaded`.
+    void Initialize();
+
     /// Returns true if OVirginity.esp (`OVirginityQuest`) is loaded in the active game.
-    bool IsLoaded() const;
+    bool IsLoaded() const noexcept {
+        return _quest.load(std::memory_order_acquire) != nullptr;
+    }
 
     /// Returns cached virginity state for an eligible actor (`true` = virgin, `false` = non-virgin),
     /// or `std::nullopt` if OVirginity is unavailable, the actor is ineligible, or not yet cached.
@@ -90,9 +96,11 @@ private:
         std::string sceneID;
     };
 
-    static bool IsActorEligible(RE::Actor* actor);
-    static RE::TESQuest* GetOVirginityQuest();
+    bool IsActorEligible(RE::Actor* actor) const;
     bool IsActorInTrackedThread(RE::FormID formID) const;
+
+    std::atomic<RE::TESQuest*> _quest{nullptr};
+    std::atomic<RE::BGSKeyword*> _npcKeyword{nullptr};
 
     mutable std::shared_mutex _cacheMutex;
     std::unordered_map<RE::FormID, CacheEntry> _cache;

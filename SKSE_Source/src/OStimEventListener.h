@@ -605,7 +605,8 @@ private:
 
         for (RE::Actor* a : actorPtrs) {
             if (!a) continue;
-            if (a->IsInCombat() || a->IsDead() || a->IsInBleedout()) {
+            const auto* actorState = a->AsActorState();
+            if (a->IsInCombat() || a->IsDead() || (actorState && actorState->IsBleedingOut())) {
                 return "combat";
             }
         }

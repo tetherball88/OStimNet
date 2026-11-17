@@ -14,6 +14,7 @@
 #include "ThreadRegistry.h"
 #include "api/OstimNG-API-Thread.h"
 #include "api/SkyrimNet_PublicAPI.h"
+#include "ui/SessionEpoch.h"
 
 namespace OStimNet {
 
@@ -25,15 +26,12 @@ constexpr auto kResolveTimeout = std::chrono::milliseconds(1500);
 struct BatchState {
     std::atomic<int> remaining{0};
     std::atomic<bool> finished{false};
+    UI::SessionEpoch expectedEpoch{0};
     std::function<void()> onReady;
 
     void FinishOnce() {
         if (!finished.exchange(true) && onReady) {
-            if (auto* taskIF = SKSE::GetTaskInterface()) {
-                taskIF->AddTask(onReady);
-            } else {
-                onReady();
-            }
+            UI::AddEpochTask(expectedEpoch, onReady);
         }
     }
 };
@@ -69,23 +67,22 @@ void DispatchRegisterEvent(const std::string& jsonStr, RE::Actor* speaker, RE::A
     if (!speaker) return;
     RE::FormID speakerID = speaker->GetFormID();
     RE::FormID targetID = target ? target->GetFormID() : 0;
+    const auto expectedEpoch = UI::GetSessionEpoch();
 
-    if (auto* taskIF = SKSE::GetTaskInterface()) {
-        taskIF->AddTask([jsonStr, speakerID, targetID]() {
-            auto* spk = RE::TESForm::LookupByID<RE::Actor>(speakerID);
-            if (!spk) return;
-            auto* tgt = targetID ? RE::TESForm::LookupByID<RE::Actor>(targetID) : nullptr;
-            auto* vm = RE::BSScript::Internal::VirtualMachine::GetSingleton();
-            if (vm) {
-                RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> nullCallback;
-                auto eventType = RE::BSFixedString("tton_event");
-                auto msg = RE::BSFixedString(jsonStr);
-                vm->DispatchStaticCall("SkyrimNetApi", "RegisterEvent",
-                    RE::MakeFunctionArguments(std::move(eventType), std::move(msg), std::move(spk), std::move(tgt)),
-                    nullCallback);
-            }
-        });
-    }
+    UI::AddEpochTask(expectedEpoch, [jsonStr, speakerID, targetID]() {
+        auto* spk = RE::TESForm::LookupByID<RE::Actor>(speakerID);
+        if (!spk) return;
+        auto* tgt = targetID ? RE::TESForm::LookupByID<RE::Actor>(targetID) : nullptr;
+        auto* vm = RE::BSScript::Internal::VirtualMachine::GetSingleton();
+        if (vm) {
+            RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> nullCallback;
+            auto eventType = RE::BSFixedString("tton_event");
+            auto msg = RE::BSFixedString(jsonStr);
+            vm->DispatchStaticCall("SkyrimNetApi", "RegisterEvent",
+                RE::MakeFunctionArguments(std::move(eventType), std::move(msg), std::move(spk), std::move(tgt)),
+                nullCallback);
+        }
+    });
 }
 
 std::string ResolveActorLocationName(RE::Actor* primary, RE::Actor* secondary) {
@@ -107,23 +104,33 @@ std::string ResolveActorLocationName(RE::Actor* primary, RE::Actor* secondary) {
 
 }  // namespace
 
-RE::TESQuest* OVirginityService::GetOVirginityQuest() {
+void OVirginityService::Initialize() {
+    RE::TESQuest* quest = nullptr;
+    RE::BGSKeyword* npcKw = nullptr;
     if (auto* dataHandler = RE::TESDataHandler::GetSingleton()) {
-        if (auto* q = dataHandler->LookupForm<RE::TESQuest>(0x800, "OVirginity.esp")) {
-            return q;
-        }
+        quest = dataHandler->LookupForm<RE::TESQuest>(0x800, "OVirginity.esp");
+        npcKw = dataHandler->LookupForm<RE::BGSKeyword>(0x013794, "Skyrim.esm");
     }
-    return RE::TESForm::LookupByEditorID<RE::TESQuest>("OVirginityQuest");
+    if (!quest) {
+        quest = RE::TESForm::LookupByEditorID<RE::TESQuest>("OVirginityQuest");
+    }
+    if (!npcKw) {
+        npcKw = RE::TESForm::LookupByEditorID<RE::BGSKeyword>("ActorTypeNPC");
+    }
+    _npcKeyword.store(npcKw, std::memory_order_release);
+    _quest.store(quest, std::memory_order_release);
+    if (quest) {
+        SKSE::log::info("OVirginityService: OVirginityQuest resolved (0x{:08X}).", quest->GetFormID());
+    }
 }
 
-bool OVirginityService::IsLoaded() const {
-    return GetOVirginityQuest() != nullptr;
-}
-
-bool OVirginityService::IsActorEligible(RE::Actor* actor) {
+bool OVirginityService::IsActorEligible(RE::Actor* actor) const {
     if (!actor || actor->IsChild()) return false;
     auto* player = RE::PlayerCharacter::GetSingleton();
     if (player && actor == static_cast<RE::Actor*>(player)) return true;
+    if (auto* kw = _npcKeyword.load(std::memory_order_acquire)) {
+        return actor->HasKeyword(kw);
+    }
     return actor->HasKeywordString("ActorTypeNPC");
 }
 
@@ -177,11 +184,9 @@ std::optional<bool> OVirginityService::GetCachedVirginity(RE::Actor* actor) {
             }
         }
         if (shouldQueue) {
-            if (auto* taskIF = SKSE::GetTaskInterface()) {
-                taskIF->AddTask([this, fid]() {
+            if (!UI::AddCurrentEpochTask([this, fid]() {
                     EnsureActorsResolved({ fid }, []() {}, true);
-                });
-            } else {
+                })) {
                 std::unique_lock<std::shared_mutex> lock(_cacheMutex);
                 _inFlightQueries.erase(fid);
             }
@@ -226,21 +231,24 @@ void OVirginityService::EnsureActorsResolved(const std::vector<RE::FormID>& form
         return;
     }
 
-    RE::TESQuest* quest = GetOVirginityQuest();
+    RE::TESQuest* quest = _quest.load(std::memory_order_acquire);
     auto* vm = RE::BSScript::Internal::VirtualMachine::GetSingleton();
     auto* policy = vm ? vm->GetObjectHandlePolicy() : nullptr;
     RE::VMHandle handle = (policy && quest) ? policy->GetHandleForObject(quest->GetFormType(), quest) : 0;
 
     if (!vm || !policy || !quest || !handle || handle == policy->EmptyHandle()) {
         SKSE::log::warn("OVirginityService: OVirginityQuest VM handle unavailable, skipping resolution");
-        std::unique_lock<std::shared_mutex> lock(_cacheMutex);
-        for (auto* a : toQuery) _inFlightQueries.erase(a->GetFormID());
+        {
+            std::unique_lock<std::shared_mutex> lock(_cacheMutex);
+            for (auto* a : toQuery) _inFlightQueries.erase(a->GetFormID());
+        }
         if (onReady) onReady();
         return;
     }
 
     auto state = std::make_shared<BatchState>();
     state->remaining.store(static_cast<int>(toQuery.size()));
+    state->expectedEpoch = UI::GetSessionEpoch();
     state->onReady = std::move(onReady);
 
     for (RE::Actor* actor : toQuery) {
@@ -396,13 +404,12 @@ void OVirginityService::OnSceneChanged(int threadID, const std::string& sceneID)
         }
     }
 
-    std::thread([this, threadID, sceneID]() {
+    const auto expectedEpoch = UI::GetSessionEpoch();
+    std::thread([this, threadID, sceneID, expectedEpoch]() {
         std::this_thread::sleep_for(std::chrono::milliseconds(450));
-        if (auto* taskIF = SKSE::GetTaskInterface()) {
-            taskIF->AddTask([this, threadID, sceneID]() {
-                CheckThreadVirginityLoss(threadID, sceneID);
-            });
-        }
+        UI::AddEpochTask(expectedEpoch, [this, threadID, sceneID]() {
+            CheckThreadVirginityLoss(threadID, sceneID);
+        });
     }).detach();
 }
 

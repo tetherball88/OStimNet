@@ -1,5 +1,6 @@
 #pragma once
 #include <chrono>
+#include <mutex>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -116,6 +117,7 @@ public:
     int AllocateClaimToken(Intent intent, bool isSexual,
                            std::vector<RE::Actor*> mainActors,
                            std::vector<RE::Actor*> secondaryActors) {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         const auto now = std::chrono::steady_clock::now();
         for (auto it = _claimRecords.begin(); it != _claimRecords.end();) {
             if (it->second.claimedAt.time_since_epoch().count() > 0 &&
@@ -145,6 +147,7 @@ public:
     // map with phase = Claiming so HandleStart can activate it atomically.
     // Returns false if the token was not found (already consumed or invalid).
     bool ConfirmClaim(int token, int threadID) {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         auto it = _claimRecords.find(token);
         if (it == _claimRecords.end()) {
             SKSE::log::warn("ThreadRegistry: ConfirmClaim token={} not found", token);
@@ -177,6 +180,7 @@ public:
     // Returns false when no pre-claimed entry exists (non-OStimNet path) or
     // when the claim is stale or does not overlap the thread's actors.
     bool ConsumeActiveClaim(int threadID) {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         auto it = _threads.find(threadID);
         if (it == _threads.end() || it->second.phase != ThreadPhase::Claiming) {
             return false;
@@ -228,6 +232,7 @@ public:
     // third-party OStim thread that happened to start at the same time as an
     // unrelated claim.
     bool HasPendingClaimForActors(const std::vector<uint32_t>& threadActorFormIDs) const {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         const auto now = std::chrono::steady_clock::now();
         for (const auto& [token, rec] : _claimRecords) {
             if (rec.claimedAt.time_since_epoch().count() > 0 &&
@@ -261,6 +266,7 @@ public:
     // Transitions a known thread to the given phase.  When transitioning to
     // Pending, records the current time so GetTimedOutPendingThreadIDs() works.
     void SetPhase(int threadID, ThreadPhase phase) {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         auto it = _threads.find(threadID);
         if (it == _threads.end()) return;
         it->second.phase = phase;
@@ -270,6 +276,7 @@ public:
     }
 
     ThreadPhase GetPhase(int threadID) const {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         auto it = _threads.find(threadID);
         return it != _threads.end() ? it->second.phase : ThreadPhase::Pending;
     }
@@ -286,6 +293,7 @@ public:
     // phase is Pending.  Unlike IsPending, this returns false for threads that
     // were never registered or have already been cleared by ClearThread().
     bool IsRegisteredAndPending(int threadID) const {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         auto it = _threads.find(threadID);
         return it != _threads.end() && it->second.phase == ThreadPhase::Pending;
     }
@@ -294,6 +302,7 @@ public:
     // `timeout`.  Used by the event listener to fire ostimnet_start with empty
     // roles when the LLM never responds.
     std::vector<int> GetTimedOutPendingThreadIDs(std::chrono::seconds timeout) const {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         auto now = std::chrono::steady_clock::now();
         std::vector<int> result;
         for (const auto& [id, state] : _threads) {
@@ -310,6 +319,7 @@ public:
     // =========================================================================
 
     std::optional<SexualPhase> GetSexualPhase(int threadID) const {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         auto it = _threads.find(threadID);
         if (it == _threads.end()) return std::nullopt;
         // Non-sexual threads always report no phase.
@@ -318,6 +328,7 @@ public:
     }
 
     void SetSexualPhase(int threadID, SexualPhase phase) {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         auto it = _threads.find(threadID);
         if (it == _threads.end()) return;
         SKSE::log::info("ThreadRegistry: thread {} SetSexualPhase -> {}", threadID, SexualPhaseToName(phase));
@@ -327,6 +338,7 @@ public:
     // Returns comma-separated activity keywords for the thread's current phase,
     // or an empty string if phase tracking is disabled for this thread.
     std::string GetSexualPhaseActivityKeywords(int threadID) const {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         auto it = _threads.find(threadID);
         if (it == _threads.end() || !it->second.sexualPhase.has_value()) return "";
         return SexualPhaseToActivityKeywordString(*it->second.sexualPhase);
@@ -354,6 +366,7 @@ public:
     }
 
     float GetPlayerCrimeGoldAtStart(int threadID) const {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         auto it = _threads.find(threadID);
         return it != _threads.end() ? it->second.playerCrimeGoldAtStart : 0.0f;
     }
@@ -481,23 +494,24 @@ public:
     // =========================================================================
 
     void SetCurrentPosition(int threadID, std::string position) {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         _threads[threadID].currentPosition = std::move(position);
     }
 
     // Returns the previously stored speed, then updates it to newSpeed.
     // Returns -1 if no speed was recorded for this thread yet.
     int32_t ExchangeCurrentSpeed(int threadID, int32_t newSpeed) {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         auto& state = _threads[threadID];
         int32_t old = state.currentSpeed;
         state.currentSpeed = newSpeed;
         return old;
     }
 
-    const std::string& GetCurrentPosition(int threadID) const {
-
-        static const std::string kEmpty;
+    std::string GetCurrentPosition(int threadID) const {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         auto it = _threads.find(threadID);
-        return it != _threads.end() ? it->second.currentPosition : kEmpty;
+        return it != _threads.end() ? it->second.currentPosition : std::string{};
     }
 
     // =========================================================================
@@ -532,9 +546,12 @@ public:
             }
         }
 
+        const float currentCrimeGold = GetTotalPlayerCrimeGold();
+
         // Initialise a Pending entry for new threads that don't have a claim.
         // Threads that went through ClaimThread/ConfirmThread already have a
         // Claiming entry — leave their phase untouched.
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         const bool existed = (_threads.find(threadID) != _threads.end());
         auto& state = _threads[threadID];
         if (state.phase != ThreadPhase::Claiming) {
@@ -548,7 +565,7 @@ public:
         state.actors.ptrs   = std::move(ptrs);
         state.actors.names  = std::move(names);
         if (!state.crimeGoldSnapshotted) {
-            state.playerCrimeGoldAtStart = GetTotalPlayerCrimeGold();
+            state.playerCrimeGoldAtStart = currentCrimeGold;
             state.crimeGoldSnapshotted   = true;
         }
         return formIDs;
@@ -557,6 +574,7 @@ public:
     // Returns the threadID of a Pending/Active thread that contains actorFormID,
     // or -1 if the actor is not in any running thread.
     int GetActorThreadID(RE::FormID formID) const {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         for (const auto& [threadID, state] : _threads) {
             if (state.phase != ThreadPhase::Pending && state.phase != ThreadPhase::Active)
                 continue;
@@ -567,46 +585,50 @@ public:
     }
 
     void SetActors(int threadID, std::vector<RE::Actor*> ptrs, std::vector<std::string> names) {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         auto& state = _threads[threadID];
         state.actors.ptrs  = std::move(ptrs);
         state.actors.names = std::move(names);
     }
 
     void SetActors(int threadID, std::vector<uint32_t> formIDs, std::vector<RE::Actor*> ptrs, std::vector<std::string> names) {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         auto& state = _threads[threadID];
         state.actors.formIDs = std::move(formIDs);
         state.actors.ptrs    = std::move(ptrs);
         state.actors.names   = std::move(names);
     }
 
-    const std::vector<RE::Actor*>& GetActorPtrs(int threadID) const {
-        static const std::vector<RE::Actor*> kEmpty;
+    std::vector<RE::Actor*> GetActorPtrs(int threadID) const {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         auto it = _threads.find(threadID);
-        return it != _threads.end() ? it->second.actors.ptrs : kEmpty;
+        return it != _threads.end() ? it->second.actors.ptrs : std::vector<RE::Actor*>{};
     }
 
-    const std::vector<std::string>& GetActorNames(int threadID) const {
-        static const std::vector<std::string> kEmpty;
+    std::vector<std::string> GetActorNames(int threadID) const {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         auto it = _threads.find(threadID);
-        return it != _threads.end() ? it->second.actors.names : kEmpty;
+        return it != _threads.end() ? it->second.actors.names : std::vector<std::string>{};
     }
 
-    const std::vector<uint32_t>& GetActorFormIDs(int threadID) const {
-        static const std::vector<uint32_t> kEmpty;
+    std::vector<uint32_t> GetActorFormIDs(int threadID) const {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         auto it = _threads.find(threadID);
-        return it != _threads.end() ? it->second.actors.formIDs : kEmpty;
+        return it != _threads.end() ? it->second.actors.formIDs : std::vector<uint32_t>{};
     }
 
     // Returns true once FetchAndStoreActors has been called for this thread
     // (i.e. HandleStart has fired). False for pre-start Claiming entries and
     // threads not yet registered.
     bool HasStarted(int threadID) const {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         auto it = _threads.find(threadID);
         return it != _threads.end() && !it->second.actors.formIDs.empty();
     }
 
     // Returns true if any thread is currently in the Pending or Active phase.
     bool HasActiveThreads() const {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         for (const auto& [id, state] : _threads)
             if (state.phase == ThreadPhase::Pending || state.phase == ThreadPhase::Active)
                 return true;
@@ -616,6 +638,7 @@ public:
     // Returns a {threadID → formIDs} snapshot for all Pending/Active threads.
     // Used by SelectPriorityThread and GetActiveScenes.
     std::unordered_map<int, std::vector<uint32_t>> GetActiveThreadActors() const {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         std::unordered_map<int, std::vector<uint32_t>> result;
         for (const auto& [id, state] : _threads)
             if (state.phase == ThreadPhase::Pending || state.phase == ThreadPhase::Active)
@@ -631,6 +654,7 @@ public:
 
     // Returns a snapshot of all Pending/Active threads (actor FormIDs).
     std::vector<ActiveSceneInfo> GetActiveScenes() const {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         std::vector<ActiveSceneInfo> result;
         for (const auto& [id, state] : _threads) {
             if (state.phase != ThreadPhase::Pending && state.phase != ThreadPhase::Active)
@@ -675,6 +699,7 @@ public:
     // =========================================================================
 
     void SetIntent(int threadID, Intent intent) {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         SKSE::log::info("ThreadRegistry: thread {} SetIntent -> {}", threadID, IntentToString(intent));
         auto& state         = _threads[threadID];
         state.intent        = intent;
@@ -682,30 +707,36 @@ public:
     }
 
     Intent GetIntent(int threadID) const {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         auto it = _threads.find(threadID);
         return it != _threads.end() ? it->second.intent : Intent::Unset;
     }
 
     bool HasIntentBeenSet(int threadID) const {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         auto it = _threads.find(threadID);
         return it != _threads.end() && it->second.intentHasBeenSet;
     }
 
     void SetSexual(int threadID, bool isSexual) {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         SKSE::log::info("ThreadRegistry: thread {} SetSexual -> {}", threadID, isSexual);
         _threads[threadID].sexual = isSexual;
     }
 
     std::optional<bool> GetSexual(int threadID) const {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         auto it = _threads.find(threadID);
         return it != _threads.end() ? it->second.sexual : std::nullopt;
     }
 
     void SetContinuation(int threadID, bool isContinuation) {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         _threads[threadID].continuation = isContinuation;
     }
 
     bool IsContinuation(int threadID) const {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         auto it = _threads.find(threadID);
         return it != _threads.end() && it->second.continuation;
     }
@@ -716,6 +747,7 @@ public:
     void SetContinuationOverride(int threadID, Intent intent,
                                   std::vector<RE::Actor*> mainActors,
                                   std::vector<RE::Actor*> secondaryActors) {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         auto& state = _threads[threadID];
         state.overrideIntent          = intent;
         state.overrideMainActors      = std::move(mainActors);
@@ -727,16 +759,19 @@ public:
     }
 
     bool HasContinuationOverride(int threadID) const {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         auto it = _threads.find(threadID);
         return it != _threads.end() && !it->second.overrideMainActors.empty();
     }
 
     void SetOStimNet(int threadID, bool value) {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         SKSE::log::info("ThreadRegistry: thread {} SetOStimNet -> {}", threadID, value);
         _threads[threadID].isOStimNet = value;
     }
 
     bool IsOStimNet(int threadID) const {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         auto it = _threads.find(threadID);
         return it != _threads.end() && it->second.isOStimNet;
     }
@@ -746,16 +781,19 @@ public:
     // =========================================================================
 
     void SetPulloutDecision(int threadID, PulloutDecision decision) {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         SKSE::log::info("ThreadRegistry: thread {} SetPulloutDecision -> {}", threadID, PulloutDecisionToString(decision));
         _threads[threadID].pulloutDecision = decision;
     }
 
     PulloutDecision GetPulloutDecision(int threadID) const {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         auto it = _threads.find(threadID);
         return it != _threads.end() ? it->second.pulloutDecision : PulloutDecision::Undecided;
     }
 
     void SetPulloutStallActive(int threadID, bool active) {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         auto& state = _threads[threadID];
         state.pulloutStallActive = active;
         if (active) {
@@ -765,38 +803,46 @@ public:
     }
 
     bool IsPulloutStallActive(int threadID) const {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         auto it = _threads.find(threadID);
         return it != _threads.end() && it->second.pulloutStallActive;
     }
 
     void SetPulloutEvaluationPending(int threadID, bool pending) {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         _threads[threadID].pulloutEvaluationPending = pending;
     }
 
     bool IsPulloutEvaluationPending(int threadID) const {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         auto it = _threads.find(threadID);
         return it != _threads.end() && it->second.pulloutEvaluationPending;
     }
 
     void SetPulloutEvaluatedForCycle(int threadID, bool evaluated) {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         _threads[threadID].pulloutEvaluatedForCycle = evaluated;
     }
 
     bool IsPulloutEvaluatedForCycle(int threadID) const {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         auto it = _threads.find(threadID);
         return it != _threads.end() && it->second.pulloutEvaluatedForCycle;
     }
 
     void SetPulloutCueFired(int threadID, bool fired) {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         _threads[threadID].pulloutCueFired = fired;
     }
 
     bool HasPulloutCueFired(int threadID) const {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         auto it = _threads.find(threadID);
         return it != _threads.end() && it->second.pulloutCueFired;
     }
 
     std::chrono::steady_clock::time_point GetPulloutStallStartTime(int threadID) const {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         auto it = _threads.find(threadID);
         return it != _threads.end() ? it->second.pulloutStallStartTime : std::chrono::steady_clock::time_point{};
     }
@@ -808,13 +854,14 @@ public:
             SKSE::log::info("ThreadRegistry: thread {} SetMainActors actor 0x{:08X} ('{}')",
                 threadID, a ? a->GetFormID() : 0,
                 (a && a->GetDisplayFullName()) ? a->GetDisplayFullName() : "(null)");
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         _threads[threadID].mainActors = std::move(actors);
     }
 
-    const std::vector<RE::Actor*>& GetMainActors(int threadID) const {
-        static const std::vector<RE::Actor*> kEmpty;
+    std::vector<RE::Actor*> GetMainActors(int threadID) const {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         auto it = _threads.find(threadID);
-        return it != _threads.end() ? it->second.mainActors : kEmpty;
+        return it != _threads.end() ? it->second.mainActors : std::vector<RE::Actor*>{};
     }
 
     void SetSecondaryActors(int threadID, std::vector<RE::Actor*> actors) {
@@ -823,17 +870,18 @@ public:
             SKSE::log::info("ThreadRegistry: thread {} SetSecondaryActors actor 0x{:08X} ('{}')",
                 threadID, a ? a->GetFormID() : 0,
                 (a && a->GetDisplayFullName()) ? a->GetDisplayFullName() : "(null)");
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         _threads[threadID].secondaryActors = std::move(actors);
     }
 
-    const std::vector<RE::Actor*>& GetSecondaryActors(int threadID) const {
-        static const std::vector<RE::Actor*> kEmpty;
+    std::vector<RE::Actor*> GetSecondaryActors(int threadID) const {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         auto it = _threads.find(threadID);
-        return it != _threads.end() ? it->second.secondaryActors : kEmpty;
+        return it != _threads.end() ? it->second.secondaryActors : std::vector<RE::Actor*>{};
     }
 
     std::string GetFormattedMainActorNames(int threadID) const {
-        const auto& actors = GetMainActors(threadID);
+        const auto actors = GetMainActors(threadID);
         SKSE::log::debug("ThreadRegistry: thread {} GetFormattedMainActorNames: {} actor(s) stored",
             threadID, actors.size());
         std::string formatted = FormatActorNames(actors);
@@ -855,6 +903,7 @@ public:
 
     // Stores a spectator assignment and marks them as notified so the scan skips them.
     void AddSpectator(int threadID, RE::FormID spectatorID, RE::FormID targetID) {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         _threads[threadID].spectators[spectatorID] = targetID;
         _alreadyNotified.insert(spectatorID);
     }
@@ -862,6 +911,7 @@ public:
     // Removes a spectator from whichever thread they're assigned to.
     // Returns {targetID, threadID} if found, {0, -1} if not tracked.
     SpectatorInfo RemoveSpectator(RE::FormID spectatorID) {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         _alreadyNotified.erase(spectatorID);
         for (auto& [tid, state] : _threads) {
             auto it = state.spectators.find(spectatorID);
@@ -877,6 +927,7 @@ public:
     // Removes all spectators for a thread and returns them as {spectatorID, targetID} pairs.
     // Also removes each from _alreadyNotified so they can be re-detected by the scan.
     std::vector<std::pair<RE::FormID, RE::FormID>> TakeSpectators(int threadID) {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         auto it = _threads.find(threadID);
         if (it == _threads.end()) return {};
         std::vector<std::pair<RE::FormID, RE::FormID>> result;
@@ -894,6 +945,7 @@ public:
     // remove-spectator events for them. _alreadyNotified is kept for carried-over spectators.
     std::vector<std::pair<RE::FormID, RE::FormID>> TransferSpectatorsForContinuation(
             int oldThreadID, int newThreadID, const std::vector<uint32_t>& newParticipantIDs) {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         std::vector<std::pair<RE::FormID, RE::FormID>> dropped;
         auto oldIt = _threads.find(oldThreadID);
         if (oldIt == _threads.end()) return dropped;
@@ -915,6 +967,7 @@ public:
     }
 
     RE::FormID GetSpectatorTargetFormID(RE::FormID spectatorID) const {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         for (const auto& [tid, state] : _threads) {
             auto it = state.spectators.find(spectatorID);
             if (it != state.spectators.end()) return it->second;
@@ -923,6 +976,7 @@ public:
     }
 
     int GetSpectatorThreadID(RE::FormID spectatorID) const {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         for (const auto& [tid, state] : _threads) {
             if (state.spectators.count(spectatorID)) return tid;
         }
@@ -930,6 +984,7 @@ public:
     }
 
     std::vector<RE::FormID> GetSpectatorFormIDs(int threadID) const {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         auto it = _threads.find(threadID);
         if (it == _threads.end()) return {};
         std::vector<RE::FormID> result;
@@ -940,15 +995,18 @@ public:
 
     // Returns all tracked spectator FormIDs (across all threads) for scan pruning.
     std::vector<RE::FormID> GetAllTrackedSpectatorIDs() const {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         return std::vector<RE::FormID>(_alreadyNotified.begin(), _alreadyNotified.end());
     }
 
     bool IsSpectatorAlreadyNotified(RE::FormID spectatorID) const {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         return _alreadyNotified.count(spectatorID) > 0;
     }
 
     // Clears all spectator state across all threads (called on Stop/Reset).
     void ClearAllSpectators() {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         for (auto& [tid, state] : _threads)
             state.spectators.clear();
         _alreadyNotified.clear();
@@ -976,6 +1034,7 @@ public:
     // FetchAndStoreActors overwrote the store (required for same-ID restarts).
     void CopyStateForContinuation(int oldThreadID, int newThreadID,
                                   const std::vector<uint32_t>& preUpdateOldFormIDs = {}) {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         SKSE::log::info("ThreadRegistry: CopyStateForContinuation old={} new={}", oldThreadID, newThreadID);
         auto oldIt = _threads.find(oldThreadID);
         if (oldIt == _threads.end()) {
@@ -1083,6 +1142,7 @@ public:
     // Call from HandleEnd to free all per-thread state.
     // Also discards any orphaned claim record for this threadID.
     void ClearThread(int threadID) {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         auto it = _threads.find(threadID);
         if (it != _threads.end()) {
             int tok = it->second.claimToken;
@@ -1095,6 +1155,7 @@ public:
 
     // Call from OStimEventListener::Reset() on game load to wipe all state.
     void ClearAll() {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
         _threads.clear();
         _claimRecords.clear();
         _alreadyNotified.clear();
@@ -1162,6 +1223,7 @@ private:
         std::chrono::steady_clock::time_point pulloutStallStartTime;
     };
 
+    mutable std::recursive_mutex          _mutex;
     int _nextClaimToken = 1;
     std::unordered_map<int, ClaimRecord>  _claimRecords;  // token  → pre-start data
     std::unordered_map<int, ThreadState>  _threads;       // threadID → runtime state

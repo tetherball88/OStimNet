@@ -12,6 +12,7 @@
 #include "src/LocationScanService.h"
 #include "src/ScheduledEvalService.h"
 #include "src/PulloutService.h"
+#include "src/OVirginityService.h"
 #include "src/ui/ModalManager.h"
 #include "src/ui/SessionEpoch.h"
 #include "src/ui/UIManager.h"
@@ -254,6 +255,7 @@ SKSEPluginLoad(const LoadInterface* skse) {
                             SKSE::log::warn("SkyrimNet not found — decorator registration skipped.");
                         }
 
+                        OStimNet::OVirginityService::GetSingleton().Initialize();
                         OStimNet::SkyrimNetIntegration::Register();
                         OStimNet::Config::GetSingleton().ApplyLogLevel();
                         OStimNet::OStimEventListener::Register();

@@ -15,6 +15,7 @@
 #include "PulloutService.h"
 #include "OVirginityService.h"
 #include "ui/RetryModal.h"
+#include "ui/SessionEpoch.h"
 
 #include <algorithm>
 #include <map>
@@ -141,10 +142,10 @@ nlohmann::json BuildSceneJson(const OStimNet::ThreadDataStore::ActiveSceneInfo& 
     std::vector<std::string> mainActorNames;
     if (PublicFormIDToUUID) {
         auto& store = OStimNet::ThreadDataStore::GetSingleton();
-        const auto& assignedMain = store.GetMainActors(scene.threadID);
+        const auto assignedMain = store.GetMainActors(scene.threadID);
         // Fall back to all actors when roles haven't been assigned yet
         // (e.g. LLM evaluation still in flight, or non-OStimNet thread).
-        const auto& sourcePtrs = assignedMain.empty()
+        const auto sourcePtrs = assignedMain.empty()
             ? store.GetActorPtrs(scene.threadID)
             : assignedMain;
         for (auto* actor : sourcePtrs) {
@@ -816,9 +817,16 @@ void Register() {
                             if (arr.is_array()) {
                                 std::string out;
                                 for (const auto& item : arr) {
-                                    auto idIt = item.find("id");
-                                    if (idIt == item.end() || !idIt->is_string()) continue;
-                                    const std::string& id = idIt->get_ref<const std::string&>();
+                                    std::string id;
+                                    if (item.is_string()) {
+                                        id = item.get<std::string>();
+                                    } else if (item.is_object()) {
+                                        auto idIt = item.find("id");
+                                        if (idIt != item.end() && idIt->is_string()) {
+                                            id = idIt->get<std::string>();
+                                        }
+                                    }
+                                    if (id.empty()) continue;
                                     if (id.rfind("cumon", 0) == 0 || id.rfind("3pp_", 0) == 0 ||
                                         id.rfind("ejaculation_on", 0) == 0 || id.rfind("facial", 0) == 0)
                                         continue;
@@ -1242,9 +1250,10 @@ static bool EvaluateExternalSexualThreadImpl(const std::vector<RE::FormID>& part
     std::string promptName = "ostimnet_evaluations/ostimnet_evaluate_external_sexual_thread";
     std::string llmVariant = OStimNet::Config::GetSingleton().GmLlmVariant();
 
+    const auto expectedEpoch = OStimNet::UI::GetSessionEpoch();
     auto callbackHolder = std::make_shared<std::function<void(const char*, int)>>();
 
-    *callbackHolder = [callbackHolder, nameToFormID, threadID, contextJson, promptName, llmVariant](const char* response, int success) {
+    *callbackHolder = [callbackHolder, nameToFormID, threadID, expectedEpoch, contextJson, promptName, llmVariant](const char* response, int success) {
         SKSE::log::info("EvaluateExternalSexualThread callback: success={}", success);
 
         auto retryAction = [callbackHolder, promptName, llmVariant, contextJson]() {
@@ -1313,43 +1322,45 @@ static bool EvaluateExternalSexualThreadImpl(const std::vector<RE::FormID>& part
 
         SKSE::log::info("EvaluateExternalSexualThread: result built, threadID={}", threadID);
 
-        auto& store = OStimNet::ThreadDataStore::GetSingleton();
-        if (!store.IsRegisteredAndPending(threadID)) {
-            SKSE::log::info("EvaluateExternalSexualThread: thread {} no longer pending (ended before LLM response), discarding.", threadID);
-            return;
-        }
-        if (g_ostimThreadInterface && !g_ostimThreadInterface->IsThreadValid(static_cast<uint32_t>(threadID))) {
-            SKSE::log::warn("EvaluateExternalSexualThread: thread {} is no longer valid, discarding.", threadID);
-            store.ClearThread(threadID);
-            return;
-        }
-
-        SKSE::log::info("EvaluateExternalSexualThread: claiming thread {} as OStimNet", threadID);
-        store.SetOStimNet(threadID, true);
-        store.SetIntent(threadID, OStimNet::IntentFromString(effectiveIntent));
-        store.SetSexual(threadID, true);
-
-        // Resolve role arrays (already stored in `result` as uint32_t FormIDs) back to Actor*.
-        auto resolveActors = [&](const char* key) -> std::vector<RE::Actor*> {
-            std::vector<RE::Actor*> actors;
-            if (!result.contains(key) || !result[key].is_array()) return actors;
-            for (const auto& item : result[key]) {
-                if (!item.is_number_unsigned()) continue;
-                auto* actor = RE::TESForm::LookupByID<RE::Actor>(item.get<uint32_t>());
-                if (actor) actors.push_back(actor);
+        OStimNet::UI::AddEpochTask(expectedEpoch, [threadID, effectiveIntent = std::move(effectiveIntent), result = std::move(result)]() {
+            auto& store = OStimNet::ThreadDataStore::GetSingleton();
+            if (!store.IsRegisteredAndPending(threadID)) {
+                SKSE::log::info("EvaluateExternalSexualThread: thread {} no longer pending (ended before LLM response), discarding.", threadID);
+                return;
             }
-            return actors;
-        };
+            if (g_ostimThreadInterface && !g_ostimThreadInterface->IsThreadValid(static_cast<uint32_t>(threadID))) {
+                SKSE::log::warn("EvaluateExternalSexualThread: thread {} is no longer valid, discarding.", threadID);
+                store.ClearThread(threadID);
+                return;
+            }
 
-        store.SetMainActors(threadID, resolveActors("main"));
-        store.SetSecondaryActors(threadID, resolveActors("secondary"));
+            SKSE::log::info("EvaluateExternalSexualThread: claiming thread {} as OStimNet", threadID);
+            store.SetOStimNet(threadID, true);
+            store.SetIntent(threadID, OStimNet::IntentFromString(effectiveIntent));
+            store.SetSexual(threadID, true);
 
-        auto* listener = OStimNet::OStimEventListener::GetInstance();
-        if (listener) {
-            listener->ClaimPendingNonOStimNetThread(threadID);
-        } else {
-            SKSE::log::warn("EvaluateExternalSexualThread: listener is null, cannot claim thread {}", threadID);
-        }
+            // Resolve role arrays (already stored in `result` as uint32_t FormIDs) back to Actor*.
+            auto resolveActors = [&](const char* key) -> std::vector<RE::Actor*> {
+                std::vector<RE::Actor*> actors;
+                if (!result.contains(key) || !result[key].is_array()) return actors;
+                for (const auto& item : result[key]) {
+                    if (!item.is_number_unsigned()) continue;
+                    auto* actor = RE::TESForm::LookupByID<RE::Actor>(item.get<uint32_t>());
+                    if (actor) actors.push_back(actor);
+                }
+                return actors;
+            };
+
+            store.SetMainActors(threadID, resolveActors("main"));
+            store.SetSecondaryActors(threadID, resolveActors("secondary"));
+
+            auto* listener = OStimNet::OStimEventListener::GetInstance();
+            if (listener) {
+                listener->ClaimPendingNonOStimNetThread(threadID);
+            } else {
+                SKSE::log::warn("EvaluateExternalSexualThread: listener is null, cannot claim thread {}", threadID);
+            }
+        });
     };
 
     bool queued = PublicSendCustomPromptToLLM(

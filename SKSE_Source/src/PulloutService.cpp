@@ -8,6 +8,8 @@
 #include "EventPayloadBuilder.h"
 #include "api/OStimNavigator_PublicAPI.h"
 #include "api/OstimNG-API-Thread.h"
+#include "ui/SessionEpoch.h"
+#include "ui/UIManager.h"
 #include "nlohmann/json.hpp"
 
 namespace OStimNet {
@@ -499,6 +501,13 @@ void PulloutService::SetPulloutDecision(int threadID, PulloutDecision decision) 
 }
 
 void PulloutService::OnLLMDecision(int threadID, const std::string& decisionStr) {
+    if (!UI::UIManager::GetSingleton().IsOnMainThread()) {
+        UI::AddCurrentEpochTask([this, threadID, decisionStr]() {
+            OnLLMDecision(threadID, decisionStr);
+        });
+        return;
+    }
+
     if (!g_ostimThreadInterface || !g_ostimThreadInterface->IsThreadValid(static_cast<uint32_t>(threadID)) ||
         !ThreadDataStore::GetSingleton().IsOStimNet(threadID)) {
         SKSE::log::info("PulloutService::OnLLMDecision: thread {} ended or invalid during LLM wait", threadID);
@@ -519,6 +528,13 @@ void PulloutService::OnLLMDecision(int threadID, const std::string& decisionStr)
 }
 
 void PulloutService::OnLLMFailure(int threadID) {
+    if (!UI::UIManager::GetSingleton().IsOnMainThread()) {
+        UI::AddCurrentEpochTask([this, threadID]() {
+            OnLLMFailure(threadID);
+        });
+        return;
+    }
+
     SKSE::log::warn("PulloutService::OnLLMFailure: releasing stall for thread {}", threadID);
     ReleasePulloutStall(threadID);
     ThreadDataStore::GetSingleton().SetPulloutEvaluatedForCycle(threadID, true);

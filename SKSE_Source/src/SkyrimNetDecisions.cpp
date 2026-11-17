@@ -17,6 +17,7 @@
 #include "api/OstimNG-API-Thread.h"
 #include "api/SkyrimNet_PublicAPI.h"
 #include "ui/RetryModal.h"
+#include "ui/SessionEpoch.h"
 
 #include <algorithm>
 #include <cmath>
@@ -539,8 +540,9 @@ bool IsMaleFemalePair(const std::vector<uint32_t>& participantFIDs) {
 struct ResolvedPreStartPhaseSetup {
     std::string    furniture;
     std::string    openingPhaseStr;
-    nlohmann::json activitiesJson = nlohmann::json::array();
-    nlohmann::json positionsJson  = nlohmann::json::array();
+    nlohmann::json activitiesJson    = nlohmann::json::array();
+    nlohmann::json positionsJson     = nlohmann::json::array();
+    nlohmann::json sexActivitiesJson = nlohmann::json::array();
 };
 
 // Resolves pre-start opening phase, phase-filtered activities, positions, and furniture fallback
@@ -566,9 +568,10 @@ ResolvedPreStartPhaseSetup ResolvePreStartPhaseAndSetup(
         }
 
         if (!openingPhase.has_value()) {
-            out.openingPhaseStr = "";
-            out.activitiesJson  = BuildSetupActivitiesArrayJson(participantFIDs, furn, "sexual");
-            bool hasSexPhaseActions = !BuildSetupActivitiesArrayJson(participantFIDs, furn, "sex").empty() ||
+            out.openingPhaseStr   = "";
+            out.activitiesJson    = BuildSetupActivitiesArrayJson(participantFIDs, furn, "sexual");
+            out.sexActivitiesJson = BuildSetupActivitiesArrayJson(participantFIDs, furn, "sex");
+            bool hasSexPhaseActions = !out.sexActivitiesJson.empty() ||
                                       (!ONavGetSetupActions && !ONavGetAllActions);
             if (hasSexPhaseActions) {
                 out.positionsJson = BuildSetupPositionsArrayJson(participantFIDs, furn);
@@ -599,7 +602,8 @@ ResolvedPreStartPhaseSetup ResolvePreStartPhaseAndSetup(
                 // furniture and leave positionsJson empty so non-intercourse positions are not offered.
                 out.activitiesJson = BuildSetupActivitiesArrayJson(participantFIDs, furn, "sexual");
                 if (!out.activitiesJson.empty()) {
-                    out.openingPhaseStr = "";
+                    out.openingPhaseStr   = "";
+                    out.sexActivitiesJson = BuildSetupActivitiesArrayJson(participantFIDs, furn, "sex");
                 } else {
                     out.openingPhaseStr = OStimNet::SexualPhaseToName(effectivePhase);
                 }
@@ -802,9 +806,10 @@ bool EvaluatePreStartSexualScene(
     SKSE::log::info("SkyrimNetDecisions::EvaluatePreStartSexualScene: queuing Step 1 (intent + furniture), participants={}",
                     snaps.size());
 
+    const auto expectedEpoch = OStimNet::UI::GetSessionEpoch();
     auto step1CallbackHolder = std::make_shared<std::function<void(const char*, const char*, int)>>();
     *step1CallbackHolder = [step1CallbackHolder, snaps, participantFIDs, hasPlayer, preStartCombos, originalParticipants, evalId,
-                            baseCtx, step1ContextJson, templateName, fallbackToChat](
+                            expectedEpoch, baseCtx, step1ContextJson, templateName, fallbackToChat](
                                const char* answer, const char* resultJson, int success) {
         SKSE::log::info("SkyrimNetDecisions::EvaluatePreStartSexualScene Step 1 callback: success={}, firstAnswer='{}'",
                         success, answer ? answer : "");
@@ -848,190 +853,198 @@ bool EvaluatePreStartSexualScene(
         std::string resolvedIntent    = GetChoiceAnswer(answers1, "intent", "lustful");
         std::string resolvedFurniture = GetChoiceAnswer(answers1, "furniture", "floor");
 
-        OStimNavigatorAPI::Intent intentEnum = OStimNavigatorAPI::IntentFromString(resolvedIntent);
-        auto phaseSetup = ResolvePreStartPhaseAndSetup(
-            intentEnum, snaps.size(), hasPlayer, resolvedFurniture, participantFIDs);
-        resolvedFurniture             = phaseSetup.furniture;
-        std::string openingPhaseStr   = std::move(phaseSetup.openingPhaseStr);
-        nlohmann::json activitiesJson = std::move(phaseSetup.activitiesJson);
-        nlohmann::json positionsJson  = std::move(phaseSetup.positionsJson);
+        OStimNet::UI::AddEpochTask(
+            expectedEpoch,
+            [snaps, participantFIDs, hasPlayer, preStartCombos, originalParticipants, evalId,
+             resolvedIntent = std::move(resolvedIntent), resolvedFurniture = std::move(resolvedFurniture),
+             baseCtx, templateName, fallbackToChat]() mutable {
+                OStimNavigatorAPI::Intent intentEnum = OStimNavigatorAPI::IntentFromString(resolvedIntent);
+                auto phaseSetup = ResolvePreStartPhaseAndSetup(
+                    intentEnum, snaps.size(), hasPlayer, resolvedFurniture, participantFIDs);
+                resolvedFurniture                  = phaseSetup.furniture;
+                std::string openingPhaseStr        = std::move(phaseSetup.openingPhaseStr);
+                nlohmann::json activitiesJson      = std::move(phaseSetup.activitiesJson);
+                nlohmann::json positionsJson       = std::move(phaseSetup.positionsJson);
+                nlohmann::json sexActivitiesJson   = std::move(phaseSetup.sexActivitiesJson);
 
-        SKSE::log::info("SkyrimNetDecisions::EvaluatePreStartSexualScene Step 1 resolved intent='{}', furniture='{}', openingPhase='{}', activities={}, positions={}, queuing Step 2",
-                        resolvedIntent, resolvedFurniture, openingPhaseStr, activitiesJson.size(), positionsJson.size());
+                SKSE::log::info("SkyrimNetDecisions::EvaluatePreStartSexualScene Step 1 resolved intent='{}', furniture='{}', openingPhase='{}', activities={}, positions={}, queuing Step 2",
+                                resolvedIntent, resolvedFurniture, openingPhaseStr, activitiesJson.size(), positionsJson.size());
 
-        nlohmann::json step2Ctx = baseCtx;
-        step2Ctx["step"]         = 2;
-        step2Ctx["intent"]       = resolvedIntent;
-        step2Ctx["furniture"]    = resolvedFurniture;
-        step2Ctx["openingPhase"] = openingPhaseStr;
-        step2Ctx["activities"]   = std::move(activitiesJson);
-        step2Ctx["positions"]    = std::move(positionsJson);
-        std::string step2ContextJson = step2Ctx.dump();
+                nlohmann::json step2Ctx  = baseCtx;
+                step2Ctx["step"]          = 2;
+                step2Ctx["intent"]        = resolvedIntent;
+                step2Ctx["furniture"]     = resolvedFurniture;
+                step2Ctx["openingPhase"]  = openingPhaseStr;
+                step2Ctx["activities"]    = std::move(activitiesJson);
+                step2Ctx["positions"]     = std::move(positionsJson);
+                step2Ctx["sexActivities"] = std::move(sexActivitiesJson);
+                std::string step2ContextJson = step2Ctx.dump();
 
-        auto step2CallbackHolder = std::make_shared<std::function<void(const char*, const char*, int)>>();
-        *step2CallbackHolder = [step2CallbackHolder, snaps, participantFIDs, preStartCombos, originalParticipants,
-                                resolvedIntent, resolvedFurniture, openingPhaseStr, step2Ctx, evalId, step2ContextJson, templateName, fallbackToChat](
-                                   const char* step2Answer, const char* step2ResultJson, int step2Success) {
-            SKSE::log::info("SkyrimNetDecisions::EvaluatePreStartSexualScene Step 2 callback: success={}, firstAnswer='{}'",
-                            step2Success, step2Answer ? step2Answer : "");
+                auto step2CallbackHolder = std::make_shared<std::function<void(const char*, const char*, int)>>();
+                *step2CallbackHolder = [step2CallbackHolder, snaps, preStartCombos, originalParticipants,
+                                        resolvedIntent, resolvedFurniture, openingPhaseStr, step2Ctx, evalId, step2ContextJson, templateName, fallbackToChat](
+                                           const char* step2Answer, const char* step2ResultJson, int step2Success) {
+                    SKSE::log::info("SkyrimNetDecisions::EvaluatePreStartSexualScene Step 2 callback: success={}, firstAnswer='{}'",
+                                    step2Success, step2Answer ? step2Answer : "");
 
-            auto retryStep2 = [step2CallbackHolder, templateName, step2ContextJson]() {
-                if (PublicSendCustomDecisionToLLM) {
-                    PublicSendCustomDecisionToLLM(
-                        templateName.c_str(), step2ContextJson.c_str(),
-                        kDefaultMaxProbabilities, *step2CallbackHolder);
+                    auto retryStep2 = [step2CallbackHolder, templateName, step2ContextJson]() {
+                        if (PublicSendCustomDecisionToLLM) {
+                            PublicSendCustomDecisionToLLM(
+                                templateName.c_str(), step2ContextJson.c_str(),
+                                kDefaultMaxProbabilities, *step2CallbackHolder);
+                        }
+                    };
+                    auto ignoreStep2 = [originalParticipants, evalId]() {
+                        nlohmann::json ignoreResult;
+                        ignoreResult["originalParticipants"] = originalParticipants;
+                        ignoreResult["evalId"]               = evalId;
+                        OStimNet::FireModEvent("ostimnet_sexual_evaluation_finished", ignoreResult.dump().c_str(), 0.0f);
+                    };
+
+                    if (!step2Success || !step2ResultJson || step2ResultJson[0] == '\0') {
+                        std::string errCode, errMsg;
+                        if (ShouldFallbackToChatOnFailure(step2ResultJson, errCode, errMsg) && fallbackToChat) {
+                            SKSE::log::warn("SkyrimNetDecisions::EvaluatePreStartSexualScene (Step 2): Jev error '{}' ({}) — falling back to GM chat LLM",
+                                            errCode, errMsg);
+                            RunFallbackOnGameThread(fallbackToChat);
+                            return;
+                        }
+                        SKSE::log::warn("SkyrimNetDecisions::EvaluatePreStartSexualScene (Step 2): Jev decision failed ({}: {})",
+                                        errCode, errMsg);
+                        ShowDecisionRetryModal("Pre-Start Sexual Scene (Step 2: Roles & Details)", errMsg, retryStep2, ignoreStep2);
+                        return;
+                    }
+
+                    auto parsed2 = nlohmann::json::parse(step2ResultJson, nullptr, /*allow_exceptions=*/false);
+                    if (parsed2.is_discarded() || !parsed2.contains("answers") || !parsed2["answers"].is_object()) {
+                        SKSE::log::warn("SkyrimNetDecisions::EvaluatePreStartSexualScene (Step 2): invalid resultJson: {}", step2ResultJson);
+                        ShowDecisionRetryModal("Pre-Start Sexual Scene (Step 2: Roles & Details)", "Unreadable decision response.", retryStep2, ignoreStep2);
+                        return;
+                    }
+
+                    const auto& answers2 = parsed2["answers"];
+                    uint32_t willingMask = 0;
+                    size_t   willingCount = 0;
+                    nlohmann::json excluded = nlohmann::json::array();
+
+                    for (size_t i = 0; i < snaps.size(); ++i) {
+                        bool willing = snaps[i].isPlayer
+                            ? true
+                            : GetNoulAnswer(answers2, "willing_" + snaps[i].key, true);
+                        if (willing) {
+                            willingMask |= (1u << i);
+                            ++willingCount;
+                        } else {
+                            excluded.push_back(static_cast<uint32_t>(snaps[i].formID));
+                        }
+                    }
+
+                    if ((snaps.size() > 1 && willingCount <= 1) || willingCount == 0) {
+                        SKSE::log::info("SkyrimNetDecisions::EvaluatePreStartSexualScene: only {} willing actor(s), aborting scene.",
+                                        willingCount);
+                        nlohmann::json nullResult;
+                        nullResult["originalParticipants"] = originalParticipants;
+                        nullResult["evalId"]               = evalId;
+                        nullResult["excluded"]             = excluded;
+                        OStimNet::FireModEvent("ostimnet_sexual_evaluation_finished", nullResult.dump().c_str(), 2.0f);
+                        return;
+                    }
+
+                    std::string chosenRoleKey = GetChoiceAnswer(answers2, "roles", preStartCombos[0].key);
+                    const PreStartRoleCombo* selectedCombo = nullptr;
+                    double bestProb = -1.0;
+
+                    for (const auto& c : preStartCombos) {
+                        if (c.activeMask != willingMask) continue;
+                        if (c.key == chosenRoleKey) {
+                            selectedCombo = &c;
+                            break;
+                        }
+                        double p = GetChoiceProbability(answers2, "roles", c.key, 0.0);
+                        if (p > bestProb) {
+                            bestProb      = p;
+                            selectedCombo = &c;
+                        }
+                    }
+                    if (!selectedCombo) {
+                        for (const auto& c : preStartCombos) {
+                            if (c.key == chosenRoleKey) {
+                                selectedCombo = &c;
+                                break;
+                            }
+                        }
+                    }
+                    if (!selectedCombo) selectedCombo = &preStartCombos[0];
+
+                    nlohmann::json mainArr      = nlohmann::json::array();
+                    nlohmann::json secondaryArr = nlohmann::json::array();
+                    for (uint32_t fid : selectedCombo->mainFormIDs)      mainArr.push_back(fid);
+                    for (uint32_t fid : selectedCombo->secondaryFormIDs) secondaryArr.push_back(fid);
+
+                    std::string rawAct  = ResolveChoiceOrSingle(step2Ctx, "activities", answers2, "activity", "any");
+                    std::string rawPos  = ResolveChoiceOrSingle(step2Ctx, "positions", answers2, "position", "any");
+                    std::string normAct = NormalizeActivityChoice(rawAct);
+                    std::string normPos = NormalizePositionChoice(rawPos);
+
+                    // When phases are disabled, if the AI selected a non-intercourse activity (e.g. foreplay or oral),
+                    // ignore the selected intercourse position.
+                    if (openingPhaseStr.empty() && !normAct.empty() && !normPos.empty() &&
+                        step2Ctx.contains("sexActivities") && step2Ctx["sexActivities"].is_array()) {
+                        bool isSexAct = false;
+                        for (const auto& item : step2Ctx["sexActivities"]) {
+                            if (item.is_object() && item.value("id", "") == normAct) {
+                                isSexAct = true;
+                                break;
+                            }
+                        }
+                        if (!isSexAct) {
+                            normPos.clear();
+                        }
+                    }
+
+                    nlohmann::json result;
+                    result["originalParticipants"] = originalParticipants;
+                    result["intent"]               = resolvedIntent;
+                    result["furniture"]            = (resolvedFurniture == "floor") ? "" : resolvedFurniture;
+                    result["evalId"]               = evalId;
+                    result["sexualPosition"]       = normPos;
+                    result["sexualActivities"]     = normAct;
+                    result["main"]                 = std::move(mainArr);
+                    result["secondary"]            = std::move(secondaryArr);
+                    result["excluded"]             = excluded;
+
+                    bool actorsExcluded = (willingCount < snaps.size());
+                    std::string outStr  = result.dump();
+                    SKSE::log::info("SkyrimNetDecisions::EvaluatePreStartSexualScene: resolved actors={}, excluded={}, result={}",
+                                    willingCount, actorsExcluded, outStr);
+
+                    float numArg = actorsExcluded ? 3.0f : 1.0f;
+                    OStimNet::FireModEvent("ostimnet_sexual_evaluation_finished", outStr.c_str(), numArg);
+                };
+
+                bool hasStep2Questions = (preStartCombos.size() > 1) ||
+                                         (step2Ctx["activities"].size() > 1) ||
+                                         (step2Ctx["positions"].size() > 1);
+                if (!hasStep2Questions) {
+                    for (const auto& s : snaps) {
+                        if (!s.isPlayer) {
+                            hasStep2Questions = true;
+                            break;
+                        }
+                    }
                 }
-            };
-            auto ignoreStep2 = [originalParticipants, evalId]() {
-                nlohmann::json ignoreResult;
-                ignoreResult["originalParticipants"] = originalParticipants;
-                ignoreResult["evalId"]               = evalId;
-                OStimNet::FireModEvent("ostimnet_sexual_evaluation_finished", ignoreResult.dump().c_str(), 0.0f);
-            };
-
-            if (!step2Success || !step2ResultJson || step2ResultJson[0] == '\0') {
-                std::string errCode, errMsg;
-                if (ShouldFallbackToChatOnFailure(step2ResultJson, errCode, errMsg) && fallbackToChat) {
-                    SKSE::log::warn("SkyrimNetDecisions::EvaluatePreStartSexualScene (Step 2): Jev error '{}' ({}) — falling back to GM chat LLM",
-                                    errCode, errMsg);
-                    RunFallbackOnGameThread(fallbackToChat);
+                if (!hasStep2Questions) {
+                    SKSE::log::info("SkyrimNetDecisions::EvaluatePreStartSexualScene: Step 2 has no questions to ask, resolving directly");
+                    (*step2CallbackHolder)("", "{\"answers\":{}}", 1);
                     return;
                 }
-                SKSE::log::warn("SkyrimNetDecisions::EvaluatePreStartSexualScene (Step 2): Jev decision failed ({}: {})",
-                                errCode, errMsg);
-                ShowDecisionRetryModal("Pre-Start Sexual Scene (Step 2: Roles & Details)", errMsg, retryStep2, ignoreStep2);
-                return;
-            }
 
-            auto parsed2 = nlohmann::json::parse(step2ResultJson, nullptr, /*allow_exceptions=*/false);
-            if (parsed2.is_discarded() || !parsed2.contains("answers") || !parsed2["answers"].is_object()) {
-                SKSE::log::warn("SkyrimNetDecisions::EvaluatePreStartSexualScene (Step 2): invalid resultJson: {}", step2ResultJson);
-                ShowDecisionRetryModal("Pre-Start Sexual Scene (Step 2: Roles & Details)", "Unreadable decision response.", retryStep2, ignoreStep2);
-                return;
-            }
-
-            const auto& answers2 = parsed2["answers"];
-            uint32_t willingMask = 0;
-            size_t   willingCount = 0;
-            nlohmann::json excluded = nlohmann::json::array();
-
-            for (size_t i = 0; i < snaps.size(); ++i) {
-                bool willing = snaps[i].isPlayer
-                    ? true
-                    : GetNoulAnswer(answers2, "willing_" + snaps[i].key, true);
-                if (willing) {
-                    willingMask |= (1u << i);
-                    ++willingCount;
-                } else {
-                    excluded.push_back(static_cast<uint32_t>(snaps[i].formID));
+                bool queued2 = PublicSendCustomDecisionToLLM(
+                    templateName.c_str(), step2ContextJson.c_str(), kDefaultMaxProbabilities, *step2CallbackHolder);
+                if (!queued2 && fallbackToChat) {
+                    RunFallbackOnGameThread(fallbackToChat);
                 }
-            }
-
-            if ((snaps.size() > 1 && willingCount <= 1) || willingCount == 0) {
-                SKSE::log::info("SkyrimNetDecisions::EvaluatePreStartSexualScene: only {} willing actor(s), aborting scene.",
-                                willingCount);
-                nlohmann::json nullResult;
-                nullResult["originalParticipants"] = originalParticipants;
-                nullResult["evalId"]               = evalId;
-                nullResult["excluded"]             = excluded;
-                OStimNet::FireModEvent("ostimnet_sexual_evaluation_finished", nullResult.dump().c_str(), 2.0f);
-                return;
-            }
-
-            std::string chosenRoleKey = GetChoiceAnswer(answers2, "roles", preStartCombos[0].key);
-            const PreStartRoleCombo* selectedCombo = nullptr;
-            double bestProb = -1.0;
-
-            for (const auto& c : preStartCombos) {
-                if (c.activeMask != willingMask) continue;
-                if (c.key == chosenRoleKey) {
-                    selectedCombo = &c;
-                    break;
-                }
-                double p = GetChoiceProbability(answers2, "roles", c.key, 0.0);
-                if (p > bestProb) {
-                    bestProb      = p;
-                    selectedCombo = &c;
-                }
-            }
-            if (!selectedCombo) {
-                for (const auto& c : preStartCombos) {
-                    if (c.key == chosenRoleKey) {
-                        selectedCombo = &c;
-                        break;
-                    }
-                }
-            }
-            if (!selectedCombo) selectedCombo = &preStartCombos[0];
-
-            nlohmann::json mainArr      = nlohmann::json::array();
-            nlohmann::json secondaryArr = nlohmann::json::array();
-            for (uint32_t fid : selectedCombo->mainFormIDs)      mainArr.push_back(fid);
-            for (uint32_t fid : selectedCombo->secondaryFormIDs) secondaryArr.push_back(fid);
-
-            std::string rawAct  = ResolveChoiceOrSingle(step2Ctx, "activities", answers2, "activity", "any");
-            std::string rawPos  = ResolveChoiceOrSingle(step2Ctx, "positions", answers2, "position", "any");
-            std::string normAct = NormalizeActivityChoice(rawAct);
-            std::string normPos = NormalizePositionChoice(rawPos);
-
-            // When phases are disabled, if the AI selected a non-intercourse activity (e.g. foreplay or oral),
-            // ignore the selected intercourse position.
-            if (openingPhaseStr.empty() && !normAct.empty() && !normPos.empty()) {
-                auto sexActs = BuildSetupActivitiesArrayJson(participantFIDs, resolvedFurniture, "sex");
-                bool isSexAct = false;
-                for (const auto& item : sexActs) {
-                    if (item.is_object() && item.value("id", "") == normAct) {
-                        isSexAct = true;
-                        break;
-                    }
-                }
-                if (!isSexAct) {
-                    normPos.clear();
-                }
-            }
-
-            nlohmann::json result;
-            result["originalParticipants"] = originalParticipants;
-            result["intent"]               = resolvedIntent;
-            result["furniture"]            = (resolvedFurniture == "floor") ? "" : resolvedFurniture;
-            result["evalId"]               = evalId;
-            result["sexualPosition"]       = normPos;
-            result["sexualActivities"]     = normAct;
-            result["main"]                 = std::move(mainArr);
-            result["secondary"]            = std::move(secondaryArr);
-            result["excluded"]             = excluded;
-
-            bool actorsExcluded = (willingCount < snaps.size());
-            std::string outStr  = result.dump();
-            SKSE::log::info("SkyrimNetDecisions::EvaluatePreStartSexualScene: resolved actors={}, excluded={}, result={}",
-                            willingCount, actorsExcluded, outStr);
-
-            float numArg = actorsExcluded ? 3.0f : 1.0f;
-            OStimNet::FireModEvent("ostimnet_sexual_evaluation_finished", outStr.c_str(), numArg);
-        };
-
-        bool hasStep2Questions = (preStartCombos.size() > 1) ||
-                                 (step2Ctx["activities"].size() > 1) ||
-                                 (step2Ctx["positions"].size() > 1);
-        if (!hasStep2Questions) {
-            for (const auto& s : snaps) {
-                if (!s.isPlayer) {
-                    hasStep2Questions = true;
-                    break;
-                }
-            }
-        }
-        if (!hasStep2Questions) {
-            SKSE::log::info("SkyrimNetDecisions::EvaluatePreStartSexualScene: Step 2 has no questions to ask, resolving directly");
-            (*step2CallbackHolder)("", "{\"answers\":{}}", 1);
-            return;
-        }
-
-        bool queued2 = PublicSendCustomDecisionToLLM(
-            templateName.c_str(), step2ContextJson.c_str(), kDefaultMaxProbabilities, *step2CallbackHolder);
-        if (!queued2 && fallbackToChat) {
-            RunFallbackOnGameThread(fallbackToChat);
-        }
+            });
     };
 
     bool queued = PublicSendCustomDecisionToLLM(
@@ -1089,9 +1102,10 @@ bool EvaluateExternalSexualThread(
     SKSE::log::info("SkyrimNetDecisions::EvaluateExternalSexualThread: queuing Step 1 (intent), threadID={}, participants={}",
                     threadID, roleActors.size());
 
+    const auto expectedEpoch = OStimNet::UI::GetSessionEpoch();
     auto step1CallbackHolder = std::make_shared<std::function<void(const char*, const char*, int)>>();
     *step1CallbackHolder = [step1CallbackHolder, roleActors, actorsJsonArray, actorNames,
-                            sceneDescription, threadID, step1ContextJson, templateName, fallbackToChat](
+                            sceneDescription, threadID, expectedEpoch, step1ContextJson, templateName, fallbackToChat](
                                const char* answer, const char* resultJson, int success) {
         SKSE::log::info("SkyrimNetDecisions::EvaluateExternalSexualThread Step 1 callback: success={}, firstAnswer='{}'",
                         success, answer ? answer : "");
@@ -1129,11 +1143,12 @@ bool EvaluateExternalSexualThread(
         SKSE::log::info("SkyrimNetDecisions::EvaluateExternalSexualThread Step 1: resolved intent='{}' for thread {}",
                         effectiveIntent, threadID);
 
-        auto claimOnGameThread = [threadID, effectiveIntent](
+        auto claimOnGameThread = [threadID, effectiveIntent, expectedEpoch](
                                      std::vector<uint32_t> mainFIDs,
                                      std::vector<uint32_t> secFIDs) {
-            if (auto* taskIF = SKSE::GetTaskInterface()) {
-                taskIF->AddTask([threadID, effectiveIntent, mainFIDs = std::move(mainFIDs), secFIDs = std::move(secFIDs)]() {
+            OStimNet::UI::AddEpochTask(
+                expectedEpoch,
+                [threadID, effectiveIntent, mainFIDs = std::move(mainFIDs), secFIDs = std::move(secFIDs)]() {
                     auto& store = OStimNet::ThreadDataStore::GetSingleton();
                     if (!store.IsRegisteredAndPending(threadID)) {
                         SKSE::log::info("SkyrimNetDecisions::EvaluateExternalSexualThread: thread {} no longer pending, discarding.", threadID);
@@ -1164,7 +1179,6 @@ bool EvaluateExternalSexualThread(
                         listener->ClaimPendingNonOStimNetThread(threadID);
                     }
                 });
-            }
         };
 
         // Solo scene: no Step 2 needed
@@ -2127,277 +2141,285 @@ bool EvaluateLocationScan(
         };
     };
 
+    const auto expectedEpoch = OStimNet::UI::GetSessionEpoch();
+
     // Helper that runs Step 4 (final consent, role combinations, activity, position)
     // once the 1–3 scene participants, intent, and furniture are selected.
-    auto runStep4 = [baseCtx, templateName, scanGen, fallbackToChat, makeIgnoreAction](
+    auto runStep4 = [expectedEpoch, baseCtx, templateName, scanGen, fallbackToChat, makeIgnoreAction](
                         const std::vector<CandidateSnap>& sceneSnaps,
                         const std::string& resolvedIntent,
                         const std::string& resolvedFurniture) {
-        if (OStimNet::LocationScanService::GetSingleton().GetGeneration() != scanGen) {
-            SKSE::log::info("SkyrimNetDecisions::EvaluateLocationScan (Step 4): scan gen={} superseded, discarding", scanGen);
-            return;
-        }
+        OStimNet::UI::AddEpochTask(
+            expectedEpoch,
+            [sceneSnaps, resolvedIntent, resolvedFurniture, baseCtx, templateName, scanGen, fallbackToChat, makeIgnoreAction]() {
+                if (OStimNet::LocationScanService::GetSingleton().GetGeneration() != scanGen) {
+                    SKSE::log::info("SkyrimNetDecisions::EvaluateLocationScan (Step 4): scan gen={} superseded, discarding", scanGen);
+                    return;
+                }
 
-        struct ScanRoleCombo {
-            std::string           key;
-            uint32_t              activeMask = 0;
-            std::vector<uint32_t> mainFormIDs;
-            std::vector<uint32_t> secondaryFormIDs;
-            std::string           mainNames;
-            std::string           secondaryNames;
-            std::string           excludedNames;
-        };
+                struct ScanRoleCombo {
+                    std::string           key;
+                    uint32_t              activeMask = 0;
+                    std::vector<uint32_t> mainFormIDs;
+                    std::vector<uint32_t> secondaryFormIDs;
+                    std::string           mainNames;
+                    std::string           secondaryNames;
+                    std::string           excludedNames;
+                };
 
-        std::vector<ScanRoleCombo> scanCombos;
-        nlohmann::json roleCombinationsJson = nlohmann::json::array();
-        nlohmann::json sceneParticipants    = nlohmann::json::array();
-        std::vector<std::string> actorNameVec;
+                std::vector<ScanRoleCombo> scanCombos;
+                nlohmann::json roleCombinationsJson = nlohmann::json::array();
+                nlohmann::json sceneParticipants    = nlohmann::json::array();
+                std::vector<std::string> actorNameVec;
 
-        for (size_t i = 0; i < sceneSnaps.size(); ++i) {
-            actorNameVec.push_back(sceneSnaps[i].name);
-            nlohmann::json pObj;
-            pObj["key"]         = sceneSnaps[i].key;
-            pObj["uuid"]        = sceneSnaps[i].uuid;
-            pObj["name"]        = sceneSnaps[i].name;
-            pObj["isInitiator"] = (i == 0);
-            pObj["isPlayer"]    = sceneSnaps[i].isPlayer;
-            sceneParticipants.push_back(std::move(pObj));
-        }
+                for (size_t i = 0; i < sceneSnaps.size(); ++i) {
+                    actorNameVec.push_back(sceneSnaps[i].name);
+                    nlohmann::json pObj;
+                    pObj["key"]         = sceneSnaps[i].key;
+                    pObj["uuid"]        = sceneSnaps[i].uuid;
+                    pObj["name"]        = sceneSnaps[i].name;
+                    pObj["isInitiator"] = (i == 0);
+                    pObj["isPlayer"]    = sceneSnaps[i].isPlayer;
+                    sceneParticipants.push_back(std::move(pObj));
+                }
 
-        const size_t n          = sceneSnaps.size();
-        const uint32_t fullMask = (1u << n) - 1u;
-        size_t comboIdx         = 1;
+                const size_t n          = sceneSnaps.size();
+                const uint32_t fullMask = (1u << n) - 1u;
+                size_t comboIdx         = 1;
 
-        if (n == 1) {
-            ScanRoleCombo sc;
-            sc.key         = "c_1";
-            sc.activeMask  = 1u;
-            sc.mainFormIDs = {static_cast<uint32_t>(sceneSnaps[0].formID)};
-            sc.mainNames   = sceneSnaps[0].name;
-            scanCombos.push_back(std::move(sc));
-        } else {
-            for (size_t activeCount = n; activeCount >= 2; --activeCount) {
-                for (uint32_t mask = 1; mask <= fullMask; ++mask) {
-                    if (!(mask & 1u)) continue;  // Initiator (bit 0) is always included
-                    size_t bits = 0;
-                    for (size_t i = 0; i < n; ++i) {
-                        if (mask & (1u << i)) ++bits;
+                if (n == 1) {
+                    ScanRoleCombo sc;
+                    sc.key         = "c_1";
+                    sc.activeMask  = 1u;
+                    sc.mainFormIDs = {static_cast<uint32_t>(sceneSnaps[0].formID)};
+                    sc.mainNames   = sceneSnaps[0].name;
+                    scanCombos.push_back(std::move(sc));
+                } else {
+                    for (size_t activeCount = n; activeCount >= 2; --activeCount) {
+                        for (uint32_t mask = 1; mask <= fullMask; ++mask) {
+                            if (!(mask & 1u)) continue;  // Initiator (bit 0) is always included
+                            size_t bits = 0;
+                            for (size_t i = 0; i < n; ++i) {
+                                if (mask & (1u << i)) ++bits;
+                            }
+                            if (bits != activeCount) continue;
+
+                            std::vector<RoleActorItem> activeActors;
+                            std::string excludedNames;
+                            for (size_t i = 0; i < n; ++i) {
+                                if (mask & (1u << i)) {
+                                    activeActors.push_back(RoleActorItem{
+                                        static_cast<uint32_t>(sceneSnaps[i].formID), sceneSnaps[i].name});
+                                } else {
+                                    if (!excludedNames.empty()) excludedNames += ", ";
+                                    excludedNames += sceneSnaps[i].name;
+                                }
+                            }
+
+                            nlohmann::json subJson;
+                            auto subCombos = BuildRoleCombinations(activeActors, subJson);
+                            for (auto& rc : subCombos) {
+                                ScanRoleCombo sc;
+                                sc.key              = "c_" + std::to_string(comboIdx++);
+                                sc.activeMask       = mask;
+                                sc.mainFormIDs      = std::move(rc.mainFormIDs);
+                                sc.secondaryFormIDs = std::move(rc.secondaryFormIDs);
+                                sc.mainNames        = std::move(rc.mainNames);
+                                sc.secondaryNames   = std::move(rc.secondaryNames);
+                                sc.excludedNames    = excludedNames;
+
+                                nlohmann::json jObj;
+                                jObj["key"]            = sc.key;
+                                jObj["mainNames"]      = sc.mainNames;
+                                jObj["secondaryNames"] = sc.secondaryNames;
+                                jObj["excludedNames"]  = sc.excludedNames;
+                                roleCombinationsJson.push_back(std::move(jObj));
+                                scanCombos.push_back(std::move(sc));
+                            }
+                        }
                     }
-                    if (bits != activeCount) continue;
+                }
 
-                    std::vector<RoleActorItem> activeActors;
-                    std::string excludedNames;
-                    for (size_t i = 0; i < n; ++i) {
-                        if (mask & (1u << i)) {
-                            activeActors.push_back(RoleActorItem{
-                                static_cast<uint32_t>(sceneSnaps[i].formID), sceneSnaps[i].name});
-                        } else {
-                            if (!excludedNames.empty()) excludedNames += ", ";
-                            excludedNames += sceneSnaps[i].name;
+                std::vector<uint32_t> participantFIDs;
+                participantFIDs.reserve(sceneSnaps.size());
+                bool hasPlayer = false;
+                for (const auto& s : sceneSnaps) {
+                    participantFIDs.push_back(static_cast<uint32_t>(s.formID));
+                    if (s.isPlayer) hasPlayer = true;
+                }
+
+                OStimNavigatorAPI::Intent intentEnum = OStimNavigatorAPI::IntentFromString(resolvedIntent);
+                auto phaseSetup = ResolvePreStartPhaseAndSetup(
+                    intentEnum, sceneSnaps.size(), hasPlayer, resolvedFurniture, participantFIDs);
+                std::string effectiveFurniture   = phaseSetup.furniture;
+                std::string openingPhaseStr      = std::move(phaseSetup.openingPhaseStr);
+                nlohmann::json activitiesJson    = std::move(phaseSetup.activitiesJson);
+                nlohmann::json positionsJson     = std::move(phaseSetup.positionsJson);
+                nlohmann::json sexActivitiesJson = std::move(phaseSetup.sexActivitiesJson);
+
+                nlohmann::json step4Ctx       = baseCtx;
+                step4Ctx["step"]              = 4;
+                step4Ctx["intent"]            = resolvedIntent;
+                step4Ctx["furniture"]         = effectiveFurniture;
+                step4Ctx["openingPhase"]      = openingPhaseStr;
+                step4Ctx["activities"]        = std::move(activitiesJson);
+                step4Ctx["positions"]         = std::move(positionsJson);
+                step4Ctx["sexActivities"]     = std::move(sexActivitiesJson);
+                step4Ctx["initiatorName"]     = sceneSnaps[0].name;
+                step4Ctx["actorNames"]        = OStimNet::FormatActorList(actorNameVec);
+                step4Ctx["sceneParticipants"] = std::move(sceneParticipants);
+                step4Ctx["roleCombinations"]  = std::move(roleCombinationsJson);
+                std::string step4ContextJson  = step4Ctx.dump();
+
+                auto step4CallbackHolder = std::make_shared<std::function<void(const char*, const char*, int)>>();
+                *step4CallbackHolder = [step4CallbackHolder, sceneSnaps, scanCombos, resolvedIntent, effectiveFurniture,
+                                        openingPhaseStr, step4Ctx, step4ContextJson, templateName, scanGen, fallbackToChat, makeIgnoreAction](
+                                           const char*, const char* step4ResultJson, int step4Success) {
+                    if (OStimNet::LocationScanService::GetSingleton().GetGeneration() != scanGen) {
+                        SKSE::log::info("SkyrimNetDecisions::EvaluateLocationScan Step 4 callback: scan gen={} superseded, discarding", scanGen);
+                        return;
+                    }
+
+                    auto retryStep4 = [step4CallbackHolder, templateName, step4ContextJson]() {
+                        if (PublicSendCustomDecisionToLLM) {
+                            PublicSendCustomDecisionToLLM(
+                                templateName.c_str(), step4ContextJson.c_str(),
+                                kDefaultMaxProbabilities, *step4CallbackHolder);
+                        }
+                    };
+
+                    if (!step4Success || !step4ResultJson || step4ResultJson[0] == '\0') {
+                        std::string errCode, errMsg;
+                        if (ShouldFallbackToChatOnFailure(step4ResultJson, errCode, errMsg) && fallbackToChat) {
+                            RunFallbackOnGameThread(fallbackToChat);
+                            return;
+                        }
+                        ShowDecisionRetryModal("Location Scan (Step 4: Roles & Consent)", errMsg, retryStep4, makeIgnoreAction());
+                        return;
+                    }
+
+                    auto parsed4 = nlohmann::json::parse(step4ResultJson, nullptr, /*allow_exceptions=*/false);
+                    if (parsed4.is_discarded() || !parsed4.contains("answers") || !parsed4["answers"].is_object()) {
+                        ShowDecisionRetryModal("Location Scan (Step 4: Roles & Consent)", "Unreadable decision response.", retryStep4, makeIgnoreAction());
+                        return;
+                    }
+
+                    const auto& answers4 = parsed4["answers"];
+                    uint32_t willingMask = 1u;  // Initiator (index 0) is always willing
+                    size_t   willingCount = 1;
+
+                    for (size_t i = 1; i < sceneSnaps.size(); ++i) {
+                        bool willing = sceneSnaps[i].isPlayer
+                            ? true
+                            : GetNoulAnswer(answers4, "willing_" + sceneSnaps[i].key, true);
+                        if (willing) {
+                            willingMask |= (1u << i);
+                            ++willingCount;
                         }
                     }
 
-                    nlohmann::json subJson;
-                    auto subCombos = BuildRoleCombinations(activeActors, subJson);
-                    for (auto& rc : subCombos) {
-                        ScanRoleCombo sc;
-                        sc.key              = "c_" + std::to_string(comboIdx++);
-                        sc.activeMask       = mask;
-                        sc.mainFormIDs      = std::move(rc.mainFormIDs);
-                        sc.secondaryFormIDs = std::move(rc.secondaryFormIDs);
-                        sc.mainNames        = std::move(rc.mainNames);
-                        sc.secondaryNames   = std::move(rc.secondaryNames);
-                        sc.excludedNames    = excludedNames;
-
-                        nlohmann::json jObj;
-                        jObj["key"]            = sc.key;
-                        jObj["mainNames"]      = sc.mainNames;
-                        jObj["secondaryNames"] = sc.secondaryNames;
-                        jObj["excludedNames"]  = sc.excludedNames;
-                        roleCombinationsJson.push_back(std::move(jObj));
-                        scanCombos.push_back(std::move(sc));
+                    if (sceneSnaps.size() > 1 && willingCount < 2) {
+                        SKSE::log::info("SkyrimNetDecisions::EvaluateLocationScan Step 4: partner(s) declined consent, aborting scene.");
+                        OStimNet::FireModEvent("ostimnet_location_scan_result", "", 2.0f);
+                        return;
                     }
-                }
-            }
-        }
 
-        std::vector<uint32_t> participantFIDs;
-        participantFIDs.reserve(sceneSnaps.size());
-        bool hasPlayer = false;
-        for (const auto& s : sceneSnaps) {
-            participantFIDs.push_back(static_cast<uint32_t>(s.formID));
-            if (s.isPlayer) hasPlayer = true;
-        }
+                    const ScanRoleCombo* selectedCombo = &scanCombos[0];
+                    if (sceneSnaps.size() >= 2) {
+                        std::string chosenRoleKey = GetChoiceAnswer(answers4, "roles", scanCombos[0].key);
+                        selectedCombo = nullptr;
+                        double bestProb = -1.0;
 
-        OStimNavigatorAPI::Intent intentEnum = OStimNavigatorAPI::IntentFromString(resolvedIntent);
-        auto phaseSetup = ResolvePreStartPhaseAndSetup(
-            intentEnum, sceneSnaps.size(), hasPlayer, resolvedFurniture, participantFIDs);
-        std::string effectiveFurniture = phaseSetup.furniture;
-        std::string openingPhaseStr    = std::move(phaseSetup.openingPhaseStr);
-        nlohmann::json activitiesJson  = std::move(phaseSetup.activitiesJson);
-        nlohmann::json positionsJson   = std::move(phaseSetup.positionsJson);
-
-        nlohmann::json step4Ctx      = baseCtx;
-        step4Ctx["step"]             = 4;
-        step4Ctx["intent"]           = resolvedIntent;
-        step4Ctx["furniture"]        = effectiveFurniture;
-        step4Ctx["openingPhase"]     = openingPhaseStr;
-        step4Ctx["activities"]       = std::move(activitiesJson);
-        step4Ctx["positions"]        = std::move(positionsJson);
-        step4Ctx["initiatorName"]    = sceneSnaps[0].name;
-        step4Ctx["actorNames"]       = OStimNet::FormatActorList(actorNameVec);
-        step4Ctx["sceneParticipants"] = std::move(sceneParticipants);
-        step4Ctx["roleCombinations"] = std::move(roleCombinationsJson);
-        std::string step4ContextJson = step4Ctx.dump();
-
-        auto step4CallbackHolder = std::make_shared<std::function<void(const char*, const char*, int)>>();
-        *step4CallbackHolder = [step4CallbackHolder, sceneSnaps, participantFIDs, scanCombos, resolvedIntent, effectiveFurniture,
-                                openingPhaseStr, step4Ctx, step4ContextJson, templateName, scanGen, fallbackToChat, makeIgnoreAction](
-                                   const char*, const char* step4ResultJson, int step4Success) {
-            if (OStimNet::LocationScanService::GetSingleton().GetGeneration() != scanGen) {
-                SKSE::log::info("SkyrimNetDecisions::EvaluateLocationScan Step 4 callback: scan gen={} superseded, discarding", scanGen);
-                return;
-            }
-
-            auto retryStep4 = [step4CallbackHolder, templateName, step4ContextJson]() {
-                if (PublicSendCustomDecisionToLLM) {
-                    PublicSendCustomDecisionToLLM(
-                        templateName.c_str(), step4ContextJson.c_str(),
-                        kDefaultMaxProbabilities, *step4CallbackHolder);
-                }
-            };
-
-            if (!step4Success || !step4ResultJson || step4ResultJson[0] == '\0') {
-                std::string errCode, errMsg;
-                if (ShouldFallbackToChatOnFailure(step4ResultJson, errCode, errMsg) && fallbackToChat) {
-                    RunFallbackOnGameThread(fallbackToChat);
-                    return;
-                }
-                ShowDecisionRetryModal("Location Scan (Step 4: Roles & Consent)", errMsg, retryStep4, makeIgnoreAction());
-                return;
-            }
-
-            auto parsed4 = nlohmann::json::parse(step4ResultJson, nullptr, /*allow_exceptions=*/false);
-            if (parsed4.is_discarded() || !parsed4.contains("answers") || !parsed4["answers"].is_object()) {
-                ShowDecisionRetryModal("Location Scan (Step 4: Roles & Consent)", "Unreadable decision response.", retryStep4, makeIgnoreAction());
-                return;
-            }
-
-            const auto& answers4 = parsed4["answers"];
-            uint32_t willingMask = 1u;  // Initiator (index 0) is always willing
-            size_t   willingCount = 1;
-
-            for (size_t i = 1; i < sceneSnaps.size(); ++i) {
-                bool willing = sceneSnaps[i].isPlayer
-                    ? true
-                    : GetNoulAnswer(answers4, "willing_" + sceneSnaps[i].key, true);
-                if (willing) {
-                    willingMask |= (1u << i);
-                    ++willingCount;
-                }
-            }
-
-            if (sceneSnaps.size() > 1 && willingCount < 2) {
-                SKSE::log::info("SkyrimNetDecisions::EvaluateLocationScan Step 4: partner(s) declined consent, aborting scene.");
-                OStimNet::FireModEvent("ostimnet_location_scan_result", "", 2.0f);
-                return;
-            }
-
-            const ScanRoleCombo* selectedCombo = &scanCombos[0];
-            if (sceneSnaps.size() >= 2) {
-                std::string chosenRoleKey = GetChoiceAnswer(answers4, "roles", scanCombos[0].key);
-                selectedCombo = nullptr;
-                double bestProb = -1.0;
-
-                for (const auto& c : scanCombos) {
-                    if (c.activeMask != willingMask) continue;
-                    if (c.key == chosenRoleKey) {
-                        selectedCombo = &c;
-                        break;
+                        for (const auto& c : scanCombos) {
+                            if (c.activeMask != willingMask) continue;
+                            if (c.key == chosenRoleKey) {
+                                selectedCombo = &c;
+                                break;
+                            }
+                            double p = GetChoiceProbability(answers4, "roles", c.key, 0.0);
+                            if (p > bestProb) {
+                                bestProb      = p;
+                                selectedCombo = &c;
+                            }
+                        }
+                        if (!selectedCombo) {
+                            for (const auto& c : scanCombos) {
+                                if (c.key == chosenRoleKey) {
+                                    selectedCombo = &c;
+                                    break;
+                                }
+                            }
+                        }
+                        if (!selectedCombo) selectedCombo = &scanCombos[0];
                     }
-                    double p = GetChoiceProbability(answers4, "roles", c.key, 0.0);
-                    if (p > bestProb) {
-                        bestProb      = p;
-                        selectedCombo = &c;
+
+                    nlohmann::json mainArr      = nlohmann::json::array();
+                    nlohmann::json secondaryArr = nlohmann::json::array();
+                    for (uint32_t fid : selectedCombo->mainFormIDs)      mainArr.push_back(fid);
+                    for (uint32_t fid : selectedCombo->secondaryFormIDs) secondaryArr.push_back(fid);
+
+                    std::string rawAct  = ResolveChoiceOrSingle(step4Ctx, "activities", answers4, "activity", "any");
+                    std::string rawPos  = ResolveChoiceOrSingle(step4Ctx, "positions", answers4, "position", "any");
+                    std::string normAct = NormalizeActivityChoice(rawAct);
+                    std::string normPos = NormalizePositionChoice(rawPos);
+                    std::string rawFurn = (effectiveFurniture == "floor" || effectiveFurniture == "none") ? "" : effectiveFurniture;
+
+                    if (openingPhaseStr.empty() && !normAct.empty() && !normPos.empty() &&
+                        step4Ctx.contains("sexActivities") && step4Ctx["sexActivities"].is_array()) {
+                        bool isSexAct = false;
+                        for (const auto& item : step4Ctx["sexActivities"]) {
+                            if (item.is_object() && item.value("id", "") == normAct) {
+                                isSexAct = true;
+                                break;
+                            }
+                        }
+                        if (!isSexAct) {
+                            normPos.clear();
+                        }
                     }
-                }
-                if (!selectedCombo) {
-                    for (const auto& c : scanCombos) {
-                        if (c.key == chosenRoleKey) {
-                            selectedCombo = &c;
+
+                    nlohmann::json result;
+                    result["intent"]           = resolvedIntent;
+                    result["sexualPosition"]   = normPos;
+                    result["sexualActivities"] = normAct;
+                    result["main"]             = std::move(mainArr);
+                    result["secondary"]        = std::move(secondaryArr);
+                    result["furniture"]        = rawFurn;
+
+                    float numArg = (willingCount < sceneSnaps.size()) ? 3.0f : 1.0f;
+                    std::string jsonStr = result.dump();
+                    SKSE::log::info("SkyrimNetDecisions::EvaluateLocationScan Step 4 complete (numArg={:.1f}): {}",
+                                    numArg, jsonStr);
+                    OStimNet::FireModEvent("ostimnet_location_scan_result", jsonStr.c_str(), numArg);
+                };
+
+                bool hasStep4Questions = (scanCombos.size() > 1) ||
+                                         (step4Ctx["activities"].size() > 1) ||
+                                         (step4Ctx["positions"].size() > 1);
+                if (!hasStep4Questions) {
+                    for (size_t i = 1; i < sceneSnaps.size(); ++i) {
+                        if (!sceneSnaps[i].isPlayer) {
+                            hasStep4Questions = true;
                             break;
                         }
                     }
                 }
-                if (!selectedCombo) selectedCombo = &scanCombos[0];
-            }
-
-            nlohmann::json mainArr      = nlohmann::json::array();
-            nlohmann::json secondaryArr = nlohmann::json::array();
-            for (uint32_t fid : selectedCombo->mainFormIDs)      mainArr.push_back(fid);
-            for (uint32_t fid : selectedCombo->secondaryFormIDs) secondaryArr.push_back(fid);
-
-            std::string rawAct  = ResolveChoiceOrSingle(step4Ctx, "activities", answers4, "activity", "any");
-            std::string rawPos  = ResolveChoiceOrSingle(step4Ctx, "positions", answers4, "position", "any");
-            std::string normAct = NormalizeActivityChoice(rawAct);
-            std::string normPos = NormalizePositionChoice(rawPos);
-            std::string rawFurn = (effectiveFurniture == "floor" || effectiveFurniture == "none") ? "" : effectiveFurniture;
-
-            if (openingPhaseStr.empty() && !normAct.empty() && !normPos.empty()) {
-                auto sexActs = BuildSetupActivitiesArrayJson(participantFIDs, effectiveFurniture, "sex");
-                bool isSexAct = false;
-                for (const auto& item : sexActs) {
-                    if (item.is_object() && item.value("id", "") == normAct) {
-                        isSexAct = true;
-                        break;
-                    }
+                if (!hasStep4Questions) {
+                    SKSE::log::info("SkyrimNetDecisions::EvaluateLocationScan: Step 4 has no questions to ask, resolving directly");
+                    (*step4CallbackHolder)("", "{\"answers\":{}}", 1);
+                    return;
                 }
-                if (!isSexAct) {
-                    normPos.clear();
+
+                bool queued4 = PublicSendCustomDecisionToLLM(
+                    templateName.c_str(), step4ContextJson.c_str(), kDefaultMaxProbabilities, *step4CallbackHolder);
+                if (!queued4 && fallbackToChat) {
+                    RunFallbackOnGameThread(fallbackToChat);
                 }
-            }
-
-            nlohmann::json result;
-            result["intent"]           = resolvedIntent;
-            result["sexualPosition"]   = normPos;
-            result["sexualActivities"] = normAct;
-            result["main"]             = std::move(mainArr);
-            result["secondary"]        = std::move(secondaryArr);
-            result["furniture"]        = rawFurn;
-
-            float numArg = (willingCount < sceneSnaps.size()) ? 3.0f : 1.0f;
-            std::string jsonStr = result.dump();
-            SKSE::log::info("SkyrimNetDecisions::EvaluateLocationScan Step 4 complete (numArg={:.1f}): {}",
-                            numArg, jsonStr);
-            OStimNet::FireModEvent("ostimnet_location_scan_result", jsonStr.c_str(), numArg);
-        };
-
-        bool hasStep4Questions = (scanCombos.size() > 1) ||
-                                 (step4Ctx["activities"].size() > 1) ||
-                                 (step4Ctx["positions"].size() > 1);
-        if (!hasStep4Questions) {
-            for (size_t i = 1; i < sceneSnaps.size(); ++i) {
-                if (!sceneSnaps[i].isPlayer) {
-                    hasStep4Questions = true;
-                    break;
-                }
-            }
-        }
-        if (!hasStep4Questions) {
-            SKSE::log::info("SkyrimNetDecisions::EvaluateLocationScan: Step 4 has no questions to ask, resolving directly");
-            (*step4CallbackHolder)("", "{\"answers\":{}}", 1);
-            return;
-        }
-
-        bool queued4 = PublicSendCustomDecisionToLLM(
-            templateName.c_str(), step4ContextJson.c_str(), kDefaultMaxProbabilities, *step4CallbackHolder);
-        if (!queued4 && fallbackToChat) {
-            RunFallbackOnGameThread(fallbackToChat);
-        }
+            });
     };
 
     auto step1CallbackHolder = std::make_shared<std::function<void(const char*, const char*, int)>>();
-    *step1CallbackHolder = [step1CallbackHolder, snaps, baseCtx, step1ContextJson, templateName,
+    *step1CallbackHolder = [step1CallbackHolder, expectedEpoch, snaps, baseCtx, step1ContextJson, templateName,
                             scanGen, fallbackToChat, makeIgnoreAction, runStep4](
                                const char* answer, const char* resultJson, int success) {
         if (OStimNet::LocationScanService::GetSingleton().GetGeneration() != scanGen) {
@@ -2452,188 +2474,197 @@ bool EvaluateLocationScan(
         }
 
         CandidateSnap initiatorSnap = *initiatorPtr;
-        auto* initiatorActor        = RE::TESForm::LookupByID<RE::Actor>(initiatorSnap.formID);
 
-        nlohmann::json partner1List = nlohmann::json::array();
-        nlohmann::json step2Candidates = baseCtx["candidatesList"];
-        for (auto& cObj : step2Candidates) {
-            bool isInit = (cObj.value("key", "") == initiatorSnap.key);
-            cObj["isInitiator"] = isInit;
-            if (!isInit) {
-                partner1List.push_back(cObj);
-            }
-        }
-
-        nlohmann::json step2Ctx   = baseCtx;
-        step2Ctx["step"]          = 2;
-        step2Ctx["initiatorName"] = initiatorSnap.name;
-        step2Ctx["candidatesList"] = std::move(step2Candidates);
-        step2Ctx["partner1List"]  = std::move(partner1List);
-        step2Ctx["furnitureList"] = BuildFurnitureArrayJson(initiatorActor);
-        std::string step2ContextJson = step2Ctx.dump();
-
-        SKSE::log::info("SkyrimNetDecisions::EvaluateLocationScan Step 1 selected initiator='{}', queuing Step 2 (partner_1, intent, furniture)",
-                        initiatorSnap.name);
-
-        auto step2CallbackHolder = std::make_shared<std::function<void(const char*, const char*, int)>>();
-        *step2CallbackHolder = [step2CallbackHolder, snaps, initiatorSnap, step2Ctx, step2ContextJson,
-                                templateName, scanGen, fallbackToChat, makeIgnoreAction, runStep4](
-                                   const char*, const char* step2ResultJson, int step2Success) {
-            if (OStimNet::LocationScanService::GetSingleton().GetGeneration() != scanGen) {
-                SKSE::log::info("SkyrimNetDecisions::EvaluateLocationScan Step 2 callback: scan gen={} superseded, discarding",
-                                scanGen);
-                return;
-            }
-
-            auto retryStep2 = [step2CallbackHolder, templateName, step2ContextJson]() {
-                if (PublicSendCustomDecisionToLLM) {
-                    PublicSendCustomDecisionToLLM(
-                        templateName.c_str(), step2ContextJson.c_str(),
-                        kDefaultMaxProbabilities, *step2CallbackHolder);
-                }
-            };
-
-            if (!step2Success || !step2ResultJson || step2ResultJson[0] == '\0') {
-                std::string errCode, errMsg;
-                if (ShouldFallbackToChatOnFailure(step2ResultJson, errCode, errMsg) && fallbackToChat) {
-                    RunFallbackOnGameThread(fallbackToChat);
-                    return;
-                }
-                ShowDecisionRetryModal("Location Scan (Step 2: Partner & Intent)", errMsg, retryStep2, makeIgnoreAction());
-                return;
-            }
-
-            auto parsed2 = nlohmann::json::parse(step2ResultJson, nullptr, /*allow_exceptions=*/false);
-            if (parsed2.is_discarded() || !parsed2.contains("answers") || !parsed2["answers"].is_object()) {
-                ShowDecisionRetryModal("Location Scan (Step 2: Partner & Intent)", "Unreadable decision response.", retryStep2, makeIgnoreAction());
-                return;
-            }
-
-            const auto& answers2          = parsed2["answers"];
-            std::string partner1Key       = GetChoiceAnswer(answers2, "partner_1", "none");
-            std::string resolvedIntent    = GetChoiceAnswer(answers2, "intent", "lustful");
-            std::string resolvedFurniture = GetChoiceAnswer(answers2, "furniture", "floor");
-
-            if (partner1Key == "none") {
-                SKSE::log::info("SkyrimNetDecisions::EvaluateLocationScan Step 2: partner_1='none', no scene started");
-                OStimNet::FireModEvent("ostimnet_location_scan_result", "", 2.0f);
-                return;
-            }
-
-            if (partner1Key == "solo") {
-                SKSE::log::info("SkyrimNetDecisions::EvaluateLocationScan Step 2: solo scene selected for '{}', advancing to Step 4",
-                                initiatorSnap.name);
-                runStep4({initiatorSnap}, resolvedIntent, resolvedFurniture);
-                return;
-            }
-
-            const CandidateSnap* partner1Ptr = nullptr;
-            for (const auto& s : snaps) {
-                if (s.key == partner1Key && s.key != initiatorSnap.key) {
-                    partner1Ptr = &s;
-                    break;
-                }
-            }
-            if (!partner1Ptr) {
-                SKSE::log::info("SkyrimNetDecisions::EvaluateLocationScan Step 2: partner_1='{}' not found, aborting",
-                                partner1Key);
-                OStimNet::FireModEvent("ostimnet_location_scan_result", "", 2.0f);
-                return;
-            }
-
-            CandidateSnap partner1Snap = *partner1Ptr;
-            nlohmann::json partner2List = nlohmann::json::array();
-            nlohmann::json step3Candidates = step2Ctx["candidatesList"];
-            for (auto& cObj : step3Candidates) {
-                std::string k = cObj.value("key", "");
-                bool isP1 = (k == partner1Snap.key);
-                cObj["isPartner1"] = isP1;
-                if (k != initiatorSnap.key && !isP1) {
-                    partner2List.push_back(cObj);
-                }
-            }
-
-            if (partner2List.empty()) {
-                SKSE::log::info("SkyrimNetDecisions::EvaluateLocationScan Step 2: no other candidates for partner_2, advancing directly to Step 4");
-                runStep4({initiatorSnap, partner1Snap}, resolvedIntent, resolvedFurniture);
-                return;
-            }
-
-            nlohmann::json step3Ctx    = step2Ctx;
-            step3Ctx["step"]           = 3;
-            step3Ctx["partner1Name"]   = partner1Snap.name;
-            step3Ctx["intent"]         = resolvedIntent;
-            step3Ctx["furniture"]      = resolvedFurniture;
-            step3Ctx["candidatesList"] = std::move(step3Candidates);
-            step3Ctx["partner2List"]   = std::move(partner2List);
-            std::string step3ContextJson = step3Ctx.dump();
-
-            SKSE::log::info("SkyrimNetDecisions::EvaluateLocationScan Step 2 selected partner_1='{}' (intent='{}', furniture='{}'), queuing Step 3 (optional 3rd participant)",
-                            partner1Snap.name, resolvedIntent, resolvedFurniture);
-
-            auto step3CallbackHolder = std::make_shared<std::function<void(const char*, const char*, int)>>();
-            *step3CallbackHolder = [step3CallbackHolder, snaps, initiatorSnap, partner1Snap,
-                                    resolvedIntent, resolvedFurniture, step3ContextJson,
-                                    templateName, scanGen, fallbackToChat, makeIgnoreAction, runStep4](
-                                       const char*, const char* step3ResultJson, int step3Success) {
+        OStimNet::UI::AddEpochTask(
+            expectedEpoch,
+            [snaps, initiatorSnap, baseCtx, templateName, scanGen, fallbackToChat, makeIgnoreAction, runStep4]() {
                 if (OStimNet::LocationScanService::GetSingleton().GetGeneration() != scanGen) {
-                    SKSE::log::info("SkyrimNetDecisions::EvaluateLocationScan Step 3 callback: scan gen={} superseded, discarding",
-                                    scanGen);
                     return;
                 }
 
-                auto retryStep3 = [step3CallbackHolder, templateName, step3ContextJson]() {
-                    if (PublicSendCustomDecisionToLLM) {
-                        PublicSendCustomDecisionToLLM(
-                            templateName.c_str(), step3ContextJson.c_str(),
-                            kDefaultMaxProbabilities, *step3CallbackHolder);
-                    }
-                };
+                auto* initiatorActor = RE::TESForm::LookupByID<RE::Actor>(initiatorSnap.formID);
 
-                if (!step3Success || !step3ResultJson || step3ResultJson[0] == '\0') {
-                    std::string errCode, errMsg;
-                    if (ShouldFallbackToChatOnFailure(step3ResultJson, errCode, errMsg) && fallbackToChat) {
-                        RunFallbackOnGameThread(fallbackToChat);
+                nlohmann::json partner1List    = nlohmann::json::array();
+                nlohmann::json step2Candidates = baseCtx["candidatesList"];
+                for (auto& cObj : step2Candidates) {
+                    bool isInit = (cObj.value("key", "") == initiatorSnap.key);
+                    cObj["isInitiator"] = isInit;
+                    if (!isInit) {
+                        partner1List.push_back(cObj);
+                    }
+                }
+
+                nlohmann::json step2Ctx    = baseCtx;
+                step2Ctx["step"]           = 2;
+                step2Ctx["initiatorName"]  = initiatorSnap.name;
+                step2Ctx["candidatesList"] = std::move(step2Candidates);
+                step2Ctx["partner1List"]   = std::move(partner1List);
+                step2Ctx["furnitureList"]  = BuildFurnitureArrayJson(initiatorActor);
+                std::string step2ContextJson = step2Ctx.dump();
+
+                SKSE::log::info("SkyrimNetDecisions::EvaluateLocationScan Step 1 selected initiator='{}', queuing Step 2 (partner_1, intent, furniture)",
+                                initiatorSnap.name);
+
+                auto step2CallbackHolder = std::make_shared<std::function<void(const char*, const char*, int)>>();
+                *step2CallbackHolder = [step2CallbackHolder, snaps, initiatorSnap, step2Ctx, step2ContextJson,
+                                        templateName, scanGen, fallbackToChat, makeIgnoreAction, runStep4](
+                                           const char*, const char* step2ResultJson, int step2Success) {
+                    if (OStimNet::LocationScanService::GetSingleton().GetGeneration() != scanGen) {
+                        SKSE::log::info("SkyrimNetDecisions::EvaluateLocationScan Step 2 callback: scan gen={} superseded, discarding",
+                                        scanGen);
                         return;
                     }
-                    ShowDecisionRetryModal("Location Scan (Step 3: 3rd Participant)", errMsg, retryStep3, makeIgnoreAction());
-                    return;
-                }
 
-                auto parsed3 = nlohmann::json::parse(step3ResultJson, nullptr, /*allow_exceptions=*/false);
-                if (parsed3.is_discarded() || !parsed3.contains("answers") || !parsed3["answers"].is_object()) {
-                    ShowDecisionRetryModal("Location Scan (Step 3: 3rd Participant)", "Unreadable decision response.", retryStep3, makeIgnoreAction());
-                    return;
-                }
+                    auto retryStep2 = [step2CallbackHolder, templateName, step2ContextJson]() {
+                        if (PublicSendCustomDecisionToLLM) {
+                            PublicSendCustomDecisionToLLM(
+                                templateName.c_str(), step2ContextJson.c_str(),
+                                kDefaultMaxProbabilities, *step2CallbackHolder);
+                        }
+                    };
 
-                std::string partner2Key = GetChoiceAnswer(parsed3["answers"], "partner_2", "none");
-                std::vector<CandidateSnap> sceneSnaps = {initiatorSnap, partner1Snap};
-                if (partner2Key != "none") {
+                    if (!step2Success || !step2ResultJson || step2ResultJson[0] == '\0') {
+                        std::string errCode, errMsg;
+                        if (ShouldFallbackToChatOnFailure(step2ResultJson, errCode, errMsg) && fallbackToChat) {
+                            RunFallbackOnGameThread(fallbackToChat);
+                            return;
+                        }
+                        ShowDecisionRetryModal("Location Scan (Step 2: Partner & Intent)", errMsg, retryStep2, makeIgnoreAction());
+                        return;
+                    }
+
+                    auto parsed2 = nlohmann::json::parse(step2ResultJson, nullptr, /*allow_exceptions=*/false);
+                    if (parsed2.is_discarded() || !parsed2.contains("answers") || !parsed2["answers"].is_object()) {
+                        ShowDecisionRetryModal("Location Scan (Step 2: Partner & Intent)", "Unreadable decision response.", retryStep2, makeIgnoreAction());
+                        return;
+                    }
+
+                    const auto& answers2          = parsed2["answers"];
+                    std::string partner1Key       = GetChoiceAnswer(answers2, "partner_1", "none");
+                    std::string resolvedIntent    = GetChoiceAnswer(answers2, "intent", "lustful");
+                    std::string resolvedFurniture = GetChoiceAnswer(answers2, "furniture", "floor");
+
+                    if (partner1Key == "none") {
+                        SKSE::log::info("SkyrimNetDecisions::EvaluateLocationScan Step 2: partner_1='none', no scene started");
+                        OStimNet::FireModEvent("ostimnet_location_scan_result", "", 2.0f);
+                        return;
+                    }
+
+                    if (partner1Key == "solo") {
+                        SKSE::log::info("SkyrimNetDecisions::EvaluateLocationScan Step 2: solo scene selected for '{}', advancing to Step 4",
+                                        initiatorSnap.name);
+                        runStep4({initiatorSnap}, resolvedIntent, resolvedFurniture);
+                        return;
+                    }
+
+                    const CandidateSnap* partner1Ptr = nullptr;
                     for (const auto& s : snaps) {
-                        if (s.key == partner2Key && s.key != initiatorSnap.key && s.key != partner1Snap.key) {
-                            sceneSnaps.push_back(s);
+                        if (s.key == partner1Key && s.key != initiatorSnap.key) {
+                            partner1Ptr = &s;
                             break;
                         }
                     }
+                    if (!partner1Ptr) {
+                        SKSE::log::info("SkyrimNetDecisions::EvaluateLocationScan Step 2: partner_1='{}' not found, aborting",
+                                        partner1Key);
+                        OStimNet::FireModEvent("ostimnet_location_scan_result", "", 2.0f);
+                        return;
+                    }
+
+                    CandidateSnap partner1Snap     = *partner1Ptr;
+                    nlohmann::json partner2List    = nlohmann::json::array();
+                    nlohmann::json step3Candidates = step2Ctx["candidatesList"];
+                    for (auto& cObj : step3Candidates) {
+                        std::string k = cObj.value("key", "");
+                        bool isP1 = (k == partner1Snap.key);
+                        cObj["isPartner1"] = isP1;
+                        if (k != initiatorSnap.key && !isP1) {
+                            partner2List.push_back(cObj);
+                        }
+                    }
+
+                    if (partner2List.empty()) {
+                        SKSE::log::info("SkyrimNetDecisions::EvaluateLocationScan Step 2: no other candidates for partner_2, advancing directly to Step 4");
+                        runStep4({initiatorSnap, partner1Snap}, resolvedIntent, resolvedFurniture);
+                        return;
+                    }
+
+                    nlohmann::json step3Ctx    = step2Ctx;
+                    step3Ctx["step"]           = 3;
+                    step3Ctx["partner1Name"]   = partner1Snap.name;
+                    step3Ctx["intent"]         = resolvedIntent;
+                    step3Ctx["furniture"]      = resolvedFurniture;
+                    step3Ctx["candidatesList"] = std::move(step3Candidates);
+                    step3Ctx["partner2List"]   = std::move(partner2List);
+                    std::string step3ContextJson = step3Ctx.dump();
+
+                    SKSE::log::info("SkyrimNetDecisions::EvaluateLocationScan Step 2 selected partner_1='{}' (intent='{}', furniture='{}'), queuing Step 3 (optional 3rd participant)",
+                                    partner1Snap.name, resolvedIntent, resolvedFurniture);
+
+                    auto step3CallbackHolder = std::make_shared<std::function<void(const char*, const char*, int)>>();
+                    *step3CallbackHolder = [step3CallbackHolder, snaps, initiatorSnap, partner1Snap,
+                                            resolvedIntent, resolvedFurniture, step3ContextJson,
+                                            templateName, scanGen, fallbackToChat, makeIgnoreAction, runStep4](
+                                               const char*, const char* step3ResultJson, int step3Success) {
+                        if (OStimNet::LocationScanService::GetSingleton().GetGeneration() != scanGen) {
+                            SKSE::log::info("SkyrimNetDecisions::EvaluateLocationScan Step 3 callback: scan gen={} superseded, discarding",
+                                            scanGen);
+                            return;
+                        }
+
+                        auto retryStep3 = [step3CallbackHolder, templateName, step3ContextJson]() {
+                            if (PublicSendCustomDecisionToLLM) {
+                                PublicSendCustomDecisionToLLM(
+                                    templateName.c_str(), step3ContextJson.c_str(),
+                                    kDefaultMaxProbabilities, *step3CallbackHolder);
+                            }
+                        };
+
+                        if (!step3Success || !step3ResultJson || step3ResultJson[0] == '\0') {
+                            std::string errCode, errMsg;
+                            if (ShouldFallbackToChatOnFailure(step3ResultJson, errCode, errMsg) && fallbackToChat) {
+                                RunFallbackOnGameThread(fallbackToChat);
+                                return;
+                            }
+                            ShowDecisionRetryModal("Location Scan (Step 3: 3rd Participant)", errMsg, retryStep3, makeIgnoreAction());
+                            return;
+                        }
+
+                        auto parsed3 = nlohmann::json::parse(step3ResultJson, nullptr, /*allow_exceptions=*/false);
+                        if (parsed3.is_discarded() || !parsed3.contains("answers") || !parsed3["answers"].is_object()) {
+                            ShowDecisionRetryModal("Location Scan (Step 3: 3rd Participant)", "Unreadable decision response.", retryStep3, makeIgnoreAction());
+                            return;
+                        }
+
+                        std::string partner2Key = GetChoiceAnswer(parsed3["answers"], "partner_2", "none");
+                        std::vector<CandidateSnap> sceneSnaps = {initiatorSnap, partner1Snap};
+                        if (partner2Key != "none") {
+                            for (const auto& s : snaps) {
+                                if (s.key == partner2Key && s.key != initiatorSnap.key && s.key != partner1Snap.key) {
+                                    sceneSnaps.push_back(s);
+                                    break;
+                                }
+                            }
+                        }
+
+                        SKSE::log::info("SkyrimNetDecisions::EvaluateLocationScan Step 3 complete (participants={}), advancing to Step 4",
+                                        sceneSnaps.size());
+                        runStep4(sceneSnaps, resolvedIntent, resolvedFurniture);
+                    };
+
+                    bool queued3 = PublicSendCustomDecisionToLLM(
+                        templateName.c_str(), step3ContextJson.c_str(), kDefaultMaxProbabilities, *step3CallbackHolder);
+                    if (!queued3 && fallbackToChat) {
+                        RunFallbackOnGameThread(fallbackToChat);
+                    }
+                };
+
+                bool queued2 = PublicSendCustomDecisionToLLM(
+                    templateName.c_str(), step2ContextJson.c_str(), kDefaultMaxProbabilities, *step2CallbackHolder);
+                if (!queued2 && fallbackToChat) {
+                    RunFallbackOnGameThread(fallbackToChat);
                 }
-
-                SKSE::log::info("SkyrimNetDecisions::EvaluateLocationScan Step 3 complete (participants={}), advancing to Step 4",
-                                sceneSnaps.size());
-                runStep4(sceneSnaps, resolvedIntent, resolvedFurniture);
-            };
-
-            bool queued3 = PublicSendCustomDecisionToLLM(
-                templateName.c_str(), step3ContextJson.c_str(), kDefaultMaxProbabilities, *step3CallbackHolder);
-            if (!queued3 && fallbackToChat) {
-                RunFallbackOnGameThread(fallbackToChat);
-            }
-        };
-
-        bool queued2 = PublicSendCustomDecisionToLLM(
-            templateName.c_str(), step2ContextJson.c_str(), kDefaultMaxProbabilities, *step2CallbackHolder);
-        if (!queued2 && fallbackToChat) {
-            RunFallbackOnGameThread(fallbackToChat);
-        }
+            });
     };
 
     bool queued = PublicSendCustomDecisionToLLM(
@@ -2728,6 +2759,7 @@ bool EvaluateScheduledSceneAdvance(
     ctx["intent"]              = OStimNet::IntentToString(store.GetIntent(threadID));
     ctx["initialAdvance"]      = initialAdvance;
     ctx["activities"]          = BuildThreadActivitiesArrayJson(threadID, "sexual");
+    ctx["sexActivities"]       = BuildThreadActivitiesArrayJson(threadID, "sex");
     ctx["positions"]           = BuildPositionsArrayJson(threadID);
     ctx["threadID"]            = threadID;
 
@@ -2786,10 +2818,10 @@ bool EvaluateScheduledSceneAdvance(
         std::string normPos = NormalizePositionChoice(rawPos);
         std::string normAct = NormalizeActivityChoice(rawAct);
 
-        if (!normAct.empty() && !normPos.empty()) {
-            auto sexActs = BuildThreadActivitiesArrayJson(threadID, "sex");
+        if (!normAct.empty() && !normPos.empty() &&
+            ctx.contains("sexActivities") && ctx["sexActivities"].is_array()) {
             bool isSexAct = false;
-            for (const auto& item : sexActs) {
+            for (const auto& item : ctx["sexActivities"]) {
                 if (item.is_object() && item.value("id", "") == normAct) {
                     isSexAct = true;
                     break;

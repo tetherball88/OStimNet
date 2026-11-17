@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.7.1
+
+### Fixed
+
+- **Crash to desktop (CTD) when ending scenes on Skyrim AE (`1.6.x`)** — Fixed an unmapped Address Library call (`Actor::IsInBleedout`) in scene-end interruption detection that caused an immediate crash to desktop whenever an OStim scene finished on Skyrim Anniversary Edition (`1.6.640` / `1.6.1170` / `1.6.1179` GOG).
+- **Phase activity lists in ongoing scene prompts (`ostimnet_thread_phase`)** — Fixed `ONavGetThreadActions` array parsing so `foreplayActions`, `oralActions`, and `sexActions` populate properly instead of returning empty strings.
+- **Thread safety & save-reload stability across AI evaluations and prompt decorators** — Synchronized `ThreadRegistry` access across SkyrimNet worker threads, marshaled async LLM/Decisions callbacks and pull-out scene transitions onto the SKSE main thread with save-session guards, and cached `OVirginityQuest` resolution once at startup to avoid repeated off-thread form lookups when `OVirginity.esp` is not installed.
+
+---
+
 ## v2.7.0
 
 ### Added
