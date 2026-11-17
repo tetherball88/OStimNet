@@ -6,6 +6,7 @@
   `powershell -NoProfile -ExecutionPolicy Bypass -File ".agents/skills/ostimnet-build/scripts/build.ps1" -Target dll` (or `-Target all` when `ui-src/` also changed; add `-Reconfigure` when changing CMake files).
 - **Locked Target DLL (`SkyrimSE.exe` Open):** If Skyrim is running, `SKSE/Plugins/OStimNet.dll` is locked by Windows, causing CMake's `POST_BUILD` copy (`MSB3073`) to fail *after* `SKSE_Source/build/release/Release/OStimNet.dll` compiles and links cleanly. `build.ps1` detects this automatically—treat compilation as **succeeded**, never retry in a loop, and never kill `SkyrimSE.exe`; simply note that copying the new DLL awaits closing Skyrim.
 - **Papyrus Scripts (`.psc` -> `.pex`):** Do NOT compile Papyrus scripts unless explicitly asked by the user.
+- **Version Release Preparation:** When preparing a new `vX.Y.Z` release, bumping versions, or auditing release readiness, activate [.agents/skills/ostimnet-release](.agents/skills/ostimnet-release/SKILL.md) and run `prepare_release.ps1`.
 - **Magelight UI Modals Only:** All confirmations, retry/ignore prompts, and scene/role dialogs must use `OStimNet::UI::ModalManager` <-> `ui-src` (`<ModalHost />`), never native `RE::MessageBoxMenu` or `UIExtensions`.
 
 ## Coding Guidelines & Conventions

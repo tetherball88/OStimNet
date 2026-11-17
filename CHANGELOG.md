@@ -1,5 +1,34 @@
 # Changelog
 
+## v2.7.0
+
+### Added
+
+- **Magelight UI modals** — Replaced Skyrim native message boxes and `UIExtensions` list menus with **Magelight UI** modals across all confirmation prompts, SkyrimNet Decisions retry dialogs, manual external scene setup menus, and in-scene OStim wheel intent/role menus:
+  - Supports mouse clicks, keyboard navigation (`WASD` / `Arrows` / `Tab`, `Enter` / `Space` / `E`), and gamepads cleanly without the Skyrim engine camera fly-away bug caused by clicking native message boxes.
+  - **Dependency change**: Replaces the previous `UIExtensions` requirement with **Magelight UI**.
+- **Optional OVirginity Reflowered integration** — Added built-in support when `OVirginity.esp` is installed:
+  - **Character & scene awareness** — Exposes virginity status (`ovirginity_is_virgin`) to Game Master character bios, pre-start/join/invite/location-scan evaluations, and ongoing scene dialogue cues (`0502_sex.prompt`).
+  - **Gentle initial pacing** — Automatically starts penetrative animations at slow speed in `romantic` and `lustful` encounters involving a virgin participant.
+  - **First-time reactions, memories & diary entries** — Detects virginity loss mid-scene to trigger an immediate in-character reaction (`tton_virginity_lost`), records permanent SkyrimNet relationship/trauma memories for participating NPCs, and supports an optional post-scene private diary reflection (`tton_virginity_lost_diary`, disabled by default).
+- **Expanded non-sexual care intents (`lustful` & `transactional`)** — `StartCareScene` (hugging and kissing), non-sexual scene evaluations, manual external thread setup, and event logs now support `lustful` and `transactional` intents alongside `platonic` and `romantic`, including proper recipient/provider role assignment for `transactional` care scenes.
+- **Animation pace awareness in dialogue** — Active sexual scenes now track normalized animation speed (`slow`, `moderate`, `fast`) and pass pace-specific delivery cues into `0502_sex.prompt` so NPC vocal intensity and breathlessness match the current rhythm of the animation.
+- **Combat & guard arrest interruption reactions** — Detects when an ongoing intimate scene is abruptly broken up by combat, bleedout, or crime/guard arrest, cancels pending scene-change and speed-change narration, logs the interruption reason, and fires an immediate high-priority reaction (`tton_sex_interrupted`) instead of normal post-scene dialogue (`tton_sex_stop_comment`).
+
+### Changed
+
+- **Cleaner foreplay, oral & position filtering** — Scene searches (`SceneSexSearch`, `OStimChangeScene`, and `ChangeSexScenePosition`) now automatically blacklist higher-phase action types when searching for foreplay or oral activities (preventing multi-action intercourse scenes from matching earlier-stage requests) and clear incompatible intercourse position tags when switching to foreplay or oral animations.
+
+### Fixed
+
+- **`"0 starting animations found"` & scene start fallbacks** — Fixed several issues that could cause NPC- or AI-initiated scenes to fail at startup with `"no starting animation found"` or leave stale thread claims behind:
+  - Fixed `SceneSexSearch` not relaxing `"intercourse"` to `"sexual"` during `"sex"`-phase starts (such as `dom` and `aggressive` encounters) when `actionType` was empty and participants only had non-intercourse animations available, and fixed bed subtype checks (`doublebed`, `singlebed`, `bedroll`) using `OFurniture.IsChildOf("bed", furnType)`.
+  - Removed `OThreadBuilder.SetDominantActors` in `StartOstimSex`, which inverted `[Male, Female]` actor slot ordering on femdom fallback starts and caused animation lookup to fail.
+  - Added pre-start and start-time fallbacks to avoid offering intercourse positions when no `"sex"`-phase activities exist for the participants, retry on the floor when selected furniture has no compatible animations, restrict default undressing starts to loaded 2-actor male+female pairs, and cleanly abort with a notification and actor cleanup if no compatible animation exists.
+  - Hardened `ThreadRegistry` claim expiration, invalid `threadID` handling, actor-overlap validation, and starting-phase synchronization with the actual opening animation.
+
+---
+
 ## v2.6.2
 
 ### Added

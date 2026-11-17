@@ -1,9 +1,21 @@
-name: Release (selective zip)
+name: Main Release
 
 on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Version tag to test (e.g. v2.7.0)"
+        required: true
+        default: "v2.7.0"
+        type: string
+      dry_run:
+        description: "Dry run (skip GitHub Release and Nexus Mods upload)"
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   contents: write
@@ -11,18 +23,90 @@ permissions:
 jobs:
   make-release:
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.changelog.outputs.tag }}
+      clean_version: ${{ steps.changelog.outputs.clean_version }}
+      changelog_text: ${{ steps.changelog.outputs.changelog_text }}
     steps:
       - name: Check out
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      - name: Extract changelog
+        id: changelog
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          python3 - <<'PY'
+          import os, re, uuid
+
+          tag = os.environ.get("INPUT_TAG") or os.environ["GITHUB_REF_NAME"]
+          clean_version = tag[1:] if tag.startswith("v") else tag
+
+          section = ""
+          if os.path.exists("CHANGELOG.md"):
+              with open("CHANGELOG.md", "r", encoding="utf-8") as f:
+                  text = f.read()
+              candidates = {tag, clean_version, f"v{clean_version}"}
+              lines = text.splitlines()
+              capturing = False
+              buf = []
+              for line in lines:
+                  m = re.match(r"^##\s+(.+?)\s*$", line)
+                  if m:
+                      if capturing:
+                          break
+                      header = m.group(1).strip()
+                      if header in candidates or any(header.startswith(f"{c} ") or header.startswith(f"{c}-") for c in candidates):
+                          capturing = True
+                          continue
+                  elif capturing:
+                      buf.append(line)
+              while buf and (not buf[0].strip() or buf[0].strip() == "---"):
+                  buf.pop(0)
+              while buf and (not buf[-1].strip() or buf[-1].strip() == "---"):
+                  buf.pop()
+              section = "\n".join(buf)
+
+          if not section:
+              section = f"Automated release for {tag}"
+
+          def strip_inline(s: str) -> str:
+              s = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", s)
+              s = re.sub(r"\*\*(.+?)\*\*", r"\1", s)
+              s = re.sub(r"(?<!\*)\*([^*]+?)\*(?!\*)", r"\1", s)
+              s = re.sub(r"`([^`]+?)`", r"\1", s)
+              return s
+
+          def md_to_plain(md: str) -> str:
+              out = []
+              for line in md.splitlines():
+                  s = line.strip()
+                  if s.startswith("### "):
+                      out.append(f"{strip_inline(s[4:])}:")
+                  elif s.startswith("#### "):
+                      out.append(f"{strip_inline(s[5:])}:")
+                  else:
+                      out.append(strip_inline(line))
+              return "\n".join(out).strip()
+
+          plain_text = md_to_plain(section)
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out_f:
+              out_f.write(f"tag={tag}\n")
+              out_f.write(f"clean_version={clean_version}\n")
+              for key, val in [("changelog_md", section), ("changelog_text", plain_text)]:
+                  delim = f"EOF_{uuid.uuid4().hex}"
+                  out_f.write(f"{key}<<{delim}\n{val}\n{delim}\n")
+          PY
+
       # build steps here if needed
 
       - name: Create selective zip
         run: |
           mkdir -p out
-          TAG="${{ github.ref_name }}"
+          TAG="${{ steps.changelog.outputs.tag }}"
 
           zip -r "out/OStimNet_${TAG}.zip" \
             Interface/ \
@@ -32,23 +116,69 @@ jobs:
             TT_OStimNet.esp \
             -x ".github/*"
 
-      - name: Upload build artifacts
+      - name: Upload release artifact
         uses: actions/upload-artifact@v4
         with:
-          name: release-artifacts
-          path: |
-            out/OStimNet_${{ github.ref_name }}.zip
+          name: release-zip
+          path: out/OStimNet_${{ steps.changelog.outputs.tag }}.zip
 
       - name: Create GitHub Release
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.dry_run) }}
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
-          name: ${{ github.ref_name }}
-          body: |-
-            Automated release for ${{ github.ref_name }}
-
-            ## Release Notes
-            See the changelog for full details: https://github.com/${{ github.repository }}/blob/${{ github.ref_name }}/CHANGELOG.md
+          tag_name: ${{ steps.changelog.outputs.tag }}
+          name: ${{ steps.changelog.outputs.tag }}
+          body: ${{ steps.changelog.outputs.changelog_md }}
           files: |
-            out/OStimNet_${{ github.ref_name }}.zip
+            out/OStimNet_${{ steps.changelog.outputs.tag }}.zip
 
+  publish-nexus:
+    name: Publish to Nexus Mods
+    needs: make-release
+    runs-on: ubuntu-latest
+    environment: nexusmods
+    steps:
+      - name: Download release artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: release-zip
+          path: out
+
+      - name: Rename artifact
+        run: |
+          TAG="${{ needs.make-release.outputs.tag }}"
+          CLEAN_VERSION="${{ needs.make-release.outputs.clean_version }}"
+          if [ "${TAG}" != "${CLEAN_VERSION}" ]; then
+            mv "out/OStimNet_${TAG}.zip" "out/OStimNet_${CLEAN_VERSION}.zip"
+          fi
+
+      - name: Dry run (Nexus Mods)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+        env:
+          DRY_FILENAME: out/OStimNet_${{ needs.make-release.outputs.clean_version }}.zip
+          DRY_VERSION: ${{ needs.make-release.outputs.clean_version }}
+          DRY_DISPLAY_NAME: OStimNet ${{ needs.make-release.outputs.clean_version }}
+          DRY_CHANGELOG: ${{ needs.make-release.outputs.changelog_text }}
+        run: |
+          echo "=== DRY RUN: Nexus Mods upload skipped ==="
+          ls -lh "${DRY_FILENAME}"
+          echo "version: ${DRY_VERSION}"
+          echo "display_name: ${DRY_DISPLAY_NAME}"
+          echo "--- description & changelog ---"
+          printf '%s\n' "${DRY_CHANGELOG}"
+
+      - name: Upload to Nexus Mods
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.dry_run) }}
+        uses: Nexus-Mods/upload-action@v1.0.0-beta.11
+        with:
+          api_key: ${{ secrets.NEXUSMODS_API_KEY }}
+          mod_id: ${{ vars.NEXUSMODS_MOD_ID || secrets.NEXUSMODS_MOD_ID }}
+          file_id: ${{ vars.NEXUSMODS_FILE_ID || secrets.NEXUSMODS_FILE_ID }}
+          filename: out/OStimNet_${{ needs.make-release.outputs.clean_version }}.zip
+          version: ${{ needs.make-release.outputs.clean_version }}
+          display_name: OStimNet
+          changelog: ${{ needs.make-release.outputs.changelog_text }}
+          category: main
+          update_mod_version: true
+          primary_mod_manager_download: true
+          archive_existing_version: false
