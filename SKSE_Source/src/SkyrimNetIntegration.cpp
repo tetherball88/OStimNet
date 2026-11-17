@@ -209,8 +209,8 @@ void Register() {
 
     RegisterDecorator(
         "ovirginity_is_virgin",
-        "Returns 'true' if the actor is tracked as a virgin by OVirginity Reflowered, "
-        "'false' if non-virgin, or '' if OVirginity is not installed or the actor is ineligible.",
+        "Returns 'true' if the female actor is tracked as a virgin by OVirginity Reflowered, "
+        "'false' if non-virgin, or '' if OVirginity is not installed or the actor is ineligible (male/child).",
         [](RE::Actor* actor) -> std::string {
             auto val = OStimNet::OVirginityService::GetSingleton().GetCachedVirginity(actor);
             return val.has_value() ? (*val ? "true" : "false") : "";
@@ -1180,7 +1180,7 @@ bool EvaluatePreStartSexualScene(const std::vector<RE::FormID>& participantFormI
                     OStimNet::FireModEvent("ostimnet_sexual_evaluation_finished", fail.dump().c_str(), 0.0f);
                 }
             },
-            false);
+            true);
         return true;
     }
     return EvaluatePreStartSexualSceneImpl(participantFormIDs, evalId, reason, forceChat);
@@ -1803,7 +1803,7 @@ bool EvaluateJoinOngoingSex(RE::FormID joinerFormID,
                     OStimNet::FireModEvent("ostimnet_join_sex_evaluation_finished", fail.dump().c_str(), 0.0f);
                 }
             },
-            false);
+            true);
         return true;
     }
     return EvaluateJoinOngoingSexImpl(joinerFormID, threadID, evalId, reason, forceChat);
@@ -2040,7 +2040,7 @@ bool EvaluateInviteToSex(RE::FormID inviterFormID,
                     OStimNet::FireModEvent("ostimnet_invite_sex_evaluation_finished", fail.dump().c_str(), 0.0f);
                 }
             },
-            false);
+            true);
         return true;
     }
     return EvaluateInviteToSexImpl(inviterFormID, inviteeFormIDs, threadID, evalId, reason, forceChat);

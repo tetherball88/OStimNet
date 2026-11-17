@@ -118,13 +118,11 @@ protected:
         if (!event) return RE::BSEventNotifyControl::kContinue;
 
         const std::string name(event->eventName);
-        const bool isVirginityLost = (name.rfind("ovirginity_lost", 0) == 0);
         if (name != "ostim_thread_start" &&
             name != "ostim_thread_scenechanged" &&
             name != "ostim_thread_speedchanged" &&
             name != "ostim_actor_orgasm" &&
-            name != "ostim_thread_end" &&
-            !isVirginityLost) {
+            name != "ostim_thread_end") {
             return RE::BSEventNotifyControl::kContinue;
         }
 
@@ -133,7 +131,7 @@ protected:
         const RE::FormID senderID = event->sender ? event->sender->GetFormID() : 0;
 
         if (auto* taskIF = SKSE::GetTaskInterface()) {
-            taskIF->AddTask([this, name, numArg, strArg, senderID, isVirginityLost]() {
+            taskIF->AddTask([this, name, numArg, strArg, senderID]() {
                 if (name == "ostim_thread_start") {
                     HandleStart(numArg);
                 } else if (name == "ostim_thread_scenechanged") {
@@ -146,8 +144,6 @@ protected:
                     OnClimax(numArg, strArg.c_str(), actor);
                 } else if (name == "ostim_thread_end") {
                     HandleEnd(numArg);
-                } else if (isVirginityLost) {
-                    OVirginityService::GetSingleton().OnOVirginityLostModEvent();
                 }
             });
         }
@@ -347,6 +343,10 @@ private:
     void HandleSceneChange(int threadID, const char* sceneID) {
         if (_suppressNextSceneChange.erase(threadID) > 0) {
             SKSE::log::info("OStimEventListener: suppressing initial scene change for thread {}", threadID);
+            if (sceneID && sceneID[0] != '\0' &&
+                !(ONavIsIdle && ONavIsTransit && (ONavIsIdle(sceneID) || ONavIsTransit(sceneID)))) {
+                OVirginityService::GetSingleton().OnSceneChanged(threadID, sceneID);
+            }
             return;
         }
         // Skip idle/intro/transition scenes — they are not meaningful scene changes.
@@ -385,6 +385,12 @@ private:
             OStimNet::ThreadDataStore::GetSingleton().SetSexualPhase(threadID, *startingPhase);
             SKSE::log::info("OStimEventListener: thread {} sexualPhase initialised -> {}",
                 threadID, OStimNet::SexualPhaseToName(*startingPhase));
+        }
+        if (g_ostimThreadInterface && g_ostimThreadInterface->IsThreadValid(static_cast<uint32_t>(threadID))) {
+            if (const char* curScene = g_ostimThreadInterface->GetCurrentSceneID(static_cast<uint32_t>(threadID));
+                curScene && curScene[0] != '\0') {
+                OVirginityService::GetSingleton().ClampInitialVirginSpeed(threadID, curScene);
+            }
         }
         bool startsWithUndressing = startingPhase == OStimNet::SexualPhase::Undressing;
 

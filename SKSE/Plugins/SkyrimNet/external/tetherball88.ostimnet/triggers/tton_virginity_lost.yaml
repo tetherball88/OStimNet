@@ -16,7 +16,7 @@ eventCriteria:
 audience: nearby_npcs
 response:
   type: direct_narration
-  content: "{% if event_json.virginActorName == originator %}{{ originator }} has just lost their virginity{% if event_json.partnerActorName != \"\" %} to {{ event_json.partnerActorName }}{% endif %}. React immediately in character according to {{ originator }}'s own personality, attitude toward losing their virginity, and the circumstances of the encounter.{% else %}{{ event_json.virginActorName }} has just lost their virginity to {{ originator }}. {{ originator }} reacts in character to realizing this is {{ event_json.virginActorName }}'s first time.{% endif %}"
+  content: "{{ event_json.msg }} {% if event_json.virginActorName == originator %}{{ originator }} reacts immediately in character according to her own personality, role (`{{ event_json.virginRole }}`), and the `{{ event_json.intent }}` circumstances of the encounter.{% else %}{{ originator }} reacts immediately in character to this moment with {{ event_json.virginActorName }} given the `{{ event_json.intent }}` circumstances and their respective roles.{% endif %}"
 enabled: true
 cooldownSeconds: 30
 priority: 9

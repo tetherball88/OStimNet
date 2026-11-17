@@ -35,7 +35,7 @@
 {% endif %}
 {% set virginStatus = ovirginity_is_virgin(actorUUID) %}
 {% if virginStatus == "true" %}
-- **Virginity Status:** Virgin (has never had sexual intercourse; how they view or feel about this depends entirely on their Personality, Background, and Relationships).
+- **Virginity Status:** Virgin (has never had vaginal intercourse; how she views or feels about this depends entirely on her Personality, Background, and Relationships).
 {% endif %}
 #### Background
 {{ render_character_profile("bio_background", actorUUID) }}

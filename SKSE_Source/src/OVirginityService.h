@@ -56,12 +56,12 @@ public:
     /// Returns true if this thread currently has at least one tracked active virgin.
     bool ThreadHasActiveVirgin(int threadID) const;
 
-    /// Clamps initial intercourse speed to slow (`0`) for romantic/lustful threads involving a virgin
-    /// and schedules a delayed deflowering check (450 ms) to catch `OVirginity` state updates.
-    void OnSceneChanged(int threadID, const std::string& sceneID);
+    /// Clamps initial intercourse speed to slow (`0`) for romantic/lustful vaginal scenes involving a virgin.
+    void ClampInitialVirginSpeed(int threadID, const std::string& sceneID);
 
-    /// Called when an `ovirginity_lost_*` mod event fires; re-evaluates active threads with tracked virgins.
-    void OnOVirginityLostModEvent();
+    /// Clamps initial intercourse speed for vaginal scenes involving a virgin and schedules
+    /// two-stage delayed deflowering checks (500 ms + 1800 ms) to catch `OVirginity` state updates.
+    void OnSceneChanged(int threadID, const std::string& sceneID);
 
     /// Queries `OVirginityScript.isVirgin` for tracked virgins in `threadID` and dispatches
     /// `virginity_lost` + permanent vector memories for any actor whose virginity was just taken.
@@ -94,6 +94,8 @@ private:
         RE::FormID  virginFormID{0};
         RE::FormID  partnerFormID{0};
         std::string sceneID;
+        int         intentRaw{0};
+        bool        virginIsMain{false};
     };
 
     bool IsActorEligible(RE::Actor* actor) const;
@@ -109,6 +111,7 @@ private:
     mutable std::mutex _threadMutex;
     std::unordered_map<int, std::unordered_set<RE::FormID>> _threadVirgins;
     std::unordered_map<int, std::vector<DefloweredRecord>> _threadDeflowered;
+    std::unordered_set<int> _threadHadVaginalScene;
 };
 
 }  // namespace OStimNet

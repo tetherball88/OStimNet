@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.7.2
+
+### Fixed
+
+- **OVirginity Reflowered v3.0.0 compatibility & female-only tracking** — Restricted virginity queries to female actors so male player characters and male NPCs (whose virginity status is initialized by `OVirginity Reflowered` v3.0.0 but never cleared during scenes) are no longer stuck with permanent virgin status, first-time prompt cues, or slow-speed clamping.
+- **More reliable virginity-loss detection & hotkey refreshes** — Handled scenes that start directly in vaginal intercourse, replaced legacy event listeners with two-stage vaginal scene checks (`500 ms` + `1800 ms`) plus a scene-end fallback so script lag cannot drop deflowering reactions or diary entries, added immediate pre-evaluation refreshes so `OVirginity`'s toggle hotkey takes effect without cache delay, and added `virginity_lost_diary` formatting in event history prompts.
+- **Intent- & role-accurate first-time memories, reactions & diary entries** — Rewrote permanent SkyrimNet first-person virginity-loss memories, mid-scene reaction events (`tton_virginity_lost`), and post-scene diary reflections (`tton_virginity_lost_diary`) to distinguish `aggressive` (non-consensual assault, tracking whether the virgin was the victim or the aggressor), `dom` (consensual dominance/submission, tracking dominant vs. submissive roles), `romantic`, `lustful`, and `transactional` (client vs. provider) encounters.
+
+---
+
 ## v2.7.1
 
 ### Fixed

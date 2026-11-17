@@ -102,6 +102,234 @@ std::string ResolveActorLocationName(RE::Actor* primary, RE::Actor* secondary) {
     return "Skyrim";
 }
 
+std::vector<RE::FormID> CollectActorFormIDs(const std::vector<RE::Actor*>& actors) {
+    std::vector<RE::FormID> out;
+    out.reserve(actors.size());
+    for (RE::Actor* a : actors) {
+        if (a) out.push_back(a->GetFormID());
+    }
+    return out;
+}
+
+bool ResolveVirginIsMain(const std::vector<RE::FormID>& mainFIDs,
+                         const std::vector<RE::FormID>& secFIDs,
+                         RE::FormID virginFID) {
+    if (std::find(secFIDs.begin(), secFIDs.end(), virginFID) != secFIDs.end()) return false;
+    if (std::find(mainFIDs.begin(), mainFIDs.end(), virginFID) != mainFIDs.end()) return true;
+    return false;
+}
+
+struct MemorySpec {
+    std::string text;
+    float importance{0.90f};
+    const char* memType{"RELATIONSHIP"};
+    const char* emotion{"content"};
+    const char* tags{"[\"virginity\",\"first_time\",\"intimacy\"]"};
+};
+
+void DispatchVirginityLossMemory(RE::Actor* virginActor, RE::Actor* partnerActor, Intent intent, bool virginIsMain) {
+    if (!virginActor) return;
+
+    RE::FormID virginFID = virginActor->GetFormID();
+    RE::FormID partnerFID = partnerActor ? partnerActor->GetFormID() : 0;
+    auto* player = RE::PlayerCharacter::GetSingleton();
+    RE::FormID playerFormID = player ? player->GetFormID() : 0;
+
+    bool virginIsNpc = (virginFID != playerFormID);
+    bool partnerIsNpc = (partnerActor != nullptr && partnerFID != playerFormID);
+    if (!virginIsNpc && !partnerIsNpc) return;
+
+    std::string virginName = ThreadDataStore::GetActorDisplayName(virginActor, "someone");
+    std::string partnerName = partnerActor ? ThreadDataStore::GetActorDisplayName(partnerActor, "") : "";
+    std::string locationName = ResolveActorLocationName(virginActor, partnerActor);
+
+    MemorySpec virginMem;
+    MemorySpec partnerMem;
+
+    switch (intent) {
+        case Intent::Aggressive:
+            if (!virginIsMain) {
+                virginMem.text = std::string("Had my virginity forcibly taken against my will") +
+                                 (!partnerName.empty() ? (" by " + partnerName) : "") +
+                                 " during a non-consensual sexual assault at " + locationName + ".";
+                virginMem.importance = 0.95f;
+                virginMem.memType = "TRAUMA";
+                virginMem.emotion = "traumatized";
+                virginMem.tags = "[\"virginity\",\"first_time\",\"assault\",\"trauma\"]";
+
+                partnerMem.text = "Forcibly took " + virginName +
+                                  "'s virginity against her will during a non-consensual sexual assault at " +
+                                  locationName + ".";
+                partnerMem.importance = 0.85f;
+                partnerMem.memType = "EXPERIENCE";
+                partnerMem.emotion = "neutral";
+                partnerMem.tags = "[\"virginity\",\"first_time\",\"assault\"]";
+            } else {
+                virginMem.text = !partnerName.empty()
+                    ? ("Lost my virginity by forcing myself on " + partnerName +
+                       " against their will during a non-consensual sexual assault at " + locationName + ".")
+                    : ("Lost my virginity as the aggressor during a non-consensual sexual assault at " +
+                       locationName + ".");
+                virginMem.importance = 0.90f;
+                virginMem.memType = "EXPERIENCE";
+                virginMem.emotion = "neutral";
+                virginMem.tags = "[\"virginity\",\"first_time\",\"assault\"]";
+
+                partnerMem.text = "Was sexually assaulted against my will by " + virginName + " at " +
+                                  locationName + ", where she forced herself on me for her first time.";
+                partnerMem.importance = 0.95f;
+                partnerMem.memType = "TRAUMA";
+                partnerMem.emotion = "traumatized";
+                partnerMem.tags = "[\"virginity\",\"first_time\",\"assault\",\"trauma\"]";
+            }
+            break;
+
+        case Intent::Dom:
+            if (!virginIsMain) {
+                virginMem.text = std::string("Willingly surrendered my virginity as the submissive partner") +
+                                 (!partnerName.empty() ? (" to " + partnerName) : "") +
+                                 " during a consensual dominant-submissive encounter at " + locationName + ".";
+                virginMem.importance = 0.95f;
+                virginMem.memType = "RELATIONSHIP";
+                virginMem.emotion = "content";
+                virginMem.tags = "[\"virginity\",\"first_time\",\"intimacy\",\"submission\"]";
+
+                partnerMem.text = "Took " + virginName +
+                                  "'s virginity as the dominant partner while she willingly submitted to me at " +
+                                  locationName + ".";
+                partnerMem.importance = 0.85f;
+                partnerMem.memType = "RELATIONSHIP";
+                partnerMem.emotion = "content";
+                partnerMem.tags = "[\"virginity\",\"first_time\",\"intimacy\",\"dominance\"]";
+            } else {
+                virginMem.text = std::string("Lost my virginity while taking command as the dominant partner") +
+                                 (!partnerName.empty() ? (" over " + partnerName) : "") +
+                                 " during a consensual dominant-submissive encounter at " + locationName + ".";
+                virginMem.importance = 0.95f;
+                virginMem.memType = "RELATIONSHIP";
+                virginMem.emotion = "content";
+                virginMem.tags = "[\"virginity\",\"first_time\",\"intimacy\",\"dominance\"]";
+
+                partnerMem.text = "Willingly submitted to " + virginName + " at " + locationName +
+                                  " as her very first sexual partner while she took the dominant role.";
+                partnerMem.importance = 0.85f;
+                partnerMem.memType = "RELATIONSHIP";
+                partnerMem.emotion = "content";
+                partnerMem.tags = "[\"virginity\",\"first_time\",\"intimacy\",\"submission\"]";
+            }
+            break;
+
+        case Intent::Romantic:
+            virginMem.text = std::string("Shared my very first time and lost my virginity") +
+                             (!partnerName.empty() ? (" to " + partnerName) : "") +
+                             " during a loving, romantic encounter at " + locationName + ".";
+            virginMem.importance = 0.95f;
+            virginMem.memType = "RELATIONSHIP";
+            virginMem.emotion = "joyful";
+            virginMem.tags = "[\"virginity\",\"first_time\",\"intimacy\",\"romance\"]";
+
+            partnerMem.text = "Was " + virginName + "'s very first sexual partner during a loving, romantic encounter at " +
+                              locationName + ".";
+            partnerMem.importance = 0.85f;
+            partnerMem.memType = "RELATIONSHIP";
+            partnerMem.emotion = "joyful";
+            partnerMem.tags = "[\"virginity\",\"first_time\",\"intimacy\",\"romance\"]";
+            break;
+
+        case Intent::Transactional:
+            if (!virginIsMain) {
+                virginMem.text = std::string("Lost my virginity while providing sexual services") +
+                                 (!partnerName.empty() ? (" to " + partnerName) : "") +
+                                 " in a transactional arrangement at " + locationName + ".";
+                virginMem.importance = 0.90f;
+                virginMem.memType = "EXPERIENCE";
+                virginMem.emotion = "neutral";
+                virginMem.tags = "[\"virginity\",\"first_time\",\"transactional\"]";
+
+                partnerMem.text = "Was " + virginName +
+                                  "'s very first sexual partner as the client in a transactional arrangement at " +
+                                  locationName + ".";
+                partnerMem.importance = 0.80f;
+                partnerMem.memType = "EXPERIENCE";
+                partnerMem.emotion = "neutral";
+                partnerMem.tags = "[\"virginity\",\"first_time\",\"transactional\"]";
+            } else {
+                virginMem.text = std::string("Lost my virginity") +
+                                 (!partnerName.empty() ? (" with " + partnerName) : "") +
+                                 " as the client in a transactional sexual arrangement at " + locationName + ".";
+                virginMem.importance = 0.90f;
+                virginMem.memType = "EXPERIENCE";
+                virginMem.emotion = "neutral";
+                virginMem.tags = "[\"virginity\",\"first_time\",\"transactional\"]";
+
+                partnerMem.text = "Provided " + virginName +
+                                  " with her very first sexual experience in a transactional arrangement at " +
+                                  locationName + ".";
+                partnerMem.importance = 0.80f;
+                partnerMem.memType = "EXPERIENCE";
+                partnerMem.emotion = "neutral";
+                partnerMem.tags = "[\"virginity\",\"first_time\",\"transactional\"]";
+            }
+            break;
+
+        default: {
+            const char* encounterPhrase = (intent == Intent::Lustful)
+                ? "a passionate, lustful sexual encounter"
+                : "an intimate sexual encounter";
+            virginMem.text = std::string("Lost my virginity") +
+                             (!partnerName.empty() ? (" to " + partnerName) : "") +
+                             " during " + encounterPhrase + " at " + locationName + ".";
+            virginMem.importance = 0.92f;
+            virginMem.memType = "RELATIONSHIP";
+            virginMem.emotion = "content";
+            virginMem.tags = "[\"virginity\",\"first_time\",\"intimacy\"]";
+
+            partnerMem.text = "Was " + virginName + "'s very first sexual partner during " +
+                              encounterPhrase + " at " + locationName + ".";
+            partnerMem.importance = 0.85f;
+            partnerMem.memType = "RELATIONSHIP";
+            partnerMem.emotion = "content";
+            partnerMem.tags = "[\"virginity\",\"first_time\",\"intimacy\"]";
+            break;
+        }
+    }
+
+    std::thread([virginFID, partnerFID, virginIsNpc, partnerIsNpc, partnerName, locationName,
+                 virginMem = std::move(virginMem), partnerMem = std::move(partnerMem)]() {
+        if (!PublicAddMemory || !PublicIsMemorySystemReady || !PublicIsMemorySystemReady()) {
+            return;
+        }
+
+        if (virginIsNpc) {
+            std::string relatedVirgin = (partnerFID != 0)
+                ? ("[" + std::to_string(partnerFID) + "]")
+                : "[]";
+            PublicAddMemory(
+                virginFID,
+                virginMem.text.c_str(),
+                virginMem.importance,
+                virginMem.memType,
+                virginMem.emotion,
+                locationName.c_str(),
+                virginMem.tags,
+                relatedVirgin.c_str());
+        }
+
+        if (partnerIsNpc && partnerFID != 0 && !partnerName.empty()) {
+            std::string relatedPartner = "[" + std::to_string(virginFID) + "]";
+            PublicAddMemory(
+                partnerFID,
+                partnerMem.text.c_str(),
+                partnerMem.importance,
+                partnerMem.memType,
+                partnerMem.emotion,
+                locationName.c_str(),
+                partnerMem.tags,
+                relatedPartner.c_str());
+        }
+    }).detach();
+}
+
 }  // namespace
 
 void OVirginityService::Initialize() {
@@ -126,6 +354,8 @@ void OVirginityService::Initialize() {
 
 bool OVirginityService::IsActorEligible(RE::Actor* actor) const {
     if (!actor || actor->IsChild()) return false;
+    const auto* base = actor->GetActorBase();
+    if (!base || base->GetSex() != RE::SEX::kFemale) return false;
     auto* player = RE::PlayerCharacter::GetSingleton();
     if (player && actor == static_cast<RE::Actor*>(player)) return true;
     if (auto* kw = _npcKeyword.load(std::memory_order_acquire)) {
@@ -293,32 +523,70 @@ void OVirginityService::EnsureActorsResolved(const std::vector<RE::FormID>& form
 void OVirginityService::OnThreadStart(int threadID, const std::vector<uint32_t>& actorFormIDs) {
     if (!IsLoaded() || actorFormIDs.empty()) return;
 
-    std::vector<RE::FormID> fids;
-    fids.reserve(actorFormIDs.size());
-    for (uint32_t fid : actorFormIDs) {
-        fids.push_back(static_cast<RE::FormID>(fid));
+    auto now = std::chrono::steady_clock::now();
+    std::unordered_set<RE::FormID> seededVirgins;
+    std::vector<RE::FormID> toResolve;
+    toResolve.reserve(actorFormIDs.size());
+
+    for (uint32_t rawFid : actorFormIDs) {
+        RE::FormID fid = static_cast<RE::FormID>(rawFid);
+        auto* actor = RE::TESForm::LookupByID<RE::Actor>(fid);
+        if (!IsActorEligible(actor)) continue;
+
+        bool seededFromFreshTrue = false;
+        {
+            std::shared_lock<std::shared_mutex> cacheLock(_cacheMutex);
+            auto it = _cache.find(fid);
+            if (it != _cache.end() && it->second.isVirgin && (now - it->second.timestamp) < kCacheTTL) {
+                seededVirgins.insert(fid);
+                seededFromFreshTrue = true;
+            }
+        }
+        if (!seededFromFreshTrue) {
+            toResolve.push_back(fid);
+        }
     }
 
-    EnsureActorsResolved(fids, [this, threadID, fids]() {
+    if (!seededVirgins.empty()) {
+        std::lock_guard<std::mutex> lock(_threadMutex);
+        auto& dst = _threadVirgins[threadID];
+        dst.insert(seededVirgins.begin(), seededVirgins.end());
+        SKSE::log::info("OVirginityService: thread {} seeded with {} cached virgin(s)",
+                        threadID, dst.size());
+    }
+
+    if (toResolve.empty()) return;
+
+    EnsureActorsResolved(toResolve, [this, threadID, toResolve]() {
         if (ThreadDataStore::GetSingleton().GetPhase(threadID) == ThreadPhase::Ended) return;
         if (g_ostimThreadInterface && !g_ostimThreadInterface->IsThreadValid(static_cast<uint32_t>(threadID))) return;
 
-        std::unordered_set<RE::FormID> activeVirgins;
+        std::unordered_set<RE::FormID> resolvedVirgins;
         {
             std::shared_lock<std::shared_mutex> cacheLock(_cacheMutex);
-            for (RE::FormID fid : fids) {
+            for (RE::FormID fid : toResolve) {
                 auto it = _cache.find(fid);
                 if (it != _cache.end() && it->second.isVirgin) {
-                    activeVirgins.insert(fid);
+                    resolvedVirgins.insert(fid);
                 }
             }
         }
 
-        if (!activeVirgins.empty()) {
-            std::lock_guard<std::mutex> lock(_threadMutex);
-            _threadVirgins[threadID] = std::move(activeVirgins);
-            SKSE::log::info("OVirginityService: thread {} started with {} virgin(s)",
-                            threadID, _threadVirgins[threadID].size());
+        if (!resolvedVirgins.empty()) {
+            {
+                std::lock_guard<std::mutex> lock(_threadMutex);
+                auto& dst = _threadVirgins[threadID];
+                dst.insert(resolvedVirgins.begin(), resolvedVirgins.end());
+                SKSE::log::info("OVirginityService: thread {} resolved {} additional virgin(s)",
+                                threadID, resolvedVirgins.size());
+            }
+            if (g_ostimThreadInterface &&
+                g_ostimThreadInterface->IsThreadValid(static_cast<uint32_t>(threadID))) {
+                if (const char* curScene = g_ostimThreadInterface->GetCurrentSceneID(static_cast<uint32_t>(threadID));
+                    curScene && curScene[0] != '\0') {
+                    OnSceneChanged(threadID, curScene);
+                }
+            }
         }
     }, true);
 }
@@ -339,6 +607,9 @@ void OVirginityService::TransferForContinuation(int oldThreadID,
             if (auto it = _threadDeflowered.find(oldThreadID); it != _threadDeflowered.end()) {
                 _threadDeflowered[newThreadID] = std::move(it->second);
                 _threadDeflowered.erase(it);
+            }
+            if (_threadHadVaginalScene.erase(oldThreadID) > 0) {
+                _threadHadVaginalScene.insert(newThreadID);
             }
         }
         if (auto it = _threadVirgins.find(newThreadID); it != _threadVirgins.end()) {
@@ -386,54 +657,49 @@ bool OVirginityService::ThreadHasActiveVirgin(int threadID) const {
     return it != _threadVirgins.end() && !it->second.empty();
 }
 
-void OVirginityService::OnSceneChanged(int threadID, const std::string& sceneID) {
-    if (!IsLoaded() || !ThreadHasActiveVirgin(threadID)) return;
+void OVirginityService::ClampInitialVirginSpeed(int threadID, const std::string& sceneID) {
+    if (!IsLoaded() || sceneID.empty() || !ThreadHasActiveVirgin(threadID)) return;
+    if (PulloutService::GetVaginalPairs(sceneID.c_str()).empty()) return;
 
     Intent intent = ThreadDataStore::GetSingleton().GetIntent(threadID);
-    if (intent == Intent::Romantic || intent == Intent::Lustful) {
-        auto phase = DetectPhaseFromSceneID(sceneID.c_str());
-        if (phase == SexualPhase::Sex && g_ostimThreadInterface) {
-            uint32_t uid = static_cast<uint32_t>(threadID);
-            if (g_ostimThreadInterface->IsThreadValid(uid) &&
-                g_ostimThreadInterface->GetMaxSpeed(uid) > 0 &&
-                g_ostimThreadInterface->GetCurrentSpeed(uid) > 0) {
-                g_ostimThreadInterface->SetSpeed(uid, 0);
-                SKSE::log::info("OVirginityService: clamped initial intercourse speed to 0 for gentle first-time pacing on thread {}",
-                                threadID);
-            }
+    if ((intent == Intent::Romantic || intent == Intent::Lustful) && g_ostimThreadInterface) {
+        uint32_t uid = static_cast<uint32_t>(threadID);
+        if (g_ostimThreadInterface->IsThreadValid(uid) &&
+            g_ostimThreadInterface->GetMaxSpeed(uid) > 0 &&
+            g_ostimThreadInterface->GetCurrentSpeed(uid) > 0) {
+            g_ostimThreadInterface->SetSpeed(uid, 0);
+            SKSE::log::info("OVirginityService: clamped initial intercourse speed to 0 for gentle first-time pacing on thread {}",
+                            threadID);
         }
     }
+}
+
+void OVirginityService::OnSceneChanged(int threadID, const std::string& sceneID) {
+    if (!IsLoaded() || sceneID.empty() || !ThreadHasActiveVirgin(threadID)) return;
+    if (PulloutService::GetVaginalPairs(sceneID.c_str()).empty()) return;
+
+    {
+        std::lock_guard<std::mutex> lock(_threadMutex);
+        _threadHadVaginalScene.insert(threadID);
+    }
+
+    ClampInitialVirginSpeed(threadID, sceneID);
 
     const auto expectedEpoch = UI::GetSessionEpoch();
     std::thread([this, threadID, sceneID, expectedEpoch]() {
-        std::this_thread::sleep_for(std::chrono::milliseconds(450));
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
         UI::AddEpochTask(expectedEpoch, [this, threadID, sceneID]() {
             CheckThreadVirginityLoss(threadID, sceneID);
         });
-    }).detach();
-}
 
-void OVirginityService::OnOVirginityLostModEvent() {
-    if (!IsLoaded()) return;
-
-    std::vector<int> candidateThreads;
-    {
-        std::lock_guard<std::mutex> lock(_threadMutex);
-        for (const auto& [tid, virgins] : _threadVirgins) {
-            if (!virgins.empty()) {
-                candidateThreads.push_back(tid);
+        std::this_thread::sleep_for(std::chrono::milliseconds(1300));
+        UI::AddEpochTask(expectedEpoch, [this, threadID, sceneID]() {
+            if (ThreadDataStore::GetSingleton().GetPhase(threadID) != ThreadPhase::Ended &&
+                ThreadHasActiveVirgin(threadID)) {
+                CheckThreadVirginityLoss(threadID, sceneID);
             }
-        }
-    }
-
-    for (int tid : candidateThreads) {
-        std::string curScene;
-        if (g_ostimThreadInterface && g_ostimThreadInterface->IsThreadValid(static_cast<uint32_t>(tid))) {
-            const char* s = g_ostimThreadInterface->GetCurrentSceneID(static_cast<uint32_t>(tid));
-            if (s) curScene = s;
-        }
-        CheckThreadVirginityLoss(tid, curScene);
-    }
+        });
+    }).detach();
 }
 
 void OVirginityService::CheckThreadVirginityLoss(int threadID, const std::string& sceneID) {
@@ -519,12 +785,8 @@ void OVirginityService::CheckThreadVirginityLoss(int threadID, const std::string
         };
 
         Intent intent = store.GetIntent(threadID);
-        std::string intentStr = IntentToString(intent);
-        if (intentStr.empty() || intentStr == "unset") {
-            intentStr = "intimate";
-        }
-        const bool isAggressive = (intent == Intent::Aggressive);
-        const bool isRomantic = (intent == Intent::Romantic);
+        std::vector<RE::FormID> mainFIDs = CollectActorFormIDs(store.GetMainActors(threadID));
+        std::vector<RE::FormID> secFIDs = CollectActorFormIDs(store.GetSecondaryActors(threadID));
 
         if (auto* listener = OStimEventListener::GetInstance()) {
             listener->MarkSkipNextSceneTrigger(threadID);
@@ -536,10 +798,12 @@ void OVirginityService::CheckThreadVirginityLoss(int threadID, const std::string
 
             RE::Actor* partnerActor = resolvePartner(virginFID);
             RE::FormID partnerFID = partnerActor ? partnerActor->GetFormID() : 0;
+            bool virginIsMain = ResolveVirginIsMain(mainFIDs, secFIDs, virginFID);
 
             {
                 std::lock_guard<std::mutex> lock(_threadMutex);
-                _threadDeflowered[threadID].push_back(DefloweredRecord{ virginFID, partnerFID, effectiveScene });
+                _threadDeflowered[threadID].push_back(
+                    DefloweredRecord{ virginFID, partnerFID, effectiveScene, static_cast<int>(intent), virginIsMain });
             }
 
             RE::Actor* speaker = nullptr;
@@ -555,113 +819,127 @@ void OVirginityService::CheckThreadVirginityLoss(int threadID, const std::string
             }
 
             if (speaker) {
-                std::string jsonStr = EventPayloadBuilder::BuildVirginityLost(threadID, virginActor, partnerActor, speaker);
+                std::string jsonStr = EventPayloadBuilder::BuildVirginityLost(
+                    threadID, virginActor, partnerActor, speaker, intent, virginIsMain);
                 DispatchRegisterEvent(jsonStr, speaker, target);
             }
 
             std::string virginName = ThreadDataStore::GetActorDisplayName(virginActor, "someone");
             std::string partnerName = partnerActor ? ThreadDataStore::GetActorDisplayName(partnerActor, "") : "";
-            std::string locationName = ResolveActorLocationName(virginActor, partnerActor);
-            bool isFemaleVirgin = false;
-            if (auto* base = virginActor->GetActorBase()) {
-                isFemaleVirgin = (base->GetSex() == RE::SEX::kFemale);
-            }
-            bool partnerIsNpc = (partnerActor != nullptr && partnerFID != playerFormID);
+            SKSE::log::info("OVirginityService: thread {} virginity lost ({} -> partner='{}', role={}, intent={}, scene='{}')",
+                            threadID, virginName, partnerName, virginIsMain ? "main" : "secondary",
+                            IntentToString(intent), effectiveScene);
 
-            SKSE::log::info("OVirginityService: thread {} virginity lost ({} -> partner='{}', scene='{}')",
-                            threadID, virginName, partnerName, effectiveScene);
-
-            std::thread([virginFID, partnerFID, virginName, partnerName, locationName,
-                         intentStr, isAggressive, isRomantic, isFemaleVirgin, partnerIsNpc]() {
-                if (!PublicAddMemory || !PublicIsMemorySystemReady || !PublicIsMemorySystemReady()) {
-                    return;
-                }
-
-                const char* memType = isAggressive ? "TRAUMA" : "RELATIONSHIP";
-                const char* emotion = isAggressive ? "traumatized" : (isRomantic ? "tender" : "overwhelmed");
-                std::string relatedVirgin = (partnerFID != 0)
-                    ? ("[" + std::to_string(partnerFID) + "]")
-                    : "[]";
-                std::string virginText;
-                if (!partnerName.empty()) {
-                    virginText = virginName + " lost " + (isFemaleVirgin ? "her" : "their") +
-                                 " virginity to " + partnerName + " at " + locationName +
-                                 " during a " + intentStr + " intimate encounter.";
-                } else {
-                    virginText = virginName + " lost " + (isFemaleVirgin ? "her" : "their") +
-                                 " virginity at " + locationName + ".";
-                }
-
-                PublicAddMemory(
-                    virginFID,
-                    virginText.c_str(),
-                    0.95f,
-                    memType,
-                    emotion,
-                    locationName.c_str(),
-                    "[\"virginity\",\"first_time\",\"intimacy\"]",
-                    relatedVirgin.c_str());
-
-                if (partnerIsNpc && partnerFID != 0 && !partnerName.empty()) {
-                    std::string relatedPartner = "[" + std::to_string(virginFID) + "]";
-                    std::string partnerText = partnerName + " was " + virginName +
-                                              "'s very first sexual partner at " + locationName +
-                                              " during a " + intentStr + " intimate encounter.";
-                    PublicAddMemory(
-                        partnerFID,
-                        partnerText.c_str(),
-                        0.85f,
-                        "RELATIONSHIP",
-                        isAggressive ? "dominant" : (isRomantic ? "affectionate" : "intrigued"),
-                        locationName.c_str(),
-                        "[\"virginity\",\"first_time\",\"intimacy\"]",
-                        relatedPartner.c_str());
-                }
-            }).detach();
+            DispatchVirginityLossMemory(virginActor, partnerActor, intent, virginIsMain);
         }
     }, true);
 }
 
 void OVirginityService::OnThreadEnd(int threadID) {
     std::vector<DefloweredRecord> deflowered;
+    std::unordered_set<RE::FormID> remainingVirgins;
+    bool hadVaginal = false;
     {
         std::lock_guard<std::mutex> lock(_threadMutex);
-        _threadVirgins.erase(threadID);
-        auto it = _threadDeflowered.find(threadID);
-        if (it != _threadDeflowered.end()) {
-            deflowered = std::move(it->second);
-            _threadDeflowered.erase(it);
+        if (auto tvIt = _threadVirgins.find(threadID); tvIt != _threadVirgins.end()) {
+            remainingVirgins = std::move(tvIt->second);
+            _threadVirgins.erase(tvIt);
         }
+        if (auto tdIt = _threadDeflowered.find(threadID); tdIt != _threadDeflowered.end()) {
+            deflowered = std::move(tdIt->second);
+            _threadDeflowered.erase(tdIt);
+        }
+        hadVaginal = (_threadHadVaginalScene.erase(threadID) > 0);
     }
 
-    if (deflowered.empty()) return;
+    auto dispatchDiaries = [threadID](const std::vector<DefloweredRecord>& records) {
+        if (records.empty()) return;
 
-    auto* player = RE::PlayerCharacter::GetSingleton();
-    RE::FormID playerFormID = player ? player->GetFormID() : 0;
+        auto* player = RE::PlayerCharacter::GetSingleton();
+        RE::FormID playerFormID = player ? player->GetFormID() : 0;
 
-    for (const auto& rec : deflowered) {
-        RE::Actor* virginActor = RE::TESForm::LookupByID<RE::Actor>(rec.virginFormID);
-        RE::Actor* partnerActor = rec.partnerFormID ? RE::TESForm::LookupByID<RE::Actor>(rec.partnerFormID) : nullptr;
-        if (!virginActor) continue;
+        for (const auto& rec : records) {
+            RE::Actor* virginActor = RE::TESForm::LookupByID<RE::Actor>(rec.virginFormID);
+            RE::Actor* partnerActor = rec.partnerFormID ? RE::TESForm::LookupByID<RE::Actor>(rec.partnerFormID) : nullptr;
+            if (!virginActor) continue;
 
-        RE::Actor* diaryActor = nullptr;
-        if (rec.virginFormID != playerFormID) {
-            diaryActor = virginActor;
-        } else if (partnerActor && rec.partnerFormID != playerFormID) {
-            diaryActor = partnerActor;
+            RE::Actor* diaryActor = nullptr;
+            if (rec.virginFormID != playerFormID) {
+                diaryActor = virginActor;
+            } else if (partnerActor && rec.partnerFormID != playerFormID) {
+                diaryActor = partnerActor;
+            }
+            if (!diaryActor) continue;
+
+            RE::Actor* target = (diaryActor == virginActor && partnerActor) ? partnerActor : virginActor;
+            std::string jsonStr = EventPayloadBuilder::BuildVirginityLostDiary(
+                threadID, virginActor, partnerActor, diaryActor,
+                static_cast<Intent>(rec.intentRaw), rec.virginIsMain);
+            DispatchRegisterEvent(jsonStr, diaryActor, target);
         }
-        if (!diaryActor) continue;
+    };
 
-        RE::Actor* target = (diaryActor == virginActor && partnerActor) ? partnerActor : virginActor;
-        std::string jsonStr = EventPayloadBuilder::BuildVirginityLostDiary(threadID, virginActor, partnerActor, diaryActor);
-        DispatchRegisterEvent(jsonStr, diaryActor, target);
+    if (remainingVirgins.empty() || !hadVaginal || !IsLoaded()) {
+        dispatchDiaries(deflowered);
+        return;
     }
+
+    // Fallback check: catch deflowering if the thread ended before the 500ms/1800ms poll saw IsVirgin == 0.
+    // Snapshot thread metadata synchronously before ThreadDataStore::ClearThread(threadID) runs.
+    auto& store = ThreadDataStore::GetSingleton();
+    Intent intent = store.GetIntent(threadID);
+    std::vector<RE::FormID> threadActorFIDs = CollectActorFormIDs(store.GetActorPtrs(threadID));
+    std::vector<RE::FormID> mainFIDs = CollectActorFormIDs(store.GetMainActors(threadID));
+    std::vector<RE::FormID> secFIDs = CollectActorFormIDs(store.GetSecondaryActors(threadID));
+
+    std::vector<RE::FormID> remainingVec(remainingVirgins.begin(), remainingVirgins.end());
+    EnsureActorsResolved(
+        remainingVec,
+        [this, dispatchDiaries, deflowered = std::move(deflowered), remainingVec,
+         threadActorFIDs, mainFIDs, secFIDs, intent]() mutable {
+            std::vector<RE::FormID> newlyLost;
+            {
+                std::shared_lock<std::shared_mutex> cacheLock(_cacheMutex);
+                for (RE::FormID fid : remainingVec) {
+                    auto cIt = _cache.find(fid);
+                    if (cIt != _cache.end() && !cIt->second.isVirgin) {
+                        newlyLost.push_back(fid);
+                    }
+                }
+            }
+
+            for (RE::FormID virginFID : newlyLost) {
+                RE::Actor* virginActor = RE::TESForm::LookupByID<RE::Actor>(virginFID);
+                if (!virginActor) continue;
+
+                RE::Actor* partnerActor = nullptr;
+                RE::FormID partnerFID = 0;
+                for (RE::FormID cand : threadActorFIDs) {
+                    if (cand != virginFID) {
+                        if (auto* p = RE::TESForm::LookupByID<RE::Actor>(cand)) {
+                            partnerActor = p;
+                            partnerFID = cand;
+                            break;
+                        }
+                    }
+                }
+
+                bool virginIsMain = ResolveVirginIsMain(mainFIDs, secFIDs, virginFID);
+                deflowered.push_back(DefloweredRecord{
+                    virginFID, partnerFID, "", static_cast<int>(intent), virginIsMain });
+                DispatchVirginityLossMemory(virginActor, partnerActor, intent, virginIsMain);
+            }
+
+            dispatchDiaries(deflowered);
+        },
+        true);
 }
 
 void OVirginityService::ClearThread(int threadID) {
     std::lock_guard<std::mutex> lock(_threadMutex);
     _threadVirgins.erase(threadID);
     _threadDeflowered.erase(threadID);
+    _threadHadVaginalScene.erase(threadID);
 }
 
 void OVirginityService::Reset() {
@@ -674,6 +952,7 @@ void OVirginityService::Reset() {
         std::lock_guard<std::mutex> threadLock(_threadMutex);
         _threadVirgins.clear();
         _threadDeflowered.clear();
+        _threadHadVaginalScene.clear();
     }
     SKSE::log::info("OVirginityService: reset on game load.");
 }

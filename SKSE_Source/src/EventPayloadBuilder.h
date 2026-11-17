@@ -288,9 +288,18 @@ inline const char* GetPossessivePronoun(RE::Actor* actor) {
     }
     return "their";
 }
+
+inline const char* BuildVirginityRoleTag(Intent intent, bool virginIsMain) {
+    switch (intent) {
+        case Intent::Aggressive:    return virginIsMain ? "aggressor" : "victim";
+        case Intent::Dom:           return virginIsMain ? "dominant" : "submissive";
+        case Intent::Transactional: return virginIsMain ? "client" : "provider";
+        default:                    return "partner";
+    }
+}
 }  // namespace detail
 
-inline std::string BuildVirginityLost(int threadID, RE::Actor* virginActor, RE::Actor* partnerActor, RE::Actor* speaker) {
+inline std::string BuildVirginityLost(int threadID, RE::Actor* virginActor, RE::Actor* partnerActor, RE::Actor* speaker, Intent intent, bool virginIsMain) {
     std::string virginName = ThreadDataStore::GetActorDisplayName(virginActor, "Someone");
     std::string partnerName = partnerActor ? ThreadDataStore::GetActorDisplayName(partnerActor, "") : "";
     std::string speakerName = ThreadDataStore::GetActorDisplayName(speaker, "");
@@ -303,40 +312,100 @@ inline std::string BuildVirginityLost(int threadID, RE::Actor* virginActor, RE::
     }
     const char* possessive = detail::GetPossessivePronoun(virginActor);
 
-    std::string msg = !partnerName.empty()
-        ? (virginName + " just lost " + possessive + " virginity to " + partnerName + ".")
-        : (virginName + " just lost " + possessive + " virginity.");
+    std::string msg;
+    if (intent == Intent::Aggressive) {
+        if (virginIsMain) {
+            msg = !partnerName.empty()
+                ? (virginName + " just lost " + possessive + " virginity while forcing herself on " + partnerName + " in a non-consensual assault.")
+                : (virginName + " just lost " + possessive + " virginity as the aggressor in a non-consensual assault.");
+        } else {
+            msg = !partnerName.empty()
+                ? (partnerName + " just forcibly took " + virginName + "'s virginity against " + possessive + " will.")
+                : (virginName + " just had " + possessive + " virginity forcibly taken against " + possessive + " will.");
+        }
+    } else if (intent == Intent::Dom) {
+        if (virginIsMain) {
+            msg = !partnerName.empty()
+                ? (virginName + " just lost " + possessive + " virginity while taking command as the dominant partner over " + partnerName + ".")
+                : (virginName + " just lost " + possessive + " virginity as the dominant partner.");
+        } else {
+            msg = !partnerName.empty()
+                ? (virginName + " just willingly surrendered " + possessive + " virginity as " + partnerName + "'s submissive.")
+                : (virginName + " just willingly surrendered " + possessive + " virginity as the submissive partner.");
+        }
+    } else {
+        msg = !partnerName.empty()
+            ? (virginName + " just lost " + possessive + " virginity to " + partnerName + ".")
+            : (virginName + " just lost " + possessive + " virginity.");
+    }
 
     nlohmann::json j = BuildBaseEventJson("virginity_lost", msg, threadID, Config::GetSingleton().IsMuted(), speakerName);
+    j["intent"] = IntentToString(intent);
     j["virginActorName"] = virginName;
     j["partnerActorName"] = partnerName;
     j["isFemaleVirgin"] = isFemaleVirgin;
+    j["virginIsMain"] = virginIsMain;
+    j["virginRole"] = detail::BuildVirginityRoleTag(intent, virginIsMain);
     return j.dump();
 }
 
 // --- ostimnet_virginity_lost_diary ------------------------------------------
-inline std::string BuildVirginityLostDiary(int threadID, RE::Actor* virginActor, RE::Actor* partnerActor, RE::Actor* diaryActor) {
+inline std::string BuildVirginityLostDiary(int threadID, RE::Actor* virginActor, RE::Actor* partnerActor, RE::Actor* diaryActor, Intent intent, bool virginIsMain) {
     std::string virginName = ThreadDataStore::GetActorDisplayName(virginActor, "Someone");
     std::string partnerName = partnerActor ? ThreadDataStore::GetActorDisplayName(partnerActor, "") : "";
     std::string diaryName = ThreadDataStore::GetActorDisplayName(diaryActor, "");
 
     const char* possessive = detail::GetPossessivePronoun(virginActor);
     bool virginIsOriginator = (virginActor && diaryActor && virginActor->GetFormID() == diaryActor->GetFormID());
+    std::string actorLabel = !diaryName.empty() ? diaryName : (!partnerName.empty() ? partnerName : "Someone");
 
     std::string msg;
-    if (virginIsOriginator) {
+    if (intent == Intent::Aggressive) {
+        if (virginIsMain) {
+            msg = virginIsOriginator
+                ? (!partnerName.empty()
+                    ? (virginName + " lost " + possessive + " virginity by forcing herself on " + partnerName + " in a non-consensual sexual assault.")
+                    : (virginName + " lost " + possessive + " virginity as the aggressor in a non-consensual assault."))
+                : (actorLabel + " was sexually assaulted against their will by " + virginName + ", who took " + possessive + " own first time by force.");
+        } else {
+            msg = virginIsOriginator
+                ? (!partnerName.empty()
+                    ? (virginName + " had " + possessive + " virginity forcibly taken against " + possessive + " will by " + partnerName + " in a non-consensual sexual assault.")
+                    : (virginName + " had " + possessive + " virginity forcibly taken against " + possessive + " will."))
+                : (actorLabel + " forcibly took " + virginName + "'s virginity against " + possessive + " will in a non-consensual sexual assault.");
+        }
+    } else if (intent == Intent::Dom) {
+        if (virginIsMain) {
+            msg = virginIsOriginator
+                ? (!partnerName.empty()
+                    ? (virginName + " lost " + possessive + " virginity while dominating " + partnerName + " in a consensual dominant-submissive encounter.")
+                    : (virginName + " lost " + possessive + " virginity as the dominant partner."))
+                : (actorLabel + " willingly submitted to " + virginName + " as " + possessive + " very first sexual partner while she took the dominant role.");
+        } else {
+            msg = virginIsOriginator
+                ? (!partnerName.empty()
+                    ? (virginName + " willingly surrendered " + possessive + " virginity as the submissive partner to " + partnerName + " in a consensual dominant-submissive encounter.")
+                    : (virginName + " willingly surrendered " + possessive + " virginity as the submissive partner."))
+                : (actorLabel + " took " + virginName + "'s virginity as the dominant partner while she willingly submitted.");
+        }
+    } else if (virginIsOriginator) {
+        const char* suffix = (intent == Intent::Transactional) ? " in a transactional arrangement." : ".";
         msg = !partnerName.empty()
-            ? (virginName + " lost " + possessive + " virginity to " + partnerName + ".")
-            : (virginName + " lost " + possessive + " virginity.");
+            ? (virginName + " lost " + possessive + " virginity to " + partnerName + suffix)
+            : (virginName + " lost " + possessive + " virginity" + suffix);
     } else {
-        std::string actorLabel = !diaryName.empty() ? diaryName : (!partnerName.empty() ? partnerName : "Someone");
-        msg = actorLabel + " was " + virginName + "'s very first sexual partner.";
+        const char* suffix = (intent == Intent::Transactional) ? "'s very first sexual partner in a transactional arrangement." : "'s very first sexual partner.";
+        msg = actorLabel + " was " + virginName + suffix;
     }
 
     nlohmann::json j = BuildBaseEventJson("virginity_lost_diary", msg, threadID, Config::GetSingleton().IsMuted(), diaryName);
+    j["intent"] = IntentToString(intent);
+    j["isSexual"] = true;
     j["virginActorName"] = virginName;
     j["partnerActorName"] = partnerName;
     j["virginIsOriginator"] = virginIsOriginator;
+    j["virginIsMain"] = virginIsMain;
+    j["virginRole"] = detail::BuildVirginityRoleTag(intent, virginIsMain);
     return j.dump();
 }
 

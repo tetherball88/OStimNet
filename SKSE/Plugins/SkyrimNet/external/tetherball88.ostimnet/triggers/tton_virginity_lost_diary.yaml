@@ -10,7 +10,7 @@ eventCriteria:
 audience: originator
 response:
   type: diary_entry
-  content: "{% if event_json.virginIsOriginator %}{{ event_json.msg }} Write in your private diary in your own voice about losing your virginity{% if event_json.partnerActorName != \"\" %} to {{ event_json.partnerActorName }}{% endif %} and how you actually feel about the experience and them based on your personality.{% else %}{{ event_json.msg }} Write in your private diary in your own voice about being {{ event_json.virginActorName }}'s first sexual partner and what, if anything, it meant to you.{% endif %}"
+  content: "{{ event_json.msg }} {% if event_json.virginIsOriginator %}Write in your private diary in your own voice about losing your virginity under these circumstances and how you actually feel about the experience{% if event_json.partnerActorName != \"\" %} and {{ event_json.partnerActorName }}{% endif %} based on your personality.{% else %}Write in your private diary in your own voice about this encounter involving {{ event_json.virginActorName }}'s first time and how you actually feel about it based on your personality.{% endif %}"
   targetScope: triggering_actor
 enabled: false
 cooldownSeconds: 0
