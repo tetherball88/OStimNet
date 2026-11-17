@@ -522,6 +522,108 @@ std::vector<RoleCombination> BuildRoleCombinations(
     return result;
 }
 
+bool IsMaleFemalePair(const std::vector<uint32_t>& participantFIDs) {
+    if (participantFIDs.size() != 2) return false;
+    bool hasMale   = false;
+    bool hasFemale = false;
+    for (uint32_t fid : participantFIDs) {
+        auto* actor = RE::TESForm::LookupByID<RE::Actor>(fid);
+        auto* base  = actor ? actor->GetActorBase() : nullptr;
+        if (!base) return false;
+        if (base->GetSex() == RE::SEX::kMale)        hasMale   = true;
+        else if (base->GetSex() == RE::SEX::kFemale) hasFemale = true;
+    }
+    return hasMale && hasFemale;
+}
+
+struct ResolvedPreStartPhaseSetup {
+    std::string    furniture;
+    std::string    openingPhaseStr;
+    nlohmann::json activitiesJson = nlohmann::json::array();
+    nlohmann::json positionsJson  = nlohmann::json::array();
+};
+
+// Resolves pre-start opening phase, phase-filtered activities, positions, and furniture fallback
+// for a concrete participant list and requested furniture type.
+ResolvedPreStartPhaseSetup ResolvePreStartPhaseAndSetup(
+    OStimNavigatorAPI::Intent intentEnum,
+    size_t actorCount,
+    bool hasPlayer,
+    const std::string& requestedFurniture,
+    const std::vector<uint32_t>& participantFIDs) {
+    auto populateForFurniture = [&](const std::string& furn) -> ResolvedPreStartPhaseSetup {
+        ResolvedPreStartPhaseSetup out;
+        out.furniture = furn;
+
+        std::optional<OStimNet::SexualPhase> openingPhase = OStimNet::ResolvePreStartOpeningPhase(
+            intentEnum, actorCount, hasPlayer, furn);
+
+        // Undressing sequences in TTON_Undress require a 2-actor male+female pair.
+        if (openingPhase.has_value() &&
+            *openingPhase == OStimNet::SexualPhase::Undressing &&
+            !IsMaleFemalePair(participantFIDs)) {
+            openingPhase = OStimNet::GetNextPhase(intentEnum, OStimNet::SexualPhase::Undressing);
+        }
+
+        if (!openingPhase.has_value()) {
+            out.openingPhaseStr = "";
+            out.activitiesJson  = BuildSetupActivitiesArrayJson(participantFIDs, furn, "sexual");
+            bool hasSexPhaseActions = !BuildSetupActivitiesArrayJson(participantFIDs, furn, "sex").empty() ||
+                                      (!ONavGetSetupActions && !ONavGetAllActions);
+            if (hasSexPhaseActions) {
+                out.positionsJson = BuildSetupPositionsArrayJson(participantFIDs, furn);
+            }
+        } else if (*openingPhase == OStimNet::SexualPhase::Undressing) {
+            out.openingPhaseStr = "undressing";
+        } else {
+            const auto& phaseList = OStimNet::IntentToPhaseList(intentEnum);
+            OStimNet::SexualPhase effectivePhase = *openingPhase;
+            bool foundStart = false;
+            for (size_t idx = 0; idx < phaseList.size(); ++idx) {
+                if (phaseList[idx] == *openingPhase) foundStart = true;
+                if (!foundStart) continue;
+                effectivePhase     = phaseList[idx];
+                out.activitiesJson = BuildSetupActivitiesArrayJson(
+                    participantFIDs, furn, OStimNet::SexualPhaseToName(effectivePhase));
+                if (!out.activitiesJson.empty()) break;
+            }
+
+            if (!out.activitiesJson.empty()) {
+                out.openingPhaseStr = OStimNet::SexualPhaseToName(effectivePhase);
+                if (effectivePhase == OStimNet::SexualPhase::Sex) {
+                    out.positionsJson = BuildSetupPositionsArrayJson(participantFIDs, furn);
+                }
+            } else {
+                // Zero scenes across the intent's phase list on this furniture (e.g. Dom/Aggressive
+                // when participants have no rank-3 scenes): fall back to any "sexual" actions on this
+                // furniture and leave positionsJson empty so non-intercourse positions are not offered.
+                out.activitiesJson = BuildSetupActivitiesArrayJson(participantFIDs, furn, "sexual");
+                if (!out.activitiesJson.empty()) {
+                    out.openingPhaseStr = "";
+                } else {
+                    out.openingPhaseStr = OStimNet::SexualPhaseToName(effectivePhase);
+                }
+            }
+        }
+        return out;
+    };
+
+    ResolvedPreStartPhaseSetup result = populateForFurniture(requestedFurniture);
+    if (!requestedFurniture.empty() &&
+        requestedFurniture != "floor" &&
+        requestedFurniture != "none" &&
+        result.openingPhaseStr != "undressing" &&
+        result.activitiesJson.empty()) {
+        if (!BuildSetupActivitiesArrayJson(participantFIDs, "floor", "sexual").empty()) {
+            SKSE::log::info(
+                "SkyrimNetDecisions: furniture '{}' has 0 compatible scenes for {} participant(s); falling back to 'floor'",
+                requestedFurniture, actorCount);
+            return populateForFurniture("floor");
+        }
+    }
+    return result;
+}
+
 }  // namespace
 
 // =============================================================================
@@ -747,40 +849,12 @@ bool EvaluatePreStartSexualScene(
         std::string resolvedFurniture = GetChoiceAnswer(answers1, "furniture", "floor");
 
         OStimNavigatorAPI::Intent intentEnum = OStimNavigatorAPI::IntentFromString(resolvedIntent);
-        std::optional<OStimNet::SexualPhase> openingPhase = OStimNet::ResolvePreStartOpeningPhase(
-            intentEnum, snaps.size(), hasPlayer, resolvedFurniture);
-
-        nlohmann::json activitiesJson = nlohmann::json::array();
-        nlohmann::json positionsJson  = nlohmann::json::array();
-        std::string openingPhaseStr;
-
-        if (!openingPhase.has_value()) {
-            // Phases disabled: offer all compatible sexual activities and intercourse positions.
-            openingPhaseStr = "";
-            activitiesJson  = BuildSetupActivitiesArrayJson(participantFIDs, resolvedFurniture, "sexual");
-            positionsJson   = BuildSetupPositionsArrayJson(participantFIDs, resolvedFurniture);
-        } else if (*openingPhase == OStimNet::SexualPhase::Undressing) {
-            // Undressing phase: neither activity nor position is needed.
-            openingPhaseStr = "undressing";
-        } else {
-            // Foreplay, Oral, or Sex phase: walk forward in IntentToPhaseList if a furniture piece
-            // has no scenes for the earlier phase.
-            const auto& phaseList = OStimNet::IntentToPhaseList(intentEnum);
-            OStimNet::SexualPhase effectivePhase = *openingPhase;
-            bool foundStart = false;
-            for (size_t idx = 0; idx < phaseList.size(); ++idx) {
-                if (phaseList[idx] == *openingPhase) foundStart = true;
-                if (!foundStart) continue;
-                effectivePhase = phaseList[idx];
-                activitiesJson = BuildSetupActivitiesArrayJson(
-                    participantFIDs, resolvedFurniture, OStimNet::SexualPhaseToName(effectivePhase));
-                if (!activitiesJson.empty()) break;
-            }
-            openingPhaseStr = OStimNet::SexualPhaseToName(effectivePhase);
-            if (effectivePhase == OStimNet::SexualPhase::Sex) {
-                positionsJson = BuildSetupPositionsArrayJson(participantFIDs, resolvedFurniture);
-            }
-        }
+        auto phaseSetup = ResolvePreStartPhaseAndSetup(
+            intentEnum, snaps.size(), hasPlayer, resolvedFurniture, participantFIDs);
+        resolvedFurniture             = phaseSetup.furniture;
+        std::string openingPhaseStr   = std::move(phaseSetup.openingPhaseStr);
+        nlohmann::json activitiesJson = std::move(phaseSetup.activitiesJson);
+        nlohmann::json positionsJson  = std::move(phaseSetup.positionsJson);
 
         SKSE::log::info("SkyrimNetDecisions::EvaluatePreStartSexualScene Step 1 resolved intent='{}', furniture='{}', openingPhase='{}', activities={}, positions={}, queuing Step 2",
                         resolvedIntent, resolvedFurniture, openingPhaseStr, activitiesJson.size(), positionsJson.size());
@@ -2156,41 +2230,17 @@ bool EvaluateLocationScan(
         }
 
         OStimNavigatorAPI::Intent intentEnum = OStimNavigatorAPI::IntentFromString(resolvedIntent);
-        std::optional<OStimNet::SexualPhase> openingPhase = OStimNet::ResolvePreStartOpeningPhase(
-            intentEnum, sceneSnaps.size(), hasPlayer, resolvedFurniture);
-
-        nlohmann::json activitiesJson = nlohmann::json::array();
-        nlohmann::json positionsJson  = nlohmann::json::array();
-        std::string openingPhaseStr;
-
-        if (!openingPhase.has_value()) {
-            openingPhaseStr = "";
-            activitiesJson  = BuildSetupActivitiesArrayJson(participantFIDs, resolvedFurniture, "sexual");
-            positionsJson   = BuildSetupPositionsArrayJson(participantFIDs, resolvedFurniture);
-        } else if (*openingPhase == OStimNet::SexualPhase::Undressing) {
-            openingPhaseStr = "undressing";
-        } else {
-            const auto& phaseList = OStimNet::IntentToPhaseList(intentEnum);
-            OStimNet::SexualPhase effectivePhase = *openingPhase;
-            bool foundStart = false;
-            for (size_t idx = 0; idx < phaseList.size(); ++idx) {
-                if (phaseList[idx] == *openingPhase) foundStart = true;
-                if (!foundStart) continue;
-                effectivePhase = phaseList[idx];
-                activitiesJson = BuildSetupActivitiesArrayJson(
-                    participantFIDs, resolvedFurniture, OStimNet::SexualPhaseToName(effectivePhase));
-                if (!activitiesJson.empty()) break;
-            }
-            openingPhaseStr = OStimNet::SexualPhaseToName(effectivePhase);
-            if (effectivePhase == OStimNet::SexualPhase::Sex) {
-                positionsJson = BuildSetupPositionsArrayJson(participantFIDs, resolvedFurniture);
-            }
-        }
+        auto phaseSetup = ResolvePreStartPhaseAndSetup(
+            intentEnum, sceneSnaps.size(), hasPlayer, resolvedFurniture, participantFIDs);
+        std::string effectiveFurniture = phaseSetup.furniture;
+        std::string openingPhaseStr    = std::move(phaseSetup.openingPhaseStr);
+        nlohmann::json activitiesJson  = std::move(phaseSetup.activitiesJson);
+        nlohmann::json positionsJson   = std::move(phaseSetup.positionsJson);
 
         nlohmann::json step4Ctx      = baseCtx;
         step4Ctx["step"]             = 4;
         step4Ctx["intent"]           = resolvedIntent;
-        step4Ctx["furniture"]        = resolvedFurniture;
+        step4Ctx["furniture"]        = effectiveFurniture;
         step4Ctx["openingPhase"]     = openingPhaseStr;
         step4Ctx["activities"]       = std::move(activitiesJson);
         step4Ctx["positions"]        = std::move(positionsJson);
@@ -2201,7 +2251,7 @@ bool EvaluateLocationScan(
         std::string step4ContextJson = step4Ctx.dump();
 
         auto step4CallbackHolder = std::make_shared<std::function<void(const char*, const char*, int)>>();
-        *step4CallbackHolder = [step4CallbackHolder, sceneSnaps, participantFIDs, scanCombos, resolvedIntent, resolvedFurniture,
+        *step4CallbackHolder = [step4CallbackHolder, sceneSnaps, participantFIDs, scanCombos, resolvedIntent, effectiveFurniture,
                                 openingPhaseStr, step4Ctx, step4ContextJson, templateName, scanGen, fallbackToChat, makeIgnoreAction](
                                    const char*, const char* step4ResultJson, int step4Success) {
             if (OStimNet::LocationScanService::GetSingleton().GetGeneration() != scanGen) {
@@ -2291,10 +2341,10 @@ bool EvaluateLocationScan(
             std::string rawPos  = ResolveChoiceOrSingle(step4Ctx, "positions", answers4, "position", "any");
             std::string normAct = NormalizeActivityChoice(rawAct);
             std::string normPos = NormalizePositionChoice(rawPos);
-            std::string rawFurn = (resolvedFurniture == "floor" || resolvedFurniture == "none") ? "" : resolvedFurniture;
+            std::string rawFurn = (effectiveFurniture == "floor" || effectiveFurniture == "none") ? "" : effectiveFurniture;
 
             if (openingPhaseStr.empty() && !normAct.empty() && !normPos.empty()) {
-                auto sexActs = BuildSetupActivitiesArrayJson(participantFIDs, resolvedFurniture, "sex");
+                auto sexActs = BuildSetupActivitiesArrayJson(participantFIDs, effectiveFurniture, "sex");
                 bool isSexAct = false;
                 for (const auto& item : sexActs) {
                     if (item.is_object() && item.value("id", "") == normAct) {

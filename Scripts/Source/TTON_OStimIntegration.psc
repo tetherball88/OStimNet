@@ -7,6 +7,10 @@ scriptname TTON_OStimIntegration
 int function StartOstimSex(Actor[] dom = none, Actor[] sub = none, string actions = "", string sexualPosition = "", string intent = "", Actor[] initiator = none) global
     Actor player = TTON_JData.GetPlayer()
     Actor[] actors = PapyrusUtil.MergeActorArray(dom, sub, true)
+    if(!actors || actors.Length == 0)
+        TTON_Debug.warn("StartOstim: no valid actors provided. Aborting.")
+        return -1
+    endif
     actors = OActorUtil.Sort(actors, OActorUtil.EmptyArray())
     bool someActorsBusy = false
     int i = 0
@@ -75,22 +79,43 @@ int function StartOstimSex(Actor[] dom = none, Actor[] sub = none, string action
         TTON_Debug.debug("Finished waiting for actors to be near furniture. Stucktimer: " + stucktimer)
     endif
 
-    int builderID = OThreadBuilder.create(actors)
-    if(dom && dom.Length > 0)
-        OThreadBuilder.SetDominantActors(builderID, dom)
-    endif
-
     TTON_Debug.info("StartOstim: Starting sexual scene with actors: " + actors + ", actions: " + actions)
-    bool isFemdom = dom[0].GetActorBase().GetSex() == 1
+    bool isFemdom = dom && dom.Length > 0 && dom[0] && dom[0].GetActorBase().GetSex() == 1
     string newScene = ""
     string phase = OStimNet.GetInitialPhaseByIntent(intent, hasPlayer)
-    if(phase == "undressing" && actors.length == 2 && !furn)
-        TTON_Debug.debug("StartOstim: Skipping scene search for undressing phase with 2 actors. Using default undressing scene.")
+    bool canUseDefaultUndress = phase == "undressing" && actors.length == 2 && actors[0].GetActorBase().GetSex() == 0 && actors[1].GetActorBase().GetSex() == 1 && OStimNavigator.IsSceneLoaded("OStim2PStandingApartMF")
+
+    if(!furn && canUseDefaultUndress)
+        TTON_Debug.debug("StartOstim: Skipping scene search for undressing phase with 2 MF actors. Using default undressing scene.")
         newScene = "OStim2PStandingApartMF"
-    else
+    elseif(furn)
         newScene = TTON_SceneSearch.SceneSexSearch(actors, true, OFurniture.GetFurnitureType(furn), actions, sexualPosition, intent, true, isFemdom, hasPlayer, true)
+        if(newScene == "")
+            TTON_Debug.warn("StartOstim: No compatible scene found on furniture " + furn + " (type=" + OFurniture.GetFurnitureType(furn) + "). Falling back to floor.")
+            StorageUtil.FormListRemove(none, "TTON_FurnitureList", furn)
+            furn = none
+            if(canUseDefaultUndress)
+                newScene = "OStim2PStandingApartMF"
+            else
+                newScene = TTON_SceneSearch.SceneSexSearch(actors, false, "", actions, sexualPosition, intent, true, isFemdom, hasPlayer, true)
+            endif
+        endif
+    else
+        newScene = TTON_SceneSearch.SceneSexSearch(actors, false, "", actions, sexualPosition, intent, true, isFemdom, hasPlayer, true)
     endif
 
+    if(newScene == "")
+        if(furn)
+            StorageUtil.FormListRemove(none, "TTON_FurnitureList", furn)
+        endif
+        TTON_Debug.err("StartOstim: No compatible starting animation found for actors: " + actors + " (intent=" + intent + ", actions=" + actions + "). Aborting scene start.")
+        Debug.Notification("OStimNet: No compatible animations found for these participants.")
+        TTON_Utils.SetActorsPending(actors, false)
+        TTON_Utils.FreeParticipants(actors)
+        return -1
+    endif
+
+    int builderID = OThreadBuilder.create(actors)
     if(furn)
         OThreadBuilder.SetFurniture(builderID, furn)
         StorageUtil.FormListRemove(none, "TTON_FurnitureList", furn)
@@ -114,19 +139,28 @@ endfunction
 
 int Function StartOStimCaring(Actor initiator, Actor participant, string actions = "", string intent = "", Actor mainActor = none, Actor secondaryActor = none) global
     Actor player = TTON_JData.GetPlayer()
-    int i = 0
     if(!initiator || !participant)
         TTON_Debug.warn("StartOStimCaring: invalid actors provided.")
-        TTON_Utils.SetActorsPending(actors, false)
+        if(initiator)
+            Actor[] initArr = new Actor[1]
+            initArr[0] = initiator
+            TTON_Utils.SetActorsPending(initArr, false)
+        endif
+        if(participant)
+            Actor[] partArr = new Actor[1]
+            partArr[0] = participant
+            TTON_Utils.SetActorsPending(partArr, false)
+        endif
         return -1
     endif
+
+    Actor[] actors = OActorUtil.ToArray(initiator, participant)
     if(initiator.GetParentCell() != participant.GetParentCell())
         TTON_Debug.warn("StartOStimCaring: actors are not in the same location. Aborting.")
         TTON_Debug.warn("StartOStimCaring: " + TTON_Utils.GetActorName(initiator) + " is in " + initiator.GetParentCell() + ", " + TTON_Utils.GetActorName(participant) + " is in " + participant.GetParentCell())
         TTON_Utils.SetActorsPending(actors, false)
         return -1
     endif
-    bool hasPlayer = initiator == player || participant == player
     bool someActorsBusy = TTON_Utils.IsActorBusyWithScenes(initiator, false) || TTON_Utils.IsActorBusyWithScenes(participant, false)
     if(someActorsBusy)
         TTON_Debug.warn("StartOstim: tried to start new thread with actors who are busy in another thread.")
@@ -134,15 +168,19 @@ int Function StartOStimCaring(Actor initiator, Actor participant, string actions
         return -1
     endif
 
-    Actor[] actors =  OActorUtil.ToArray(initiator, participant)
     actors = OActorUtil.Sort(actors, OActorUtil.EmptyArray())
-
-    int builderID = OThreadBuilder.create(actors)
 
     TTON_Debug.info("StartOstim: Starting non-sexual scene with actors: " + actors + ", actions: " + actions)
     string actionfallback = ""
-
     string newScene = TTON_SceneSearch.SearchCareScene(actors, intent, actions, initiator, actionfallback)
+    if(newScene == "")
+        TTON_Debug.err("StartOStimCaring: No compatible care animation found for actors: " + actors + " (intent=" + intent + ", actions=" + actions + "). Aborting scene start.")
+        Debug.Notification("OStimNet: No compatible care animations found for these participants.")
+        TTON_Utils.SetActorsPending(actors, false)
+        return -1
+    endif
+
+    int builderID = OThreadBuilder.create(actors)
     OThreadBuilder.NoFurniture(builderID)
     OThreadBuilder.SetDuration(builderID, SkyrimNetApi.GetConfigInt("Plugin_OStimNet", "tton.settings.nonSexualDuration", 20) as float)
     OThreadBuilder.NoAutoMode(builderID)

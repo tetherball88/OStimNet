@@ -116,12 +116,24 @@ public:
     int AllocateClaimToken(Intent intent, bool isSexual,
                            std::vector<RE::Actor*> mainActors,
                            std::vector<RE::Actor*> secondaryActors) {
+        const auto now = std::chrono::steady_clock::now();
+        for (auto it = _claimRecords.begin(); it != _claimRecords.end();) {
+            if (it->second.claimedAt.time_since_epoch().count() > 0 &&
+                (now - it->second.claimedAt) > kClaimMaxAge) {
+                SKSE::log::warn("ThreadRegistry: pruning expired unconfirmed claim token={}", it->first);
+                it = _claimRecords.erase(it);
+            } else {
+                ++it;
+            }
+        }
+
         int token = _nextClaimToken++;
         auto& rec = _claimRecords[token];
         rec.intent          = intent;
         rec.isSexual        = isSexual;
         rec.mainActors      = std::move(mainActors);
         rec.secondaryActors = std::move(secondaryActors);
+        rec.claimedAt       = now;
         SKSE::log::info("ThreadRegistry: AllocateClaimToken -> token={} intent={} isSexual={}",
             token, IntentToString(intent), isSexual);
         return token;
@@ -138,15 +150,22 @@ public:
             SKSE::log::warn("ThreadRegistry: ConfirmClaim token={} not found", token);
             return false;
         }
-        auto& state         = _threads[threadID];
-        state.phase         = ThreadPhase::Claiming;
-        state.claimToken    = token;
-        state.intent        = it->second.intent;
+        if (threadID < 0) {
+            _claimRecords.erase(it);
+            SKSE::log::warn("ThreadRegistry: ConfirmClaim token={} discarded due to invalid threadID={}",
+                token, threadID);
+            return false;
+        }
+        auto& state           = _threads[threadID];
+        state.phase           = ThreadPhase::Claiming;
+        state.claimToken      = token;
+        state.claimedAt       = std::chrono::steady_clock::now();
+        state.intent          = it->second.intent;
         state.intentHasBeenSet = true;
-        state.sexual        = it->second.isSexual;
-        state.mainActors    = std::move(it->second.mainActors);
+        state.sexual          = it->second.isSexual;
+        state.mainActors      = std::move(it->second.mainActors);
         state.secondaryActors = std::move(it->second.secondaryActors);
-        state.isOStimNet    = true;
+        state.isOStimNet      = true;
         _claimRecords.erase(it);
         SKSE::log::info("ThreadRegistry: ConfirmClaim token={} -> threadID={} intent={} isSexual={}",
             token, threadID, IntentToString(state.intent), state.sexual.value_or(false));
@@ -155,10 +174,46 @@ public:
 
     // Called from HandleStart: if this threadID has a confirmed claim
     // (phase == Claiming), transitions it to Active and returns true.
-    // Returns false when no pre-claimed entry exists (non-OStimNet path).
+    // Returns false when no pre-claimed entry exists (non-OStimNet path) or
+    // when the claim is stale or does not overlap the thread's actors.
     bool ConsumeActiveClaim(int threadID) {
         auto it = _threads.find(threadID);
         if (it == _threads.end() || it->second.phase != ThreadPhase::Claiming) {
+            return false;
+        }
+        const auto now = std::chrono::steady_clock::now();
+        bool stale = (it->second.claimedAt.time_since_epoch().count() > 0) &&
+                     ((now - it->second.claimedAt) > kClaimMaxAge);
+        bool actorMatch = true;
+        if (!it->second.actors.formIDs.empty() &&
+            (!it->second.mainActors.empty() || !it->second.secondaryActors.empty())) {
+            auto matchesAny = [&](const std::vector<RE::Actor*>& list) {
+                for (const auto* actor : list) {
+                    if (!actor) continue;
+                    uint32_t fid = static_cast<uint32_t>(actor->GetFormID());
+                    if (std::find(it->second.actors.formIDs.begin(),
+                                  it->second.actors.formIDs.end(), fid) !=
+                        it->second.actors.formIDs.end()) {
+                        return true;
+                    }
+                }
+                return false;
+            };
+            actorMatch = matchesAny(it->second.mainActors) || matchesAny(it->second.secondaryActors);
+        }
+        if (stale || !actorMatch) {
+            SKSE::log::warn(
+                "ThreadRegistry: discarding stale/mismatched Claiming entry for threadID={} (stale={}, actorMatch={})",
+                threadID, stale, actorMatch);
+            it->second.phase            = ThreadPhase::Pending;
+            it->second.pendingSince     = now;
+            it->second.claimToken       = -1;
+            it->second.intent           = Intent::Unset;
+            it->second.intentHasBeenSet = false;
+            it->second.sexual.reset();
+            it->second.mainActors.clear();
+            it->second.secondaryActors.clear();
+            it->second.isOStimNet       = false;
             return false;
         }
         it->second.phase = ThreadPhase::Active;
@@ -173,7 +228,12 @@ public:
     // third-party OStim thread that happened to start at the same time as an
     // unrelated claim.
     bool HasPendingClaimForActors(const std::vector<uint32_t>& threadActorFormIDs) const {
+        const auto now = std::chrono::steady_clock::now();
         for (const auto& [token, rec] : _claimRecords) {
+            if (rec.claimedAt.time_since_epoch().count() > 0 &&
+                (now - rec.claimedAt) > kClaimMaxAge) {
+                continue;
+            }
             for (const auto* actor : rec.mainActors) {
                 if (actor) {
                     uint32_t fid = static_cast<uint32_t>(actor->GetFormID());
@@ -345,12 +405,29 @@ public:
         SKSE::log::info("ThreadRegistry: ResolveStartingPhase thread={} undressingEnabled={}",
             threadID, undressingEnabled);
 
-        // Undressing only makes sense for exactly 2 standing actors with no furniture.
+        // Undressing only makes sense for exactly 2 standing MF actors with no furniture.
         if (undressingEnabled) {
-            bool twoActors = (GetActorPtrs(threadID).size() == 2);
+            const auto& actorPtrs = GetActorPtrs(threadID);
+            bool twoActors = (actorPtrs.size() == 2);
             if (!twoActors) {
                 SKSE::log::info("ThreadRegistry: thread {} has {} actors, disabling undressing",
-                    threadID, GetActorPtrs(threadID).size());
+                    threadID, actorPtrs.size());
+            }
+            bool mfPair = false;
+            if (twoActors) {
+                bool hasMale   = false;
+                bool hasFemale = false;
+                for (auto* a : actorPtrs) {
+                    auto* base = a ? a->GetActorBase() : nullptr;
+                    if (!base) continue;
+                    if (base->GetSex() == RE::SEX::kMale)        hasMale   = true;
+                    else if (base->GetSex() == RE::SEX::kFemale) hasFemale = true;
+                }
+                mfPair = hasMale && hasFemale;
+                if (!mfPair) {
+                    SKSE::log::info("ThreadRegistry: thread {} actors are not a male+female pair, disabling undressing",
+                        threadID);
+                }
             }
             bool noFurniture = true;
             if (g_ostimThreadInterface) {
@@ -368,7 +445,7 @@ public:
                     }
                 }
             }
-            if (!twoActors || !noFurniture) undressingEnabled = false;
+            if (!twoActors || !mfPair || !noFurniture) undressingEnabled = false;
         }
 
         size_t startIdx = 0;
@@ -378,7 +455,25 @@ public:
             startIdx = 1;
         }
 
-        return phaseList[startIdx];
+        SexualPhase resolved = phaseList[startIdx];
+        if (g_ostimThreadInterface) {
+            const char* curScene = g_ostimThreadInterface->GetCurrentSceneID(
+                static_cast<uint32_t>(threadID));
+            auto detected = DetectPhaseFromSceneID(curScene);
+            if (detected.has_value()) {
+                int resIdx = GetPhaseIndex(intent, resolved);
+                int detIdx = GetPhaseIndex(intent, *detected);
+                if (detIdx >= 0 && detIdx > resIdx) {
+                    SKSE::log::info(
+                        "ThreadRegistry: ResolveStartingPhase thread={} advancing phase {} -> {} from starting scene '{}'",
+                        threadID, SexualPhaseToName(resolved), SexualPhaseToName(*detected),
+                        curScene ? curScene : "");
+                    resolved = *detected;
+                }
+            }
+        }
+
+        return resolved;
     }
 
     // =========================================================================
@@ -440,9 +535,10 @@ public:
         // Initialise a Pending entry for new threads that don't have a claim.
         // Threads that went through ClaimThread/ConfirmThread already have a
         // Claiming entry — leave their phase untouched.
+        const bool existed = (_threads.find(threadID) != _threads.end());
         auto& state = _threads[threadID];
         if (state.phase != ThreadPhase::Claiming) {
-            if (state.phase != ThreadPhase::Pending) {
+            if (!existed || state.phase != ThreadPhase::Pending) {
                 state.phase        = ThreadPhase::Pending;
                 state.pendingSince = std::chrono::steady_clock::now();
             }
@@ -1005,15 +1101,18 @@ public:
     }
 
 private:
+    static constexpr auto kClaimMaxAge = std::chrono::seconds(120);
+
     // -----------------------------------------------------------------
     // Pre-start claim record — lives in _claimRecords until ConfirmClaim
     // moves it into _threads keyed by the real threadID.
     // -----------------------------------------------------------------
     struct ClaimRecord {
-        Intent                  intent          = Intent::Unset;
-        bool                    isSexual        = false;
-        std::vector<RE::Actor*> mainActors;
-        std::vector<RE::Actor*> secondaryActors;
+        Intent                                intent          = Intent::Unset;
+        bool                                  isSexual        = false;
+        std::vector<RE::Actor*>               mainActors;
+        std::vector<RE::Actor*>               secondaryActors;
+        std::chrono::steady_clock::time_point claimedAt{};
     };
 
     struct ActorEntry {
@@ -1026,6 +1125,7 @@ private:
         // --- lifecycle ---
         ThreadPhase             phase            = ThreadPhase::Pending;
         int                     claimToken       = -1;
+        std::chrono::steady_clock::time_point claimedAt{};
         std::string             currentPosition;
         int32_t                 currentSpeed     = -1;
         float                   playerCrimeGoldAtStart = 0.0f;

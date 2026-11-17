@@ -82,7 +82,7 @@ string Function SceneSexSearch(Actor[] actors, bool forceFurn = false, string fu
         endif
     endif
 
-    if(furnType == "bed")
+    if(furnType != "" && OFurniture.IsChildOf("bed", furnType))
         ActorTagBlacklistForAll = standingPerActor
     elseif(furnType == "")
         AnyActorTagForAny = standingPerActor
@@ -384,9 +384,9 @@ string Function SceneSexSearch(Actor[] actors, bool forceFurn = false, string fu
     endif
 
     ; try relax action type requirement if no scene found
-    if(actionType != "")
+    if(AnyActionType != "sexual" || actionBlacklist != "")
         if(actionBlacklist != "")
-            TTON_Debug.warn("No scene found with actionType='" + actionType + "', trying any sexual action within phase (ActionBlacklistTypes=" + actionBlacklist + "): FurnitureType=" + furnType + ", AnyActionPerformer=" + AnyActionPerformer + ", SceneTagBlacklist=" + SceneTagBlacklist)
+            TTON_Debug.warn("No scene found with actionType='" + actionType + "' (AnyActionType='" + AnyActionType + "'), trying any sexual action within phase (ActionBlacklistTypes=" + actionBlacklist + "): FurnitureType=" + furnType + ", AnyActionPerformer=" + AnyActionPerformer + ", SceneTagBlacklist=" + SceneTagBlacklist)
             AnyActionType = "sexual"
             sceneId = OLibrary.GetRandomSceneSuperloadCSV(actors, \
                 FurnitureType = furnType, \
@@ -402,7 +402,7 @@ string Function SceneSexSearch(Actor[] actors, bool forceFurn = false, string fu
             actionBlacklist = ""
         endif
 
-        TTON_Debug.warn("No scene found with all positional filters relaxed: FurnitureType=" + furnType + ", ActionType=" + actionType + ", AnyActionPerformer=" + AnyActionPerformer + ", SceneTagBlacklist=" + SceneTagBlacklist)
+        TTON_Debug.warn("No scene found with all positional filters relaxed: FurnitureType=" + furnType + ", ActionType=" + actionType + " (AnyActionType=" + AnyActionType + "), AnyActionPerformer=" + AnyActionPerformer + ", SceneTagBlacklist=" + SceneTagBlacklist)
         AnyActionType = "sexual"
         sceneId = OLibrary.GetRandomSceneSuperloadCSV(actors, \
             FurnitureType = furnType, \
