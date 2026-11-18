@@ -1,5 +1,14 @@
 # Changelog
 
+## v2.7.3
+
+### Fixed
+
+- **Player movement, camera & menu controls after Magelight UI modals and OStim scenes** — Fixed player controls (`Movement`, `Looking`, `Activate`, `Menu`, `POVSwitch`, `WheelZoom`, `Fighting`) or text-input locks remaining disabled after dismissing a Magelight UI modal or finishing an OStim scene, including when modals open mid-scene while the player character is AI-driven (`SetAIDriven`) or overlap with scene-end fade-outs.
+- **Magelight UI focus handoff & exit recovery** — Captured Skyrim's main thread ID at SKSE plugin load, added support for Magelight UI `v0.9.1+` exit callbacks alongside `MagelightFocus` menu-close fallbacks, and prevented `UIModeExited` events from clearing focus ownership when back-to-back modals open consecutively.
+
+---
+
 ## v2.7.2
 
 ### Fixed

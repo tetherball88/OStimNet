@@ -173,6 +173,7 @@ SKSEPluginLoad(const LoadInterface* skse) {
 
     SetupLogging();
     SKSE::log::info("OstimNet plugin loading...");
+    OStimNet::UI::UIManager::GetSingleton().CaptureMainThread();
 
     // Check if OStim is loaded (it should load before us alphabetically)
     if (const auto* ostimInfo = skse->GetPluginInfo("OStim")) {

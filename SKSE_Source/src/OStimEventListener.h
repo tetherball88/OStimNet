@@ -16,6 +16,7 @@
 #include "OVirginityService.h"
 #include "ConfirmationModal.h"
 #include "ui/ThreadSetupModal.h"
+#include "ui/UIManager.h"
 namespace OStimNet {
 
 class OStimEventListener : public RE::BSTEventSink<SKSE::ModCallbackEvent> {
@@ -132,6 +133,7 @@ protected:
 
         if (auto* taskIF = SKSE::GetTaskInterface()) {
             taskIF->AddTask([this, name, numArg, strArg, senderID]() {
+                UI::ScopedGameTask gameTaskScope;
                 if (name == "ostim_thread_start") {
                     HandleStart(numArg);
                 } else if (name == "ostim_thread_scenechanged") {
@@ -205,6 +207,9 @@ private:
         auto newActors = ThreadDataStore::GetSingleton().FetchAndStoreActors(threadID);
         if (wasEmpty) {
             _dq.Start();
+        }
+        if (ThreadRegistry::GetSingleton().IsPlayerThread(threadID)) {
+            UI::UIManager::GetSingleton().OnPlayerThreadStart();
         }
 
         // Continuation detection: check whether this start is a continuation of the
@@ -332,6 +337,10 @@ private:
             SKSE::log::info("OStimEventListener: thread {} ended (interruptReason='{}')", threadID, interruptReason);
             OnThreadEnd(threadID, interruptReason);
             ThreadDataStore::GetSingleton().ClearThread(threadID);
+        }
+
+        if (!isCont && !ThreadRegistry::GetSingleton().GetPlayerThreadID().has_value()) {
+            UI::UIManager::GetSingleton().OnPlayerThreadEnd();
         }
     }
 

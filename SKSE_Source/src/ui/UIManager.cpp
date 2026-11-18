@@ -1,11 +1,14 @@
 #include "PCH.h"
 
 #include "ui/UIManager.h"
+#include "ThreadRegistry.h"
 #include "ui/ModalManager.h"
 #include "ui/SessionEpoch.h"
 
+#include <RE/U/UserEventEnabled.h>
 #include <nlohmann/json.hpp>
 
+#include <chrono>
 #include <filesystem>
 #include <memory>
 #include <thread>
@@ -37,6 +40,18 @@ namespace OStimNet::UI {
             return api->QueryCapability(capabilityName) == 1;
         }
 
+        constexpr std::uint32_t kCoreGameplayAndMenuMask =
+            std::to_underlying(RE::ControlMap::UEFlag::kMovement) |
+            std::to_underlying(RE::ControlMap::UEFlag::kLooking) |
+            std::to_underlying(RE::ControlMap::UEFlag::kActivate) |
+            std::to_underlying(RE::ControlMap::UEFlag::kMenu) |
+            std::to_underlying(RE::ControlMap::UEFlag::kPOVSwitch) |
+            std::to_underlying(RE::ControlMap::UEFlag::kWheelZoom);
+
+        constexpr std::uint32_t kFullSnapshotMask =
+            kCoreGameplayAndMenuMask |
+            std::to_underlying(RE::ControlMap::UEFlag::kFighting);
+
     }  // namespace
 
     UIManager& UIManager::GetSingleton() {
@@ -45,7 +60,11 @@ namespace OStimNet::UI {
     }
 
     void UIManager::Initialize() {
-        mainThreadId_.store(::GetCurrentThreadId(), std::memory_order_release);
+        DWORD expectedThread = 0;
+        mainThreadId_.compare_exchange_strong(
+            expectedThread,
+            ::GetCurrentThreadId(),
+            std::memory_order_acq_rel);
 
         if (IsInitialized()) {
             return;
@@ -85,6 +104,11 @@ namespace OStimNet::UI {
                     SKSE::log::warn("[UIManager] SetNetworkPolicy(FileOnly) failed (result={})", static_cast<int>(netRes));
                 }
             }
+        }
+
+        if (magelight_->hostVersionNumber >= 901 && magelight_->SetUIModeExitCallback &&
+            !exitCallbackRegistered_.exchange(true, std::memory_order_acq_rel)) {
+            magelight_->SetUIModeExitCallback(&UIManager::OnUIModeExitCallback);
         }
 
         isDomReady_.store(false, std::memory_order_release);
@@ -164,6 +188,19 @@ namespace OStimNet::UI {
     }
 
     void UIManager::Revert() {
+        modalControlBaselineMask_.store(0, std::memory_order_release);
+        sceneControlBaselineMask_.store(0, std::memory_order_release);
+        midSceneDirectWriteMask_.store(0, std::memory_order_release);
+        sceneEndRestorePending_.store(false, std::memory_order_release);
+        sceneEndSequence_.fetch_add(1, std::memory_order_acq_rel);
+
+        if (!magelight_ || !magelight_->IsUIModeActive || !magelight_->IsUIModeActive()) {
+            focusOwned_.store(false, std::memory_order_release);
+            uiModeRequested_.store(false, std::memory_order_release);
+            releasePending_.store(false, std::memory_order_release);
+            appliedNoTextEntry_.store(true, std::memory_order_release);
+        }
+
         {
             std::lock_guard lock(stateMutex_);
             afterFocusReleasedTasks_.clear();
@@ -175,6 +212,284 @@ namespace OStimNet::UI {
         }
 
         SyncViewVisibilityAndFocus();
+    }
+
+    void UIManager::OnPlayerThreadStart() {
+        sceneEndRestorePending_.store(false, std::memory_order_release);
+        sceneEndSequence_.fetch_add(1, std::memory_order_acq_rel);
+
+        if (!IsOnMainThread()) {
+            AddCurrentEpochTask([this]() {
+                OnPlayerThreadStart();
+            });
+            return;
+        }
+
+        SnapshotControlBaseline(/*forModal=*/false, /*forScene=*/true);
+    }
+
+    void UIManager::OnPlayerThreadEnd() {
+        if (sceneControlBaselineMask_.load(std::memory_order_acquire) == 0 &&
+            midSceneDirectWriteMask_.load(std::memory_order_acquire) == 0) {
+            return;
+        }
+
+        const bool alreadyPending = sceneEndRestorePending_.exchange(true, std::memory_order_acq_rel);
+        if (IsOnMainThread()) {
+            RestoreSceneEndControls("ostim_thread_end", /*finalizeWindow=*/false);
+        }
+        AddCurrentEpochTask([this]() {
+            RestoreSceneEndControls("ostim_thread_end next-frame", /*finalizeWindow=*/false);
+        });
+
+        if (!alreadyPending) {
+            const std::uint64_t seq = sceneEndSequence_.fetch_add(1, std::memory_order_acq_rel) + 1;
+            const SessionEpoch epoch = GetSessionEpoch();
+
+            std::thread([this, seq, epoch]() {
+                std::this_thread::sleep_for(std::chrono::milliseconds(750));
+                if (!IsSessionEpochCurrent(epoch) ||
+                    sceneEndSequence_.load(std::memory_order_acquire) != seq ||
+                    !sceneEndRestorePending_.load(std::memory_order_acquire)) {
+                    return;
+                }
+                AddEpochTask(epoch, [this, seq]() {
+                    if (sceneEndSequence_.load(std::memory_order_acquire) == seq) {
+                        RestoreSceneEndControls("post-end +750ms", /*finalizeWindow=*/false);
+                    }
+                });
+
+                std::this_thread::sleep_for(std::chrono::milliseconds(1100));
+                if (!IsSessionEpochCurrent(epoch) ||
+                    sceneEndSequence_.load(std::memory_order_acquire) != seq ||
+                    !sceneEndRestorePending_.load(std::memory_order_acquire)) {
+                    return;
+                }
+                AddEpochTask(epoch, [this, seq]() {
+                    if (sceneEndSequence_.load(std::memory_order_acquire) == seq) {
+                        RestoreSceneEndControls("post-fade +1850ms", /*finalizeWindow=*/true);
+                    }
+                });
+            }).detach();
+        }
+    }
+
+    void UIManager::SnapshotControlBaseline(bool forModal, bool forScene) {
+        if (!forModal && !forScene) {
+            return;
+        }
+
+        auto* cm = RE::ControlMap::GetSingleton();
+        if (!cm) {
+            return;
+        }
+
+        const std::uint32_t rawEnabled = cm->GetRuntimeData().enabledControls.underlying();
+        const bool magelightHoldingControls =
+            (magelight_ && magelight_->IsUIModeActive && magelight_->IsUIModeActive()) ||
+            (RE::UI::GetSingleton() && RE::UI::GetSingleton()->IsMenuOpen("MagelightFocus"));
+
+        std::uint32_t snapshot = rawEnabled & kFullSnapshotMask;
+        if (magelightHoldingControls) {
+            snapshot |= kCoreGameplayAndMenuMask;
+        }
+
+        if (forModal) {
+            modalControlBaselineMask_.fetch_or(snapshot, std::memory_order_acq_rel);
+        }
+        if (forScene) {
+            sceneControlBaselineMask_.fetch_or(snapshot, std::memory_order_acq_rel);
+        }
+
+        SKSE::log::debug(
+            "[UIManager] Snapshotted control baseline (modal=0x{:X}, scene=0x{:X}, rawEnabled=0x{:X}, magelightHeld={})",
+            modalControlBaselineMask_.load(std::memory_order_acquire),
+            sceneControlBaselineMask_.load(std::memory_order_acquire),
+            rawEnabled,
+            magelightHoldingControls);
+    }
+
+    void UIManager::ApplyControlMaskRestore(
+        std::uint32_t mask,
+        std::uint32_t forceNativePulseMask,
+        const char* trigger) {
+        if (mask == 0 && forceNativePulseMask == 0) {
+            return;
+        }
+
+        auto* cm = RE::ControlMap::GetSingleton();
+        if (!cm) {
+            return;
+        }
+
+        using UEFlag = RE::ControlMap::UEFlag;
+        auto& rd = cm->GetRuntimeData();
+        const auto rdOffset =
+            reinterpret_cast<std::uintptr_t>(&rd.enabledControls) - reinterpret_cast<std::uintptr_t>(cm);
+
+        const std::uint32_t before = rd.enabledControls.underlying();
+        const std::uint32_t missing = mask & ~before;
+        const std::uint32_t pulseBits = forceNativePulseMask & (mask | forceNativePulseMask);
+        const std::uint32_t toToggle = missing | pulseBits;
+        std::uint32_t directFallback = 0;
+
+        if (toToggle != 0) {
+            if (pulseBits != 0) {
+                rd.enabledControls.reset(static_cast<UEFlag>(pulseBits));
+            }
+
+            cm->ToggleControls(static_cast<UEFlag>(toToggle), true, false);
+
+            directFallback = toToggle & ~rd.enabledControls.underlying();
+            if (directFallback != 0) {
+                // Skyrim's ControlMap::ToggleControls(..., true, false) ignores re-enabling flags
+                // while PlayerCharacter is AI-driven (OStim's SetAIDriven(true)). Force the live
+                // flags back on now and record them so native ToggleControls(true) is replayed at
+                // scene end after SetAIDriven(false).
+                midSceneDirectWriteMask_.fetch_or(directFallback, std::memory_order_acq_rel);
+                if (ThreadRegistry::GetSingleton().GetPlayerThreadID().has_value()) {
+                    sceneControlBaselineMask_.fetch_or(directFallback, std::memory_order_acq_rel);
+                }
+
+                const auto prev = rd.enabledControls;
+                rd.enabledControls.set(static_cast<UEFlag>(directFallback));
+                rd.storedControls.set(static_cast<UEFlag>(directFallback));
+                RE::UserEventEnabled ev{ rd.enabledControls, prev };
+                cm->SendEvent(std::addressof(ev));
+            } else if (pulseBits != 0) {
+                midSceneDirectWriteMask_.fetch_and(~pulseBits, std::memory_order_acq_rel);
+            }
+        }
+
+        int clearedTextEntry = 0;
+        if (rd.textEntryCount > 0) {
+            auto* ui = RE::UI::GetSingleton();
+            const bool textMenuOpen =
+                ui && (ui->IsMenuOpen(RE::Console::MENU_NAME) || ui->IsMenuOpen("OStimSearchMenu"));
+            if (!textMenuOpen) {
+                for (int i = 0; i < 16 && rd.textEntryCount > 0; ++i) {
+                    cm->AllowTextInput(false);
+                    ++clearedTextEntry;
+                }
+            }
+        }
+
+        if (toToggle != 0 || clearedTextEntry > 0) {
+            SKSE::log::info(
+                "[UIManager] Control restore ({}) [offset=0x{:X}]: enabled 0x{:X} -> 0x{:X} (missing=0x{:X}, pulse=0x{:X}, directFallback=0x{:X}, textEntryCount={}, clearedTextEntry={})",
+                trigger ? trigger : "unknown",
+                rdOffset,
+                before,
+                rd.enabledControls.underlying(),
+                missing,
+                pulseBits,
+                directFallback,
+                static_cast<int>(rd.textEntryCount),
+                clearedTextEntry);
+        }
+    }
+
+    void UIManager::RestoreModalControls(bool clearMaskWhenFocusMenuStillOpen) {
+        if (modalControlBaselineMask_.load(std::memory_order_acquire) == 0) {
+            return;
+        }
+
+        if (!IsOnMainThread()) {
+            AddCurrentEpochTask([this, clearMaskWhenFocusMenuStillOpen]() {
+                RestoreModalControls(clearMaskWhenFocusMenuStillOpen);
+            });
+            return;
+        }
+
+        if (magelight_ && magelight_->IsUIModeActive && magelight_->IsUIModeActive()) {
+            return;
+        }
+
+        const bool wantUIMode =
+            ModalManager::GetSingleton().HasActiveModal() && !IsModalDisplayBlocked();
+        if (wantUIMode &&
+            (focusOwned_.load(std::memory_order_acquire) ||
+             uiModeRequested_.load(std::memory_order_acquire))) {
+            return;
+        }
+
+        bool clearedStaleOwnership = false;
+        if (!wantUIMode) {
+            const bool staleOwned = focusOwned_.exchange(false, std::memory_order_acq_rel);
+            const bool staleRequested = uiModeRequested_.exchange(false, std::memory_order_acq_rel);
+            const bool staleRelease = releasePending_.exchange(false, std::memory_order_acq_rel);
+            if (staleOwned || staleRequested || staleRelease) {
+                appliedNoTextEntry_.store(true, std::memory_order_release);
+                clearedStaleOwnership = true;
+            }
+        }
+
+        const bool keepMaskUntilFocusMenuCloses =
+            !clearMaskWhenFocusMenuStillOpen &&
+            RE::UI::GetSingleton() != nullptr &&
+            RE::UI::GetSingleton()->IsMenuOpen("MagelightFocus");
+
+        const std::uint32_t mask = keepMaskUntilFocusMenuCloses
+            ? modalControlBaselineMask_.load(std::memory_order_acquire)
+            : modalControlBaselineMask_.exchange(0, std::memory_order_acq_rel);
+
+        ApplyControlMaskRestore(mask, /*forceNativePulseMask=*/0, "modal UI-mode exit");
+
+        if (clearedStaleOwnership) {
+            DrainAfterFocusReleasedTasks();
+        }
+    }
+
+    void UIManager::RestoreSceneEndControls(const char* trigger, bool finalizeWindow) {
+        if (!sceneEndRestorePending_.load(std::memory_order_acquire)) {
+            return;
+        }
+
+        if (!IsOnMainThread()) {
+            AddCurrentEpochTask([this, trigger, finalizeWindow]() {
+                RestoreSceneEndControls(trigger, finalizeWindow);
+            });
+            return;
+        }
+
+        // Abort if a new player OStim thread has started since HandleEnd.
+        if (ThreadRegistry::GetSingleton().GetPlayerThreadID().has_value()) {
+            sceneEndRestorePending_.store(false, std::memory_order_release);
+            return;
+        }
+
+        const bool uiModeCurrentlyHeld =
+            (magelight_ && magelight_->IsUIModeActive && magelight_->IsUIModeActive()) ||
+            (ModalManager::GetSingleton().HasActiveModal() && !IsModalDisplayBlocked());
+        if (uiModeCurrentlyHeld) {
+            if (finalizeWindow) {
+                const std::uint32_t carry = sceneControlBaselineMask_.exchange(0, std::memory_order_acq_rel);
+                if (carry != 0) {
+                    modalControlBaselineMask_.fetch_or(carry, std::memory_order_acq_rel);
+                }
+                sceneEndRestorePending_.store(false, std::memory_order_release);
+            }
+            return;
+        }
+
+        const std::uint32_t mask = sceneControlBaselineMask_.load(std::memory_order_acquire);
+        const std::uint32_t pulse = midSceneDirectWriteMask_.load(std::memory_order_acquire);
+        ApplyControlMaskRestore(mask, pulse, trigger);
+
+        if (finalizeWindow) {
+            sceneEndRestorePending_.store(false, std::memory_order_release);
+            sceneControlBaselineMask_.store(0, std::memory_order_release);
+            midSceneDirectWriteMask_.store(0, std::memory_order_release);
+
+            if (auto* cm = RE::ControlMap::GetSingleton()) {
+                const auto& rd = cm->GetRuntimeData();
+                SKSE::log::debug(
+                    "[UIManager] Post-scene control check finalized ({}): enabledControls=0x{:X}, textEntryCount={}",
+                    trigger ? trigger : "unknown",
+                    rd.enabledControls.underlying(),
+                    static_cast<int>(rd.textEntryCount));
+            }
+        }
     }
 
     bool UIManager::IsModalDisplayBlocked() const {
@@ -284,10 +599,13 @@ namespace OStimNet::UI {
             return flags;
         };
 
+        const bool inPlayerScene = ThreadRegistry::GetSingleton().GetPlayerThreadID().has_value();
+
         if (focusOwned_.load(std::memory_order_acquire)) {
             const bool needReclaim = releasePending_.load(std::memory_order_acquire);
             const bool needTextEntryUpdate = (appliedNoTextEntry_.load(std::memory_order_acquire) != wantNoTextEntry);
             if (needReclaim || needTextEntryUpdate) {
+                SnapshotControlBaseline(/*forModal=*/true, /*forScene=*/inPlayerScene);
                 if (magelight_->RequestUIMode(view_, buildFlags(needReclaim)) == MAGELIGHT_API::Result::Ok) {
                     appliedNoTextEntry_.store(wantNoTextEntry, std::memory_order_release);
                     releasePending_.store(false, std::memory_order_release);
@@ -308,6 +626,7 @@ namespace OStimNet::UI {
 
         if (!uiModeRequested_.exchange(true, std::memory_order_acq_rel)) {
             const bool needReclaim = releasePending_.load(std::memory_order_acquire);
+            SnapshotControlBaseline(/*forModal=*/true, /*forScene=*/inPlayerScene);
             const auto res = magelight_->RequestUIMode(view_, buildFlags(needReclaim));
             if (res == MAGELIGHT_API::Result::Ok) {
                 appliedNoTextEntry_.store(wantNoTextEntry, std::memory_order_release);
@@ -315,6 +634,7 @@ namespace OStimNet::UI {
             } else {
                 uiModeRequested_.store(false, std::memory_order_release);
                 SKSE::log::warn("[UIManager] RequestUIMode failed (result={})", static_cast<int>(res));
+                RestoreModalControls();
             }
         }
     }
@@ -326,6 +646,7 @@ namespace OStimNet::UI {
             releasePending_.store(false, std::memory_order_release);
             appliedNoTextEntry_.store(true, std::memory_order_release);
             isViewShown_.store(false, std::memory_order_release);
+            RestoreModalControls();
             DrainAfterFocusReleasedTasks();
             return;
         }
@@ -350,11 +671,25 @@ namespace OStimNet::UI {
                     focusOwned_.store(false, std::memory_order_release);
                     uiModeRequested_.store(false, std::memory_order_release);
                     appliedNoTextEntry_.store(true, std::memory_order_release);
+                    RestoreModalControls();
+                    DrainAfterFocusReleasedTasks();
+                }
+            } else {
+                const bool hostStillActiveOrOwned =
+                    (magelight_->IsUIModeActive && magelight_->IsUIModeActive()) ||
+                    (magelight_->GetUIModeOwner && magelight_->GetUIModeOwner() == modHandle_);
+                if (!hostStillActiveOrOwned) {
+                    releasePending_.store(false, std::memory_order_release);
+                    focusOwned_.store(false, std::memory_order_release);
+                    uiModeRequested_.store(false, std::memory_order_release);
+                    appliedNoTextEntry_.store(true, std::memory_order_release);
+                    RestoreModalControls();
                     DrainAfterFocusReleasedTasks();
                 }
             }
         } else {
             appliedNoTextEntry_.store(true, std::memory_order_release);
+            RestoreModalControls();
             DrainAfterFocusReleasedTasks();
         }
     }
@@ -418,6 +753,41 @@ namespace OStimNet::UI {
         magelight_->InteropCall(view_, functionName.c_str(), jsonData.c_str());
     }
 
+    void UIManager::OnUIModeExitCallback(MAGELIGHT_API::ViewId view) {
+        if (view == 0) {
+            return;
+        }
+
+        ScopedGameTask scope;
+        auto& self = UIManager::GetSingleton();
+        if (self.view_ != 0 && view == self.view_) {
+            self.HandleUIModeExited();
+        } else if (self.sceneEndRestorePending_.load(std::memory_order_acquire)) {
+            self.RestoreSceneEndControls("external UIModeExitCallback", /*finalizeWindow=*/false);
+        }
+    }
+
+    void UIManager::HandleUIModeExited() {
+        focusOwned_.store(false, std::memory_order_release);
+        uiModeRequested_.store(false, std::memory_order_release);
+        releasePending_.store(false, std::memory_order_release);
+        appliedNoTextEntry_.store(true, std::memory_order_release);
+
+        const bool modalActive =
+            ModalManager::GetSingleton().HasActiveModal() && !IsModalDisplayBlocked();
+        if (!modalActive) {
+            if (isViewShown_.exchange(false, std::memory_order_acq_rel) && IsInitialized()) {
+                magelight_->ShowView(view_, false);
+            }
+        }
+
+        RestoreModalControls();
+        if (sceneEndRestorePending_.load(std::memory_order_acquire)) {
+            RestoreSceneEndControls("UIModeExited", /*finalizeWindow=*/false);
+        }
+        DrainAfterFocusReleasedTasks();
+    }
+
     void UIManager::OnMagelightEvent(const MAGELIGHT_API::EventData* ev, void* user) {
         if (!ev) {
             return;
@@ -474,6 +844,7 @@ namespace OStimNet::UI {
                     self->uiModeRequested_.store(false, std::memory_order_release);
                     self->releasePending_.store(false, std::memory_order_release);
                     self->appliedNoTextEntry_.store(true, std::memory_order_release);
+                    self->RestoreModalControls();
                     self->DrainAfterFocusReleasedTasks();
                 }
                 break;
@@ -488,20 +859,19 @@ namespace OStimNet::UI {
                 break;
 
             case MAGELIGHT_API::Event::UIModeExited: {
-                self->focusOwned_.store(false, std::memory_order_release);
-                self->uiModeRequested_.store(false, std::memory_order_release);
-                self->releasePending_.store(false, std::memory_order_release);
-                self->appliedNoTextEntry_.store(true, std::memory_order_release);
-
-                const bool modalActive =
-                    ModalManager::GetSingleton().HasActiveModal() && !self->IsModalDisplayBlocked();
-                if (!modalActive) {
-                    if (self->isViewShown_.exchange(false, std::memory_order_acq_rel) &&
-                        self->IsInitialized()) {
-                        self->magelight_->ShowView(self->view_, false);
-                    }
+                const bool hostReentered =
+                    self->magelight_ &&
+                    self->magelight_->IsUIModeActive && self->magelight_->IsUIModeActive() &&
+                    self->magelight_->GetUIModeOwner && self->magelight_->GetUIModeOwner() == self->modHandle_;
+                const bool newModalAwaitingEntry =
+                    !self->focusOwned_.load(std::memory_order_acquire) &&
+                    !self->releasePending_.load(std::memory_order_acquire) &&
+                    self->uiModeRequested_.load(std::memory_order_acquire) &&
+                    ModalManager::GetSingleton().HasActiveModal() &&
+                    !self->IsModalDisplayBlocked();
+                if (!hostReentered && !newModalAwaitingEntry) {
+                    self->HandleUIModeExited();
                 }
-                self->DrainAfterFocusReleasedTasks();
                 break;
             }
 
@@ -523,6 +893,7 @@ namespace OStimNet::UI {
                         self->magelight_->ShowView(self->view_, false);
                     }
                 }
+                self->RestoreModalControls();
                 self->DrainAfterFocusReleasedTasks();
                 break;
             }
@@ -545,6 +916,7 @@ namespace OStimNet::UI {
                     std::lock_guard lock(self->stateMutex_);
                     self->pendingJsCalls_.clear();
                 }
+                self->RestoreModalControls();
                 self->DrainAfterFocusReleasedTasks();
                 break;
 
@@ -625,6 +997,24 @@ namespace OStimNet::UI {
         RE::BSTEventSource<RE::MenuOpenCloseEvent>* /*a_eventSource*/) {
         if (!a_event) {
             return RE::BSEventNotifyControl::kContinue;
+        }
+
+        if (!a_event->opening && a_event->menuName.c_str()) {
+            const std::string_view closedMenu(a_event->menuName.c_str());
+            if (closedMenu == "MagelightFocus" &&
+                modalControlBaselineMask_.load(std::memory_order_acquire) != 0) {
+                AddCurrentEpochTask([this]() {
+                    RestoreModalControls(/*clearMaskWhenFocusMenuStillOpen=*/true);
+                });
+            }
+            if (sceneEndRestorePending_.load(std::memory_order_acquire) &&
+                (closedMenu == "MagelightFocus" ||
+                 closedMenu == "MagelightOverlay" ||
+                 closedMenu == "Fader Menu")) {
+                AddCurrentEpochTask([this]() {
+                    RestoreSceneEndControls("post-end menu close", /*finalizeWindow=*/false);
+                });
+            }
         }
 
         if (ModalManager::GetSingleton().HasActiveModal() ||

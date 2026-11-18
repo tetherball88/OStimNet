@@ -27,6 +27,11 @@ namespace OStimNet::UI {
         UIManager(UIManager&&) = delete;
         UIManager& operator=(UIManager&&) = delete;
 
+        /// Records the calling thread as Skyrim's main thread (call from SKSEPluginLoad).
+        void CaptureMainThread() noexcept {
+            mainThreadId_.store(::GetCurrentThreadId(), std::memory_order_release);
+        }
+
         /// Acquires MAGELIGHT_API::MagelightApi4 and creates the persistent hidden modal view (no-op if host absent).
         void Initialize();
 
@@ -70,6 +75,12 @@ namespace OStimNet::UI {
         /// Reverts transient visibility/focus state on game load / new-game transition (preserves persistent view).
         void Revert();
 
+        /// Snapshots enabled player control flags at OStim player thread start.
+        void OnPlayerThreadStart();
+
+        /// Restores and verifies player control flags across OStim player thread teardown and fade-out.
+        void OnPlayerThreadEnd();
+
         RE::BSEventNotifyControl ProcessEvent(
             const RE::MenuOpenCloseEvent* a_event,
             RE::BSTEventSource<RE::MenuOpenCloseEvent>* a_eventSource) override;
@@ -79,10 +90,19 @@ namespace OStimNet::UI {
         ~UIManager() override = default;
 
         static void OnMagelightEvent(const MAGELIGHT_API::EventData* ev, void* user);
+        static void OnUIModeExitCallback(MAGELIGHT_API::ViewId view);
         static void OnOStimNetAction(const char* argument);
         static void OnLogFromUI(const char* argument);
         static void GameTaskTrampoline(void* userData);
 
+        void HandleUIModeExited();
+        void SnapshotControlBaseline(bool forModal, bool forScene);
+        void ApplyControlMaskRestore(
+            std::uint32_t mask,
+            std::uint32_t forceNativePulseMask,
+            const char* trigger);
+        void RestoreModalControls(bool clearMaskWhenFocusMenuStillOpen = false);
+        void RestoreSceneEndControls(const char* trigger, bool finalizeWindow);
         void ReleaseFocusAndUIMode();
         void DrainAfterFocusReleasedTasks();
         void FlushPendingAfterDomReady();
@@ -99,6 +119,12 @@ namespace OStimNet::UI {
         std::atomic<bool> appliedNoTextEntry_{ true };
         std::atomic<bool> isDomReady_{ false };
         std::atomic<bool> menuSinkRegistered_{ false };
+        std::atomic<bool> exitCallbackRegistered_{ false };
+        std::atomic<bool> sceneEndRestorePending_{ false };
+        std::atomic<std::uint32_t> modalControlBaselineMask_{ 0 };
+        std::atomic<std::uint32_t> sceneControlBaselineMask_{ 0 };
+        std::atomic<std::uint32_t> midSceneDirectWriteMask_{ 0 };
+        std::atomic<std::uint64_t> sceneEndSequence_{ 0 };
 
         mutable std::mutex stateMutex_;
         std::vector<std::function<void()>> afterFocusReleasedTasks_;
