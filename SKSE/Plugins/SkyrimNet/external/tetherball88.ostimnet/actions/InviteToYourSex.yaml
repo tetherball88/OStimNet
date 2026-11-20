@@ -10,16 +10,16 @@ parameterMapping:
     description: Speaker Actor parameter (triggering entity)
   - type: dynamic
     name: participant1
-    description: First invitee (required)
+    description: First outside person to invite (required; must NOT already be in the ongoing sex scene)
     useNearbyActors: false
   - type: dynamic
     name: participant2
-    description: Second invitee (optional)
+    description: Second outside person to invite (optional; omit unless inviting 2+ new people; must NOT already be in the scene)
     useNearbyActors: false
     optional: true
   - type: dynamic
     name: participant3
-    description: Third invitee (optional)
+    description: Third outside person to invite (optional; omit unless inviting 3 new people; must NOT already be in the scene)
     useNearbyActors: false
     optional: true
   - type: dynamic

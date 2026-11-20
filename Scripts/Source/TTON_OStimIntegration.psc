@@ -300,12 +300,26 @@ EndFunction
 ; @param secondary LLM-evaluated secondary actors for the new thread (optional, actor-add path)
 function AddActorsToActiveThread(int ThreadID, actor[] newActors, string newIntent, Actor[] main = none, Actor[] secondary = none) global
     TTON_Utils.SetActorsPending(newActors, false)
+    if(!newActors || newActors.Length == 0)
+        TTON_Debug.warn("AddActorsToActiveThread: no actors provided for thread " + ThreadID + ".")
+        return
+    endif
     if(!OThread.IsRunning(ThreadID))
+        return
+    endif
+    Actor[] currentActors = OThread.GetActors(ThreadID)
+    Actor[] filteredActors = PapyrusUtil.RemoveActor(PapyrusUtil.GetDiffActor(newActors, currentActors, false, false), none)
+    if(filteredActors.Length == 0)
+        TTON_Debug.warn("AddActorsToActiveThread: all candidate actors are already in thread " + ThreadID + ".")
         return
     endif
     OStimNet.SetContinuationOverride(ThreadID, newIntent, main, secondary)
     OStimNet.SetThreadContinuation(ThreadID, true)
-    int newThreadID = OStimHotSwap.AddActorsToThread(ThreadID, newActors)
+    int newThreadID = OStimHotSwap.AddActorsToThread(ThreadID, filteredActors)
+    if(newThreadID == -1)
+        OStimNet.SetThreadContinuation(ThreadID, false)
+        TTON_Debug.warn("AddActorsToActiveThread: OStimHotSwap failed to add actors to thread " + ThreadID + "; cleared continuation state.")
+    endif
 endfunction
 
 ObjectReference Function ScanBestBeds(ObjectReference centerRef, float radius = 1200.0) global

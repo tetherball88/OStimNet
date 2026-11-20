@@ -353,9 +353,16 @@ Event OnInviteSexEvaluationFinished(string eventName, string strArg, float numAr
     endif
     int threadID = OStimNet.JsonGetInt(strArg, "threadID")
     Actor[] invitees = OStimNet.JsonGetActorArray(strArg, "invitees")
+    Actor[] excluded = OStimNet.JsonGetActorArray(strArg, "excluded")
     string intent = OStimNet.JsonGetString(strArg, "intent")
     Actor[] main = OStimNet.JsonGetActorArray(strArg, "main")
     Actor[] secondary = OStimNet.JsonGetActorArray(strArg, "secondary")
+
+    if(excluded.Length > 0)
+        TTON_Debug.debug("Invite sex evaluation finished: LLM excluded some invitees: " + excluded)
+        TTON_Utils.SetActorsPending(excluded, false)
+        TTON_Utils.FreeParticipants(excluded)
+    endif
 
     TTON_OStimIntegration.AddActorsToActiveThread(threadID, invitees, intent, main, secondary)
 EndEvent

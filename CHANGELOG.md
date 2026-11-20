@@ -1,5 +1,22 @@
 # Changelog
 
+## v2.7.4
+
+### Fixed
+
+- **Untied Magelight UI & OStim player control lifecycles** — Replaced control-mask snapshotting/restoring with clean lifecycle separation between Magelight UI modals, OStim scene transitions, and companion mods:
+  - Deferred Magelight modal activation across OStim player-scene startup/migration transitions (`1500 ms` settle window and active blocking/carrier menus including `PhantasmActorCarrier`), preventing scene-start hooks from capturing Magelight's suspended control state and re-applying locked controls at scene end.
+  - Serialized all modal callbacks (`ModalManager`, `ConfirmationModal`, `ThreadSetupModal`, `RetryModal`) to run strictly after `ReleaseUIMode` completes and `MagelightFocus` closes (including gamepad/VR button-release holds), preventing Papyrus actions (`OThreadBuilder.Start`, `OThread.Stop`, `OStimHotSwap`, `TriggerTextInput`) from overlapping active UI mode.
+  - Cancelled active/queued thread-scoped modals automatically when their OStim thread ends, and suppressed OStimNet hotkeys while Magelight UI mode, text entry, or blocking menus own input.
+- **Player scene stop after mid-scene actor invite/join (`0 -> 0` continuation)** — Fixed `ThreadRegistry::CopyStateForContinuation` and new-start state resets so same-ID player-thread continuations clear the `continuation` flag once consumed instead of suppressing the final `ostim_thread_end` / `ostimnet_stop` teardown.
+- **Actor invite & join hot-swap reliability (`InviteToYourSex` / `JoinOngoingSex`)** — Filtered existing scene participants, duplicates, and busy actors out of `InviteToYourSex` / `JoinOngoingSex` before confirmation, evaluation, and `OStimHotSwap.AddActorsToThread` (fixing invitations silently aborting with `newThreadID = -1` when the LLM included current participants in optional invitee slots), excluded unwilling invitees on partial acceptance instead of adding them anyway, and cleared armed continuation state if `OStimHotSwap` fails to migrate the thread.
+
+### Changed
+
+- **Animation descriptions** — Updated custom scene descriptions in `Billyy.json`.
+
+---
+
 ## v2.7.3
 
 ### Fixed

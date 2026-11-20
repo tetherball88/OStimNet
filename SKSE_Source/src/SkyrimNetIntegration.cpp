@@ -19,6 +19,7 @@
 
 #include <algorithm>
 #include <map>
+#include <unordered_set>
 
 // Definition for the extern declared in api/OstimNG-API-Thread.h.
 // All other files that include api/OstimNG-API-Thread.h reference this.
@@ -1624,6 +1625,14 @@ static bool EvaluateJoinOngoingSexImpl(RE::FormID joinerFormID,
     for (RE::Actor* a : currentActorPtrs)
         if (a) currentParticipantFormIDs.push_back(a->GetFormID());
 
+    if (joinerFormID == 0 || currentParticipantFormIDs.empty() ||
+        std::find(currentParticipantFormIDs.begin(), currentParticipantFormIDs.end(), joinerFormID) !=
+            currentParticipantFormIDs.end()) {
+        SKSE::log::warn("EvaluateJoinOngoingSex: invalid or already-participating joiner 0x{:08X} for thread {}",
+                        static_cast<uint32_t>(joinerFormID), threadID);
+        return false;
+    }
+
     // Captured by value into the callback so name resolution works without
     // walking all loaded forms.
     std::map<std::string, RE::FormID> nameToFormID;
@@ -1778,14 +1787,27 @@ bool EvaluateJoinOngoingSex(RE::FormID joinerFormID,
                             const std::string& evalId,
                             const std::string& reason,
                             bool forceChat) {
+    if (joinerFormID == 0) return false;
+    const auto currentActorPtrs = OStimNet::ThreadDataStore::GetSingleton().GetActorPtrs(threadID);
+    if (currentActorPtrs.empty()) {
+        SKSE::log::warn("EvaluateJoinOngoingSex: thread {} has no active participants", threadID);
+        return false;
+    }
+    for (RE::Actor* a : currentActorPtrs) {
+        if (a && a->GetFormID() == joinerFormID) {
+            SKSE::log::warn("EvaluateJoinOngoingSex: joiner 0x{:08X} is already in thread {}",
+                            static_cast<uint32_t>(joinerFormID), threadID);
+            return false;
+        }
+    }
+
     if (!forceChat && OStimNet::OVirginityService::GetSingleton().IsLoaded()) {
         std::vector<RE::FormID> allFormIDs;
-        const auto& currentActorPtrs = OStimNet::ThreadDataStore::GetSingleton().GetActorPtrs(threadID);
         allFormIDs.reserve(currentActorPtrs.size() + 1);
         for (RE::Actor* a : currentActorPtrs) {
             if (a) allFormIDs.push_back(a->GetFormID());
         }
-        if (joinerFormID != 0) allFormIDs.push_back(joinerFormID);
+        allFormIDs.push_back(joinerFormID);
 
         OStimNet::OVirginityService::GetSingleton().EnsureActorsResolved(
             allFormIDs,
@@ -1836,6 +1858,11 @@ static bool EvaluateInviteToSexImpl(RE::FormID inviterFormID,
     currentParticipantFormIDs.reserve(currentActorPtrs.size());
     for (RE::Actor* a : currentActorPtrs)
         if (a) currentParticipantFormIDs.push_back(a->GetFormID());
+
+    if (currentParticipantFormIDs.empty()) {
+        SKSE::log::warn("EvaluateInviteToSex: thread {} has no active participants", threadID);
+        return false;
+    }
 
     // Build a combined name→FormID map: current participants + invitees.
     // Captured by value into the callback so name resolution works without
@@ -1977,18 +2004,60 @@ static bool EvaluateInviteToSexImpl(RE::FormID inviterFormID,
         }
         const nlohmann::json& scene = resp["scene"];
 
+        nlohmann::json mainArr      = resolveNames(scene, "mainActors");
+        nlohmann::json secondaryArr = resolveNames(scene, "secondaryActors");
+
+        // Guardrail: if secondary is empty and main has more than one actor, move the last main actor to secondary.
+        if (secondaryArr.empty() && mainArr.size() > 1) {
+            SKSE::log::info("EvaluateInviteToSex: secondary actors empty with {} main actors — moving last main actor to secondary.",
+                            mainArr.size());
+            secondaryArr.push_back(mainArr.back());
+            mainArr.erase(mainArr.size() - 1);
+        }
+
+        std::unordered_set<uint32_t> includedRoleFIDs;
+        for (const auto& item : mainArr) {
+            if (item.is_number_unsigned()) includedRoleFIDs.insert(item.get<uint32_t>());
+        }
+        for (const auto& item : secondaryArr) {
+            if (item.is_number_unsigned()) includedRoleFIDs.insert(item.get<uint32_t>());
+        }
+
+        nlohmann::json acceptedInviteesArr = nlohmann::json::array();
+        nlohmann::json excludedInviteesArr = nlohmann::json::array();
+        nlohmann::json allInviteesArr      = nlohmann::json::array();
+        for (RE::FormID fid : inviteeFormIDs) {
+            uint32_t ufid = static_cast<uint32_t>(fid);
+            allInviteesArr.push_back(ufid);
+            if (includedRoleFIDs.count(ufid)) {
+                acceptedInviteesArr.push_back(ufid);
+            } else {
+                excludedInviteesArr.push_back(ufid);
+            }
+        }
+
+        if (acceptedInviteesArr.empty()) {
+            SKSE::log::info("EvaluateInviteToSex: LLM included 0 invitees in scene roles — treating as declined.");
+            nlohmann::json noInviteResult;
+            noInviteResult["threadID"]            = threadID;
+            noInviteResult["inviter"]             = static_cast<uint32_t>(inviterFormID);
+            noInviteResult["evalId"]              = evalId;
+            noInviteResult["invitees"]            = std::move(allInviteesArr);
+            noInviteResult["currentParticipants"] = std::move(invCurArr);
+            OStimNet::FireModEvent("ostimnet_invite_sex_evaluation_finished", noInviteResult.dump().c_str(), 2.0f);
+            return;
+        }
+
         nlohmann::json result;
         result["threadID"]            = threadID;
         result["inviter"]             = static_cast<uint32_t>(inviterFormID);
         result["evalId"]              = evalId;
         result["currentParticipants"] = std::move(invCurArr);
-        nlohmann::json inviteesArr = nlohmann::json::array();
-        for (RE::FormID fid : inviteeFormIDs)
-            inviteesArr.push_back(static_cast<uint32_t>(fid));
-        result["invitees"]  = inviteesArr;
-        result["intent"]    = scene.value("intent", "");
-        result["main"]      = resolveNames(scene, "mainActors");
-        result["secondary"] = resolveNames(scene, "secondaryActors");
+        result["invitees"]            = std::move(acceptedInviteesArr);
+        result["excluded"]            = std::move(excludedInviteesArr);
+        result["intent"]              = scene.value("intent", "");
+        result["main"]                = std::move(mainArr);
+        result["secondary"]           = std::move(secondaryArr);
 
         std::string resultJson = result.dump();
         SKSE::log::info("EvaluateInviteToSex: result built, threadID={}, result={}", threadID, resultJson);
@@ -2009,26 +2078,59 @@ bool EvaluateInviteToSex(RE::FormID inviterFormID,
                          const std::string& evalId,
                          const std::string& reason,
                          bool forceChat) {
+    const auto currentActorPtrs = OStimNet::ThreadDataStore::GetSingleton().GetActorPtrs(threadID);
+    if (currentActorPtrs.empty()) {
+        SKSE::log::warn("EvaluateInviteToSex: thread {} has no active participants", threadID);
+        return false;
+    }
+
+    std::unordered_set<RE::FormID> excludedOrSeen;
+    if (inviterFormID != 0) excludedOrSeen.insert(inviterFormID);
+    for (RE::Actor* a : currentActorPtrs) {
+        if (a) excludedOrSeen.insert(a->GetFormID());
+    }
+
+    std::vector<RE::FormID> cleanInvitees;
+    cleanInvitees.reserve(inviteeFormIDs.size());
+    for (RE::FormID fid : inviteeFormIDs) {
+        if (fid == 0 || !excludedOrSeen.insert(fid).second) {
+            SKSE::log::warn(
+                "EvaluateInviteToSex: skipping duplicate or already-participating invitee 0x{:08X} for thread {}",
+                static_cast<uint32_t>(fid), threadID);
+            continue;
+        }
+        if (!RE::TESForm::LookupByID<RE::Actor>(fid)) {
+            SKSE::log::warn("EvaluateInviteToSex: could not resolve invitee FormID 0x{:08X}",
+                            static_cast<uint32_t>(fid));
+            continue;
+        }
+        cleanInvitees.push_back(fid);
+    }
+
+    if (cleanInvitees.empty()) {
+        SKSE::log::warn("EvaluateInviteToSex: no valid outside invitees remain for thread {}", threadID);
+        return false;
+    }
+
     if (!forceChat && OStimNet::OVirginityService::GetSingleton().IsLoaded()) {
         std::vector<RE::FormID> allFormIDs;
-        const auto& currentActorPtrs = OStimNet::ThreadDataStore::GetSingleton().GetActorPtrs(threadID);
-        allFormIDs.reserve(currentActorPtrs.size() + 1 + inviteeFormIDs.size());
+        allFormIDs.reserve(currentActorPtrs.size() + 1 + cleanInvitees.size());
         for (RE::Actor* a : currentActorPtrs) {
             if (a) allFormIDs.push_back(a->GetFormID());
         }
         if (inviterFormID != 0) allFormIDs.push_back(inviterFormID);
-        allFormIDs.insert(allFormIDs.end(), inviteeFormIDs.begin(), inviteeFormIDs.end());
+        allFormIDs.insert(allFormIDs.end(), cleanInvitees.begin(), cleanInvitees.end());
 
         OStimNet::OVirginityService::GetSingleton().EnsureActorsResolved(
             allFormIDs,
-            [inviterFormID, inviteeFormIDs, threadID, evalId, reason]() {
-                if (!EvaluateInviteToSexImpl(inviterFormID, inviteeFormIDs, threadID, evalId, reason, false)) {
+            [inviterFormID, cleanInvitees, threadID, evalId, reason]() {
+                if (!EvaluateInviteToSexImpl(inviterFormID, cleanInvitees, threadID, evalId, reason, false)) {
                     nlohmann::json fail;
                     fail["threadID"] = threadID;
                     fail["inviter"] = static_cast<uint32_t>(inviterFormID);
                     fail["evalId"] = evalId;
                     nlohmann::json inv = nlohmann::json::array();
-                    for (RE::FormID fid : inviteeFormIDs) {
+                    for (RE::FormID fid : cleanInvitees) {
                         inv.push_back(static_cast<uint32_t>(fid));
                     }
                     fail["invitees"] = std::move(inv);
@@ -2043,7 +2145,7 @@ bool EvaluateInviteToSex(RE::FormID inviterFormID,
             true);
         return true;
     }
-    return EvaluateInviteToSexImpl(inviterFormID, inviteeFormIDs, threadID, evalId, reason, forceChat);
+    return EvaluateInviteToSexImpl(inviterFormID, cleanInvitees, threadID, evalId, reason, forceChat);
 }
 
 bool EvaluateLocationScan(const std::string& contextJson,

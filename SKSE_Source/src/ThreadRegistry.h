@@ -737,7 +737,13 @@ public:
 
     void SetContinuation(int threadID, bool isContinuation) {
         std::lock_guard<std::recursive_mutex> lock(_mutex);
-        _threads[threadID].continuation = isContinuation;
+        auto& state = _threads[threadID];
+        state.continuation = isContinuation;
+        if (!isContinuation) {
+            state.overrideIntent = Intent::Unset;
+            state.overrideMainActors.clear();
+            state.overrideSecondaryActors.clear();
+        }
     }
 
     bool IsContinuation(int threadID) const {

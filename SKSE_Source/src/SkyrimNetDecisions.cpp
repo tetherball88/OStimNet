@@ -1593,6 +1593,14 @@ bool EvaluateJoinOngoingSex(
         allRoleActors.push_back(RoleActorItem{static_cast<uint32_t>(fid), displayName});
     }
 
+    if (joinerFormID == 0 ||
+        std::find(currentParticipantFormIDs.begin(), currentParticipantFormIDs.end(), joinerFormID) !=
+            currentParticipantFormIDs.end()) {
+        SKSE::log::warn("SkyrimNetDecisions::EvaluateJoinOngoingSex: joiner 0x{:08X} is invalid or already in thread {}",
+                        static_cast<uint32_t>(joinerFormID), threadID);
+        return false;
+    }
+
     auto* joinerActor   = RE::TESForm::LookupByID<RE::Actor>(joinerFormID);
     uint64_t joinerUUID = ActorToUUID(joinerActor);
     if (!joinerActor || joinerUUID == 0 || allRoleActors.empty()) return false;
@@ -1779,11 +1787,25 @@ bool EvaluateInviteToSex(
         currentActorUUIDs.push_back(uuid);
     }
 
+    std::unordered_set<RE::FormID> seenOrCurrent(currentParticipantFormIDs.begin(), currentParticipantFormIDs.end());
+    if (inviterFormID != 0) {
+        seenOrCurrent.insert(inviterFormID);
+    }
+    std::vector<RE::FormID> sanitizedInviteeFormIDs;
+    sanitizedInviteeFormIDs.reserve(inviteeFormIDs.size());
+
     for (RE::FormID fid : inviteeFormIDs) {
+        if (fid == 0 || !seenOrCurrent.insert(fid).second) {
+            SKSE::log::warn(
+                "SkyrimNetDecisions::EvaluateInviteToSex: skipping duplicate or already-participating invitee 0x{:08X} for thread {}",
+                static_cast<uint32_t>(fid), threadID);
+            continue;
+        }
         auto* actor   = RE::TESForm::LookupByID<RE::Actor>(fid);
         uint64_t uuid = ActorToUUID(actor);
         if (!actor || uuid == 0) continue;
 
+        sanitizedInviteeFormIDs.push_back(fid);
         std::string displayName = SanitizeSingleLine(ThreadDataStore::GetActorDisplayName(actor, "Invitee"), "Invitee");
         InviteeItem item;
         item.key      = "i" + std::to_string(inviteeItems.size() + 1);
@@ -1908,7 +1930,7 @@ bool EvaluateInviteToSex(
 
     auto callbackHolder = std::make_shared<std::function<void(const char*, const char*, int)>>();
     *callbackHolder = [callbackHolder, inviteCombos, inviteeItems, checkCurrentConsent,
-                       threadID, inviterFormID, inviteeFormIDs, currentParticipantFormIDs,
+                       threadID, inviterFormID, sanitizedInviteeFormIDs, currentParticipantFormIDs,
                        currentIntent, evalId, contextJson, templateName, fallbackToChat](
                           const char* answer, const char* resultJson, int success) {
         SKSE::log::info("SkyrimNetDecisions::EvaluateInviteToSex callback: success={}, firstAnswer='{}'",
@@ -1921,13 +1943,13 @@ bool EvaluateInviteToSex(
                     kDefaultMaxProbabilities, *callbackHolder);
             }
         };
-        auto ignoreAction = [threadID, inviterFormID, inviteeFormIDs, currentParticipantFormIDs, evalId]() {
+        auto ignoreAction = [threadID, inviterFormID, sanitizedInviteeFormIDs, currentParticipantFormIDs, evalId]() {
             nlohmann::json ignoreResult;
             ignoreResult["threadID"] = threadID;
             ignoreResult["inviter"]  = static_cast<uint32_t>(inviterFormID);
             ignoreResult["evalId"]   = evalId;
             nlohmann::json inviteesArr = nlohmann::json::array();
-            for (RE::FormID fid : inviteeFormIDs)
+            for (RE::FormID fid : sanitizedInviteeFormIDs)
                 inviteesArr.push_back(static_cast<uint32_t>(fid));
             ignoreResult["invitees"] = std::move(inviteesArr);
             auto curArr = nlohmann::json::array();
@@ -1961,7 +1983,7 @@ bool EvaluateInviteToSex(
             invCurArr.push_back(static_cast<uint32_t>(fid));
 
         auto inviteesArrAll = nlohmann::json::array();
-        for (RE::FormID fid : inviteeFormIDs)
+        for (RE::FormID fid : sanitizedInviteeFormIDs)
             inviteesArrAll.push_back(static_cast<uint32_t>(fid));
 
         bool currentAccepted = true;
@@ -2023,12 +2045,27 @@ bool EvaluateInviteToSex(
         for (uint32_t fid : selectedCombo->mainFormIDs)      mainArr.push_back(fid);
         for (uint32_t fid : selectedCombo->secondaryFormIDs) secondaryArr.push_back(fid);
 
+        nlohmann::json acceptedInviteesArr = nlohmann::json::array();
+        std::unordered_set<uint32_t> acceptedSet(
+            selectedCombo->acceptedInviteeFormIDs.begin(),
+            selectedCombo->acceptedInviteeFormIDs.end());
+        for (uint32_t fid : selectedCombo->acceptedInviteeFormIDs) {
+            acceptedInviteesArr.push_back(fid);
+        }
+        nlohmann::json excludedInviteesArr = nlohmann::json::array();
+        for (const auto& item : inviteeItems) {
+            if (!acceptedSet.count(item.formID)) {
+                excludedInviteesArr.push_back(item.formID);
+            }
+        }
+
         nlohmann::json result;
         result["threadID"]            = threadID;
         result["inviter"]             = static_cast<uint32_t>(inviterFormID);
         result["evalId"]              = evalId;
         result["currentParticipants"] = std::move(invCurArr);
-        result["invitees"]            = std::move(inviteesArrAll);
+        result["invitees"]            = std::move(acceptedInviteesArr);
+        result["excluded"]            = std::move(excludedInviteesArr);
         result["intent"]              = resolvedIntent;
         result["main"]                = std::move(mainArr);
         result["secondary"]           = std::move(secondaryArr);

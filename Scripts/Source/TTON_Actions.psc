@@ -317,9 +317,14 @@ EndFunction
 ; @param paramsJson The parameters containing target actors to invite
 Bool Function InviteToYourSexExecute(Actor akActor, Actor participant1, Actor participant2, Actor participant3, string reason)
     int ThreadID = OActor.GetSceneID(akActor)
-    int currentActorsLength = OThread.GetActors(ThreadID).Length
+    if(ThreadID == -1)
+        TTON_Debug.warn("InviteToYourSex action: actor " + TTON_Utils.GetActorName(akActor) + " is not in an active OStim thread.")
+        return false
+    endif
+    Actor[] currentActors = OThread.GetActors(ThreadID)
+    int currentActorsLength = currentActors.Length
     ; max participants in current ostim scenes is 5, if it is already 5 skip this action
-    if(currentActorsLength == 5)
+    if(currentActorsLength >= 5)
         return false
     endif
 
@@ -328,27 +333,28 @@ Bool Function InviteToYourSexExecute(Actor akActor, Actor participant1, Actor pa
         return false
     endif
 
+    Actor[] rawCandidates = OActorUtil.ToArray(participant1, participant2, participant3)
+    Actor[] candidates = PapyrusUtil.RemoveActor(PapyrusUtil.GetDiffActor(rawCandidates, currentActors, false, false), none)
+    candidates = PapyrusUtil.RemoveActor(candidates, akActor)
+
     ; OStim scenes animations at this time can support up to 5 participants total
-    Actor finalParticipant1 = none
-    Actor finalParticipant2 = none
-    Actor finalParticipant3 = none
+    int maxInvitees = 5 - currentActorsLength
+    Actor[] newParticipants = OActorUtil.EmptyArray()
+    int i = 0
+    while(i < candidates.Length && newParticipants.Length < maxInvitees)
+        Actor candidate = candidates[i]
+        if(candidate && !TTON_Utils.IsActorBusyWithScenes(candidate))
+            newParticipants = PapyrusUtil.PushActor(newParticipants, candidate)
+        elseif(candidate)
+            TTON_Debug.warn("InviteToYourSex action: skipping busy actor " + TTON_Utils.GetActorName(candidate) + ".")
+        endif
+        i += 1
+    endwhile
 
-    ; 1 or more free spaces in current thread
-    if(currentActorsLength < 5)
-        finalParticipant1 = participant1
+    if(newParticipants.Length == 0)
+        TTON_Debug.warn("InviteToYourSex action: no valid outside participants to invite.")
+        return false
     endif
-
-    ; 2 or more free spaces in current thread
-    if(currentActorsLength < 4)
-        finalParticipant2 = participant2
-    endif
-
-    ; 3 or more free spaces in current thread
-    if(currentActorsLength < 3)
-        finalParticipant3 = participant3
-    endif
-
-    Actor[] newParticipants = OActorUtil.ToArray(finalParticipant1, finalParticipant2, finalParticipant3)
 
     int cooldownResult = OStimNet.CheckAndSetActionCooldown("InviteToYourSex", OActorUtil.ToArray(akActor))
     if(cooldownResult == 1)
@@ -393,7 +399,12 @@ Bool Function InviteToYourSexExecute(Actor akActor, Actor participant1, Actor pa
     string evalId = "eval_" + Utility.RandomInt(0, 999999)
     int startGen = OStimNet.GetLocationGeneration()
     StorageUtil.SetIntValue(none, "TTON_EvalGen_" + evalId, startGen)
-    OStimNet.EvaluateInviteToSex(akActor, newParticipants, ThreadID, evalId, reason)
+    int queued = OStimNet.EvaluateInviteToSex(akActor, newParticipants, ThreadID, evalId, reason)
+    if(queued == 0)
+        TTON_Utils.SetActorsPending(newParticipants, false)
+        return false
+    endif
+    return true
 EndFunction
 
 ;==========================================================================
@@ -408,11 +419,22 @@ EndFunction
 ; @param paramsJson The parameters containing the target actor to interact with
 ; @returns True if successfully joined the scene
 Bool Function JoinOngoingSexActionExecute(Actor akActor, Actor participant1, string intent, string reasoning)
+    if(!akActor || !participant1)
+        return false
+    endif
     int ThreadID = OActor.GetSceneID(participant1)
+    if(ThreadID == -1)
+        TTON_Debug.warn("JoinOngoingSex action: target " + TTON_Utils.GetActorName(participant1) + " is not in an active OStim thread.")
+        return false
+    endif
+    if(OActor.GetSceneID(akActor) == ThreadID || TTON_Utils.IsActorBusyWithScenes(akActor))
+        TTON_Debug.warn("JoinOngoingSex action: actor " + TTON_Utils.GetActorName(akActor) + " is already busy in a scene.")
+        return false
+    endif
     Actor[] actors = OThread.GetActors(ThreadID)
     int currentActorsLength = actors.Length
     ; max participants in current ostim scenes is 5, if it is already 5 skip this action
-    if(currentActorsLength == 5)
+    if(currentActorsLength >= 5)
         return false
     endif
 
@@ -447,7 +469,12 @@ Bool Function JoinOngoingSexActionExecute(Actor akActor, Actor participant1, str
     string evalId = "eval_" + Utility.RandomInt(0, 999999)
     int startGen = OStimNet.GetLocationGeneration()
     StorageUtil.SetIntValue(none, "TTON_EvalGen_" + evalId, startGen)
-    OStimNet.EvaluateJoinOngoingSex(akActor, ThreadID, evalId, reasoning)
+    int queued = OStimNet.EvaluateJoinOngoingSex(akActor, ThreadID, evalId, reasoning)
+    if(queued == 0)
+        TTON_Utils.SetActorPending(akActor, false)
+        return false
+    endif
+    return true
 EndFunction
 
 ;==========================================================================
