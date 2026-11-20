@@ -154,6 +154,7 @@ namespace OStimNet::UI {
         ModalTone tone{ ModalTone::Default };
         ModalSize size{ ModalSize::Md };
         std::int32_t defaultCancelButtonIndex{ 1 };
+        std::int32_t associatedThreadId{ -1 };
 
         std::vector<ModalControl> controls;
         std::vector<ModalButton> buttons;

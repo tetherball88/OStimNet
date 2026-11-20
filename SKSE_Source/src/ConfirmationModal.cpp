@@ -455,6 +455,7 @@ namespace OStimNet {
         };
 
         // Player-in-actors check
+        int associatedThreadId = -1;
         {
             int threadId = -1;
             if (!mainActors.empty() && mainActors[0]) {
@@ -463,6 +464,7 @@ namespace OStimNet {
             if (threadId == -1 && !secondaryActors.empty() && secondaryActors[0]) {
                 threadId = ThreadDataStore::GetSingleton().GetActorThreadID(secondaryActors[0]->GetFormID());
             }
+            associatedThreadId = threadId;
 
             const bool showWhenNoPlayer =
                 Config::GetSingleton().ShowConfirmationModalWithNoPlayer() &&
@@ -548,6 +550,13 @@ namespace OStimNet {
         UI::ModalRequest req;
         req.modalType = "generic";
         req.title = display.title;
+        if (associatedThreadId >= 0 &&
+            actionTypeLower != "startnewsexpreeval" &&
+            actionTypeLower != "startnewsexposteval" &&
+            actionTypeLower != "startnewsexafterscan" &&
+            actionTypeLower != "startcarescene") {
+            req.associatedThreadId = associatedThreadId;
+        }
         req.subtitle = secondaryActorList.empty()
                            ? mainActorList
                            : std::format("{} & {}", mainActorList, secondaryActorList);
@@ -635,22 +644,20 @@ namespace OStimNet {
                         /*skipTrigger=*/true);
                     FireModEvent("ostimnet_decline", json.c_str(), 0.0f, RE::PlayerCharacter::GetSingleton());
 
-                    UI::UIManager::GetSingleton().RunAfterFocusReleased([expectedEpoch]() {
-                        UI::AddEpochTask(expectedEpoch, []() {
-                            auto* innerVm = RE::BSScript::Internal::VirtualMachine::GetSingleton();
-                            if (!innerVm) {
-                                SKSE::log::warn("ConfirmationModal: VirtualMachine unavailable for TriggerTextInput");
-                                return;
-                            }
-                            RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> nullCallback;
-                            if (!innerVm->DispatchStaticCall(
-                                    "SkyrimNetApi",
-                                    "TriggerTextInput",
-                                    RE::MakeFunctionArguments(),
-                                    nullCallback)) {
-                                SKSE::log::warn("ConfirmationModal: Failed to dispatch SkyrimNetApi::TriggerTextInput");
-                            }
-                        });
+                    UI::AddEpochTask(expectedEpoch, []() {
+                        auto* innerVm = RE::BSScript::Internal::VirtualMachine::GetSingleton();
+                        if (!innerVm) {
+                            SKSE::log::warn("ConfirmationModal: VirtualMachine unavailable for TriggerTextInput");
+                            return;
+                        }
+                        RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> nullCallback;
+                        if (!innerVm->DispatchStaticCall(
+                                "SkyrimNetApi",
+                                "TriggerTextInput",
+                                RE::MakeFunctionArguments(),
+                                nullCallback)) {
+                            SKSE::log::warn("ConfirmationModal: Failed to dispatch SkyrimNetApi::TriggerTextInput");
+                        }
                     });
 
                     resolveLatent(2);

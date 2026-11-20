@@ -236,6 +236,7 @@ namespace OStimNet::UI {
         ModalRequest req;
         req.modalType = "external_thread_setup";
         req.title = "Configure Scene";
+        req.associatedThreadId = threadID;
         req.subtitle = ThreadDataStore::FormatActorNames(actors);
         req.tone = ModalTone::Default;
         req.size = ModalSize::Md;
@@ -427,6 +428,7 @@ namespace OStimNet::UI {
 
         ModalRequest req;
         req.modalType = "generic";
+        req.associatedThreadId = threadID;
         req.title = isChangingIntent
                         ? std::format("Change Scene Intent: {}", CapitalizeCopy(targetIntent))
                         : "Change Actor Roles";

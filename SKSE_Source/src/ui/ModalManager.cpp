@@ -39,6 +39,7 @@ namespace OStimNet::UI {
             std::move(specJson),
             std::move(buttonIds),
             hasTextInput,
+            request.associatedThreadId,
             std::move(callback));
     }
 
@@ -93,12 +94,20 @@ namespace OStimNet::UI {
             }
         }
 
+        std::int32_t associatedThreadId = -1;
+        if (auto cdIt = parsed.find("customData"); cdIt != parsed.end() && cdIt->is_object()) {
+            if (auto tidIt = cdIt->find("threadId"); tidIt != cdIt->end() && tidIt->is_number_integer()) {
+                associatedThreadId = tidIt->get<std::int32_t>();
+            }
+        }
+
         std::string dumped = parsed.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace);
         return EnqueueEntry(
             std::move(modalId),
             std::move(dumped),
             std::move(buttonIds),
             hasTextInput,
+            associatedThreadId,
             std::move(callback));
     }
 
@@ -107,12 +116,14 @@ namespace OStimNet::UI {
         std::string specJson,
         std::vector<std::string> buttonIds,
         bool hasTextInput,
+        std::int32_t associatedThreadId,
         ModalCallback callback) {
         ModalEntry entry;
         entry.modalId = modalId;
         entry.specJson = std::move(specJson);
         entry.buttonIds = std::move(buttonIds);
         entry.hasTextInput = hasTextInput;
+        entry.associatedThreadId = associatedThreadId;
         entry.callback = std::move(callback);
         entry.expectedEpoch = GetSessionEpoch();
 
@@ -259,46 +270,131 @@ namespace OStimNet::UI {
                          buttonId,
                          aborted);
 
-        UIManager::GetSingleton().SendToUI("clearOStimNetModal", "");
-        ScheduleProcessQueue();
+        auto& uiMgr = UIManager::GetSingleton();
+        uiMgr.SendToUI("clearOStimNetModal", "");
+
+        if (uiMgr.IsOnMainThread()) {
+            ProcessQueueOnGameThread();
+        } else {
+            ScheduleProcessQueue();
+        }
 
         if (resolved.callback) {
-            if (IsSessionEpochCurrent(resolved.expectedEpoch)) {
-                if (buttonIndex < 0 && !buttonId.empty()) {
-                    for (std::size_t i = 0; i < resolved.buttonIds.size(); ++i) {
-                        if (resolved.buttonIds[i] == buttonId) {
-                            buttonIndex = static_cast<std::int32_t>(i);
-                            break;
-                        }
+            if (buttonIndex < 0 && !buttonId.empty()) {
+                for (std::size_t i = 0; i < resolved.buttonIds.size(); ++i) {
+                    if (resolved.buttonIds[i] == buttonId) {
+                        buttonIndex = static_cast<std::int32_t>(i);
+                        break;
                     }
                 }
-                ModalResponse response;
-                response.modalId = std::move(resolved.modalId);
-                response.buttonId = std::move(buttonId);
-                response.buttonIndex = buttonIndex;
-                response.aborted = aborted;
-                response.values = std::move(values);
-                response.rawPayload = payload;
-                try {
-                    resolved.callback(response);
-                } catch (const std::exception& e) {
-                    SKSE::log::error("[ModalManager] Exception in modal callback '{}': {}",
-                                     response.modalId,
-                                     e.what());
-                } catch (...) {
-                    SKSE::log::error("[ModalManager] Unknown exception in modal callback '{}'",
-                                     response.modalId);
-                }
-            } else {
-                SKSE::log::debug(
-                    "[ModalManager] Dropped stale modal callback '{}' (expectedEpoch={}, currentEpoch={})",
-                    resolved.modalId,
-                    resolved.expectedEpoch,
-                    GetSessionEpoch());
             }
+            ModalResponse response;
+            response.modalId = std::move(resolved.modalId);
+            response.buttonId = std::move(buttonId);
+            response.buttonIndex = buttonIndex;
+            response.aborted = aborted;
+            response.values = std::move(values);
+            response.rawPayload = payload;
+
+            const SessionEpoch expectedEpoch = resolved.expectedEpoch;
+            uiMgr.RunAfterFocusReleased(
+                [cb = std::move(resolved.callback), expectedEpoch, response = std::move(response)]() {
+                    if (!IsSessionEpochCurrent(expectedEpoch)) {
+                        SKSE::log::debug(
+                            "[ModalManager] Dropped stale modal callback '{}' (expectedEpoch={}, currentEpoch={})",
+                            response.modalId,
+                            expectedEpoch,
+                            GetSessionEpoch());
+                        return;
+                    }
+                    try {
+                        cb(response);
+                    } catch (const std::exception& e) {
+                        SKSE::log::error("[ModalManager] Exception in modal callback '{}': {}",
+                                         response.modalId,
+                                         e.what());
+                    } catch (...) {
+                        SKSE::log::error("[ModalManager] Unknown exception in modal callback '{}'",
+                                         response.modalId);
+                    }
+                });
         }
 
         return true;
+    }
+
+    void ModalManager::CancelModalsForThread(std::int32_t threadId) {
+        if (threadId < 0) {
+            return;
+        }
+
+        bool cancelledActive = false;
+        std::vector<ModalEntry> cancelled;
+        {
+            std::lock_guard lock(mutex_);
+            if (activeModal_.has_value() && activeModal_->associatedThreadId == threadId) {
+                cancelled.push_back(std::move(*activeModal_));
+                activeModal_.reset();
+                lastSentModalId_.clear();
+                cancelledActive = true;
+            }
+            for (auto it = queue_.begin(); it != queue_.end();) {
+                if (it->associatedThreadId == threadId) {
+                    cancelled.push_back(std::move(*it));
+                    it = queue_.erase(it);
+                } else {
+                    ++it;
+                }
+            }
+        }
+
+        if (cancelled.empty()) {
+            return;
+        }
+
+        SKSE::log::info(
+            "[ModalManager] Cancelled {} modal(s) scoped to ended thread {}",
+            cancelled.size(),
+            threadId);
+
+        auto& uiMgr = UIManager::GetSingleton();
+        if (cancelledActive) {
+            uiMgr.SendToUI("clearOStimNetModal", "");
+        }
+
+        if (uiMgr.IsOnMainThread()) {
+            ProcessQueueOnGameThread();
+        } else {
+            ScheduleProcessQueue();
+        }
+
+        for (auto& entry : cancelled) {
+            if (!entry.callback) {
+                continue;
+            }
+            ModalResponse abortedResp;
+            abortedResp.modalId = std::move(entry.modalId);
+            abortedResp.aborted = true;
+            const SessionEpoch expectedEpoch = entry.expectedEpoch;
+            uiMgr.RunAfterFocusReleased(
+                [cb = std::move(entry.callback), expectedEpoch, abortedResp = std::move(abortedResp)]() {
+                    if (!IsSessionEpochCurrent(expectedEpoch)) {
+                        return;
+                    }
+                    try {
+                        cb(abortedResp);
+                    } catch (const std::exception& e) {
+                        SKSE::log::error(
+                            "[ModalManager] Exception aborting modal '{}' for thread end: {}",
+                            abortedResp.modalId,
+                            e.what());
+                    } catch (...) {
+                        SKSE::log::error(
+                            "[ModalManager] Unknown exception aborting modal '{}' for thread end",
+                            abortedResp.modalId);
+                    }
+                });
+        }
     }
 
     void ModalManager::Revert() {

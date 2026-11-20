@@ -15,6 +15,7 @@
 #include "PulloutService.h"
 #include "OVirginityService.h"
 #include "ConfirmationModal.h"
+#include "ui/ModalManager.h"
 #include "ui/ThreadSetupModal.h"
 #include "ui/UIManager.h"
 namespace OStimNet {
@@ -199,6 +200,7 @@ private:
     // Called when ostim_thread_start fires. Resolves genuine start vs continuation.
     void HandleStart(int threadID) {
         bool wasEmpty = !ThreadRegistry::GetSingleton().HasActiveThreads();
+        const bool hadEndedEntry = (ThreadRegistry::GetSingleton().GetPhase(threadID) == ThreadPhase::Ended);
         // Snapshot old FormIDs BEFORE FetchAndStoreActors overwrites the store.
         // This is critical for same-ID continuations: the old actor list must be
         // preserved so CopyStateForContinuation can correctly identify joiners.
@@ -209,7 +211,7 @@ private:
             _dq.Start();
         }
         if (ThreadRegistry::GetSingleton().IsPlayerThread(threadID)) {
-            UI::UIManager::GetSingleton().OnPlayerThreadStart();
+            UI::UIManager::GetSingleton().NotifyPlayerSceneTransition(1500);
         }
 
         // Continuation detection: check whether this start is a continuation of the
@@ -223,6 +225,10 @@ private:
                 // Continuation never arrived: release spectators held back in HandleEnd.
                 for (auto [specID, targetID] : ThreadRegistry::GetSingleton().TakeSpectators(pending.oldThreadID))
                     DebounceQueue::FireRemoveSpectatorEvent(specID, targetID, pending.oldThreadID);
+                if (pending.oldThreadID != threadID &&
+                    ThreadRegistry::GetSingleton().GetPhase(pending.oldThreadID) == ThreadPhase::Ended) {
+                    ThreadDataStore::GetSingleton().ClearThread(pending.oldThreadID);
+                }
                 _pendingContinuation.reset();  // expired
             } else {
                 const auto& old = pending.oldFormIDs;
@@ -249,6 +255,10 @@ private:
                 ThreadDataStore::GetSingleton().ClearThread(sourceID);
             }
             return;
+        }
+
+        if (hadEndedEntry) {
+            ThreadRegistry::GetSingleton().ResetStaleStateForNewStart(threadID);
         }
 
         SKSE::log::info("OStimEventListener: thread {} is a new start", threadID);
@@ -335,12 +345,9 @@ private:
             // pending-continuation expiry releases them if no continuation arrives.
         } else {
             SKSE::log::info("OStimEventListener: thread {} ended (interruptReason='{}')", threadID, interruptReason);
+            UI::ModalManager::GetSingleton().CancelModalsForThread(threadID);
             OnThreadEnd(threadID, interruptReason);
             ThreadDataStore::GetSingleton().ClearThread(threadID);
-        }
-
-        if (!isCont && !ThreadRegistry::GetSingleton().GetPlayerThreadID().has_value()) {
-            UI::UIManager::GetSingleton().OnPlayerThreadEnd();
         }
     }
 

@@ -44,6 +44,9 @@ namespace OStimNet::UI {
         /// Promotes the next queued modal on the main game thread and updates UI focus.
         void ProcessQueueOnGameThread();
 
+        /// Cancels active/queued modals scoped to `threadId` (`aborted = true` after focus release).
+        void CancelModalsForThread(std::int32_t threadId);
+
         /// Cancels all active and queued modals cleanly (with `aborted = true`) on save load/revert.
         void Revert();
 
@@ -56,6 +59,7 @@ namespace OStimNet::UI {
             std::string specJson;
             std::vector<std::string> buttonIds{};
             bool hasTextInput{ false };
+            std::int32_t associatedThreadId{ -1 };
             ModalCallback callback;
             SessionEpoch expectedEpoch{ 0 };
         };
@@ -64,6 +68,7 @@ namespace OStimNet::UI {
                                  std::string specJson,
                                  std::vector<std::string> buttonIds,
                                  bool hasTextInput,
+                                 std::int32_t associatedThreadId,
                                  ModalCallback callback);
         void ScheduleProcessQueue();
 

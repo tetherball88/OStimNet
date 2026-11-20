@@ -160,6 +160,11 @@ public:
             return false;
         }
         auto& state           = _threads[threadID];
+        if (state.phase == ThreadPhase::Ended) {
+            auto preservedSpectators = std::move(state.spectators);
+            state = ThreadState{};
+            state.spectators = std::move(preservedSpectators);
+        }
         state.phase           = ThreadPhase::Claiming;
         state.claimToken      = token;
         state.claimedAt       = std::chrono::steady_clock::now();
@@ -1095,8 +1100,13 @@ public:
             nw.crimeGoldSnapshotted   = old.crimeGoldSnapshotted;
         }
 
-        // Clear override fields — consumed above or irrelevant for same-ID restarts.
-        nw.overrideIntent         = Intent::Unset;
+        // Clear override fields and consumed continuation marker — for same-ID
+        // continuations oldIt and nw reference the same entry, so clearing
+        // after all reads prevents continuation = true from sticking until the
+        // real thread end.
+        oldIt->second.continuation = false;
+        nw.continuation            = false;
+        nw.overrideIntent          = Intent::Unset;
         nw.overrideMainActors.clear();
         nw.overrideSecondaryActors.clear();
 
@@ -1137,6 +1147,38 @@ public:
             SKSE::log::info("ThreadRegistry: CopyStateForContinuation secondaryActors={} pulloutDecision={}",
                 FormatActorNames(nw.secondaryActors), PulloutDecisionToString(nw.pulloutDecision));
         }
+    }
+
+    // Resets stale per-run metadata on an existing threadID entry when a
+    // genuine new start reuses an ID whose prior entry lingered in Ended.
+    // Preserves newly fetched actors/phase/pendingSince and spectators.
+    void ResetStaleStateForNewStart(int threadID) {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
+        auto it = _threads.find(threadID);
+        if (it == _threads.end() || it->second.phase == ThreadPhase::Claiming) {
+            return;
+        }
+        auto& state                    = it->second;
+        state.continuation             = false;
+        state.intent                   = Intent::Unset;
+        state.intentHasBeenSet         = false;
+        state.sexual.reset();
+        state.sexualPhase.reset();
+        state.isOStimNet               = false;
+        state.mainActors.clear();
+        state.secondaryActors.clear();
+        state.overrideIntent           = Intent::Unset;
+        state.overrideMainActors.clear();
+        state.overrideSecondaryActors.clear();
+        state.currentPosition.clear();
+        state.currentSpeed             = -1;
+        state.pulloutDecision          = PulloutDecision::Undecided;
+        state.pulloutStallActive       = false;
+        state.pulloutEvaluationPending = false;
+        state.pulloutEvaluatedForCycle = false;
+        state.pulloutCueFired          = false;
+        state.playerCrimeGoldAtStart   = GetTotalPlayerCrimeGold();
+        state.crimeGoldSnapshotted     = true;
     }
 
     // Call from HandleEnd to free all per-thread state.

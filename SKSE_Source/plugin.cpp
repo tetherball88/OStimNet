@@ -92,6 +92,9 @@ public:
     RE::BSEventNotifyControl ProcessEvent(RE::InputEvent* const* a_events,
                                           RE::BSTEventSource<RE::InputEvent*>*) override {
         if (!a_events) return RE::BSEventNotifyControl::kContinue;
+        if (OStimNet::UI::UIManager::GetSingleton().ShouldSuppressGameHotkeys()) {
+            return RE::BSEventNotifyControl::kContinue;
+        }
 
         for (auto* event = *a_events; event; event = event->next) {
             auto* btn = event->AsButtonEvent();

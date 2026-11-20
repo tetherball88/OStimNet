@@ -75,11 +75,14 @@ namespace OStimNet::UI {
         /// Reverts transient visibility/focus state on game load / new-game transition (preserves persistent view).
         void Revert();
 
-        /// Snapshots enabled player control flags at OStim player thread start.
-        void OnPlayerThreadStart();
+        /// Defers Magelight modal activation during OStim player-scene startup/migration transitions.
+        void NotifyPlayerSceneTransition(std::uint32_t durationMs = 1500);
 
-        /// Restores and verifies player control flags across OStim player thread teardown and fade-out.
-        void OnPlayerThreadEnd();
+        /// Returns true while within a player-scene startup/migration transition deferral window.
+        [[nodiscard]] bool IsInSceneTransitionWindow() const noexcept;
+
+        /// Returns true when Magelight UI mode, text entry, or blocking menus own keyboard/gamepad input.
+        [[nodiscard]] bool ShouldSuppressGameHotkeys() const noexcept;
 
         RE::BSEventNotifyControl ProcessEvent(
             const RE::MenuOpenCloseEvent* a_event,
@@ -96,15 +99,9 @@ namespace OStimNet::UI {
         static void GameTaskTrampoline(void* userData);
 
         void HandleUIModeExited();
-        void SnapshotControlBaseline(bool forModal, bool forScene);
-        void ApplyControlMaskRestore(
-            std::uint32_t mask,
-            std::uint32_t forceNativePulseMask,
-            const char* trigger);
-        void RestoreModalControls(bool clearMaskWhenFocusMenuStillOpen = false);
-        void RestoreSceneEndControls(const char* trigger, bool finalizeWindow);
         void ReleaseFocusAndUIMode();
-        void DrainAfterFocusReleasedTasks();
+        void DrainAfterFocusReleasedTasks(bool forceIgnoreFocusMenu = false);
+        void ArmFocusMenuCloseFailsafe();
         void FlushPendingAfterDomReady();
 
         const MAGELIGHT_API::MagelightApi4* magelight_{ nullptr };
@@ -120,11 +117,10 @@ namespace OStimNet::UI {
         std::atomic<bool> isDomReady_{ false };
         std::atomic<bool> menuSinkRegistered_{ false };
         std::atomic<bool> exitCallbackRegistered_{ false };
-        std::atomic<bool> sceneEndRestorePending_{ false };
-        std::atomic<std::uint32_t> modalControlBaselineMask_{ 0 };
-        std::atomic<std::uint32_t> sceneControlBaselineMask_{ 0 };
-        std::atomic<std::uint32_t> midSceneDirectWriteMask_{ 0 };
-        std::atomic<std::uint64_t> sceneEndSequence_{ 0 };
+        std::atomic<ULONGLONG> sceneTransitionHoldUntilTick_{ 0 };
+        std::atomic<std::uint64_t> transitionTimerGen_{ 0 };
+        std::atomic<std::uint64_t> focusCloseFailsafeGen_{ 0 };
+        std::atomic<bool> focusCloseFailsafeArmed_{ false };
 
         mutable std::mutex stateMutex_;
         std::vector<std::function<void()>> afterFocusReleasedTasks_;
