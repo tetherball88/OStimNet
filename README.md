@@ -35,6 +35,7 @@ This integration mod creates a powerful bridge between **SkyrimNet** AI framewor
 
 ### Optional Integrations
 
+- **TT Body Language** (`v2.3.0+`) - Optional action-specific body part size cues during ongoing scenes based on participants' penis, breast, butt, and thigh sizes.
 - **OVirginity Reflowered** (`OVirginity.esp`) - Optional virginity awareness in bios/evaluations/dialogue, gentle initial pacing, mid-scene reactions, memories, and diary entries.
 - **Fertility Mode** (`Fertility Mode.esm`) - Optional cycle & conception risk awareness during dialogue and pullout decisions.
 

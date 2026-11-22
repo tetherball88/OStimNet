@@ -1,0 +1,758 @@
+{% set _bpScene = ostimnet_actor_scene(npc.UUID).scene %}
+{% if _bpScene and _bpScene.activeBodyParts and length(_bpScene.activeBodyParts) > 0 %}
+    {% set printedBodyPartHeader = false %}
+    {% set selfId = to_string(npc.UUID) %}
+    {% for partEntry in _bpScene.activeBodyParts %}
+        {% set isOwner = to_string(partEntry.actorUUID) == selfId %}
+        {% set isPartner = to_string(partEntry.partnerUUID) == selfId %}
+        {% if isOwner or isPartner %}
+            {% set ownerName = decnpc(partEntry.actorUUID).name %}
+            {% set partnerName = decnpc(partEntry.partnerUUID).name %}
+            {% set act = default(partEntry.action, "") %}
+            {% set partCue = "" %}
+            {% if partEntry.part == "penis" %}
+                {% set genitalData = ttlb_get_genitals(partEntry.actorUUID) %}
+                {% if genitalData.hasGenitals %}
+                    {% set sizeTier = default(genitalData.size, "M") %}
+                    {% set sizeLabel = "average" %}
+                    {% if sizeTier == "XS" %}{% set sizeLabel = "very small" %}
+                    {% elif sizeTier == "S" %}{% set sizeLabel = "small" %}
+                    {% elif sizeTier == "L" %}{% set sizeLabel = "large" %}
+                    {% elif sizeTier == "XL" %}{% set sizeLabel = "very large" %}
+                    {% elif sizeTier == "XXL" %}{% set sizeLabel = "massive" %}
+                    {% elif sizeTier == "XXXL" %}{% set sizeLabel = "monstrous" %}
+                    {% endif %}
+                    {% if act == "vaginalsex" %}
+                        {% if isOwner %}
+                            {% if sizeTier == "XS" %}
+                                {% set partCue = "**Vaginal sex (your penis, very small):** Barely any resistance or depth inside " + partnerName + "; feels very shallow, light, and prone to slipping out." %}
+                            {% elif sizeTier == "S" %}
+                                {% set partCue = "**Vaginal sex (your penis, small):** Easy, unstrained slide into " + partnerName + " with light resistance; effortless to bury all the way in any position." %}
+                            {% elif sizeTier == "M" %}
+                                {% set partCue = "**Vaginal sex (your penis, average):** Snug, satisfying grip inside " + partnerName + "; deep thrusts hit solidly without resistance holding you back." %}
+                            {% elif sizeTier == "L" %}
+                                {% set partCue = "**Vaginal sex (your penis, large):** Tight, demanding grip around you as you bottom out deep inside " + partnerName + "; entry needs pacing." %}
+                            {% elif sizeTier == "XL" %}
+                                {% set partCue = "**Vaginal sex (your penis, very large):** Brutal, tight resistance clamping around your shaft; rushing hurts " + partnerName + " and pushing all the way in is a struggle." %}
+                            {% elif sizeTier == "XXL" %}
+                                {% set partCue = "**Vaginal sex (your penis, massive):** Monstrous resistance - " + partnerName + " cannot take you fully; even partial depth stretches tight around you." %}
+                            {% elif sizeTier == "XXXL" %}
+                                {% set partCue = "**Vaginal sex (your penis, monstrous):** Absurd, physically impossible fit - even shallow entry pushes " + partnerName + " to the absolute breaking point." %}
+                            {% endif %}
+                        {% else %}
+                            {% if sizeTier == "XS" %}
+                                {% set partCue = "**Vaginal sex (" + ownerName + "'s penis, very small):** Barely any stretch or depth; penetration feels very shallow, light, and prone to slipping out." %}
+                            {% elif sizeTier == "S" %}
+                                {% set partCue = "**Vaginal sex (" + ownerName + "'s penis, small):** Easy, unstrained fit with light stretch; effortless to take fully in any position." %}
+                            {% elif sizeTier == "M" %}
+                                {% set partCue = "**Vaginal sex (" + ownerName + "'s penis, average):** Noticeable, satisfying fullness and firm stretch; deep thrusts hit hard without being overwhelming." %}
+                            {% elif sizeTier == "L" %}
+                                {% set partCue = "**Vaginal sex (" + ownerName + "'s penis, large):** Heavy, demanding stretch that bottoms out deep; entry needs pacing." %}
+                            {% elif sizeTier == "XL" %}
+                                {% set partCue = "**Vaginal sex (" + ownerName + "'s penis, very large):** Brutal, overwhelming stretch that pushes your physical limits; rushing hurts and taking it all is a struggle." %}
+                            {% elif sizeTier == "XXL" %}
+                                {% set partCue = "**Vaginal sex (" + ownerName + "'s penis, massive):** Monstrous, beyond-mortal strain; impossible to take fully, overwhelming stretch even partially, dominating every movement." %}
+                            {% elif sizeTier == "XXXL" %}
+                                {% set partCue = "**Vaginal sex (" + ownerName + "'s penis, monstrous):** Absurd, physically impossible scale; even shallow entry pushes your body to its absolute breaking point, leaving no room for anything beyond sheer, breathless survival of the stretch." %}
+                            {% endif %}
+                        {% endif %}
+                    {% elif act == "analsex" %}
+                        {% if isOwner %}
+                            {% if sizeTier == "XS" %}
+                                {% set partCue = "**Anal sex (your penis, very small):** Easy, unstrained slide into " + partnerName + " with barely any tightness or depth." %}
+                            {% elif sizeTier == "S" %}
+                                {% set partCue = "**Anal sex (your penis, small):** Snug, manageable anal grip; eases into " + partnerName + " smoothly." %}
+                            {% elif sizeTier == "M" %}
+                                {% set partCue = "**Anal sex (your penis, average):** Tight, gripping anal resistance; " + partnerName + " needs a breath to ease you in before deep thrusts." %}
+                            {% elif sizeTier == "L" %}
+                                {% set partCue = "**Anal sex (your penis, large):** Intense, heavy tightness around you that demands careful pacing; every deep thrust hits hard." %}
+                            {% elif sizeTier == "XL" %}
+                                {% set partCue = "**Anal sex (your penis, very large):** Brutal, crushing anal tightness; rushing hurts " + partnerName + " badly and taking all of you is a serious struggle." %}
+                            {% elif sizeTier == "XXL" %}
+                                {% set partCue = "**Anal sex (your penis, massive):** Monstrous resistance - even partial depth stretches " + partnerName + " to the absolute limit." %}
+                            {% elif sizeTier == "XXXL" %}
+                                {% set partCue = "**Anal sex (your penis, monstrous):** Absurd, physically impossible anal fit - even the tip pushes " + partnerName + " to the absolute breaking point." %}
+                            {% endif %}
+                        {% else %}
+                            {% if sizeTier == "XS" %}
+                                {% set partCue = "**Anal sex (" + ownerName + "'s penis, very small):** Easy, unstrained anal entry with barely any stretch or depth." %}
+                            {% elif sizeTier == "S" %}
+                                {% set partCue = "**Anal sex (" + ownerName + "'s penis, small):** Manageable, snug anal fit; eases in smoothly with light stretch." %}
+                            {% elif sizeTier == "M" %}
+                                {% set partCue = "**Anal sex (" + ownerName + "'s penis, average):** Tight, demanding anal stretch; needs a breath to ease in and hits deep." %}
+                            {% elif sizeTier == "L" %}
+                                {% set partCue = "**Anal sex (" + ownerName + "'s penis, large):** Intense, heavy anal stretch that demands careful pacing; every deep thrust hits hard." %}
+                            {% elif sizeTier == "XL" %}
+                                {% set partCue = "**Anal sex (" + ownerName + "'s penis, very large):** Brutal, overwhelming anal stretch; rushing hurts badly and taking it all is a serious physical struggle." %}
+                            {% elif sizeTier == "XXL" %}
+                                {% set partCue = "**Anal sex (" + ownerName + "'s penis, massive):** Monstrous, near-impossible anal strain; even partial depth stretches you to the absolute limit." %}
+                            {% elif sizeTier == "XXXL" %}
+                                {% set partCue = "**Anal sex (" + ownerName + "'s penis, monstrous):** Absurd, physically impossible anal scale; even the tip pushes your body to its absolute breaking point, sheer breathless survival." %}
+                            {% endif %}
+                        {% endif %}
+                    {% elif act == "deepthroating" %}
+                        {% if isOwner %}
+                            {% if sizeTier == "XS" or sizeTier == "S" %}
+                                {% set partCue = "**Deepthroat (your penis, " + sizeLabel + "):** " + partnerName + " takes you to the base effortlessly without you even reaching the throat." %}
+                            {% elif sizeTier == "M" %}
+                                {% set partCue = "**Deepthroat (your penis, average):** Your tip presses right into the back of " + partnerName + "'s throat as their nose brushes your pelvis." %}
+                            {% elif sizeTier == "L" %}
+                                {% set partCue = "**Deepthroat (your penis, large):** You push deep down " + partnerName + "'s tight throat, feeling them gag around your shaft." %}
+                            {% elif sizeTier == "XL" %}
+                                {% set partCue = "**Deepthroat (your penis, very large):** " + partnerName + "'s throat clamps and gags hard around you, pushed to its limit trying to take you deep." %}
+                            {% elif sizeTier == "XXL" %}
+                                {% set partCue = "**Deepthroat (your penis, massive):** Physically impossible for " + partnerName + " to take to the base; they gag hard just around your upper shaft." %}
+                            {% elif sizeTier == "XXXL" %}
+                                {% set partCue = "**Deepthroat (your penis, monstrous):** Absurdly impossible to deepthroat - " + partnerName + "'s lips and jaw strain just around your tip." %}
+                            {% endif %}
+                        {% else %}
+                            {% if sizeTier == "XS" or sizeTier == "S" %}
+                                {% set partCue = "**Deepthroat (" + ownerName + "'s penis, " + sizeLabel + "):** Taken all the way to the base without even reaching your throat or triggering a gag." %}
+                            {% elif sizeTier == "M" %}
+                                {% set partCue = "**Deepthroat (" + ownerName + "'s penis, average):** Presses right into the back of your throat; nose brushes pelvis with mild gagging." %}
+                            {% elif sizeTier == "L" %}
+                                {% set partCue = "**Deepthroat (" + ownerName + "'s penis, large):** Pushes deep down your throat, forcing watery eyes, tight gagging, and breath control." %}
+                            {% elif sizeTier == "XL" %}
+                                {% set partCue = "**Deepthroat (" + ownerName + "'s penis, very large):** Brutal throat stretch and heavy gagging; taking it deep cuts off air and pushes your throat to its limit." %}
+                            {% elif sizeTier == "XXL" %}
+                                {% set partCue = "**Deepthroat (" + ownerName + "'s penis, massive):** Physically impossible to take to the base; gagging hard just trying to swallow past the upper shaft." %}
+                            {% elif sizeTier == "XXXL" %}
+                                {% set partCue = "**Deepthroat (" + ownerName + "'s penis, monstrous):** Absurdly impossible to deepthroat - your lips and jaw strain just around the tip." %}
+                            {% endif %}
+                        {% endif %}
+                    {% elif act == "blowjob" %}
+                        {% if isOwner %}
+                            {% if sizeTier == "XS" %}
+                                {% set partCue = "**Oral (your penis, very small):** " + partnerName + " takes you whole effortlessly with room to spare." %}
+                            {% elif sizeTier == "S" %}
+                                {% set partCue = "**Oral (your penis, small):** Fits easily all the way in " + partnerName + "'s mouth with zero strain." %}
+                            {% elif sizeTier == "M" %}
+                                {% set partCue = "**Oral (your penis, average):** Fills " + partnerName + "'s mouth snugly; deep strokes brush the back of their throat." %}
+                            {% elif sizeTier == "L" %}
+                                {% set partCue = "**Oral (your penis, large):** Stretches " + partnerName + "'s lips and jaw wide; deep strokes bump their throat and trigger gagging." %}
+                            {% elif sizeTier == "XL" %}
+                                {% set partCue = "**Oral (your penis, very large):** Stretches " + partnerName + "'s jaw hard - they can only take part of your length at a time." %}
+                            {% elif sizeTier == "XXL" %}
+                                {% set partCue = "**Oral (your penis, massive):** Barely fits past " + partnerName + "'s lips; they can only work your tip and upper shaft." %}
+                            {% elif sizeTier == "XXXL" %}
+                                {% set partCue = "**Oral (your penis, monstrous):** Far too huge for " + partnerName + "'s mouth; lips barely stretch around your tip, mostly licking and kissing the outside." %}
+                            {% endif %}
+                        {% else %}
+                            {% if sizeTier == "XS" %}
+                                {% set partCue = "**Oral (" + ownerName + "'s penis, very small):** Taken whole effortlessly in your mouth with room to spare and zero jaw strain." %}
+                            {% elif sizeTier == "S" %}
+                                {% set partCue = "**Oral (" + ownerName + "'s penis, small):** Fits easily all the way in your mouth with no gagging or jaw strain." %}
+                            {% elif sizeTier == "M" %}
+                                {% set partCue = "**Oral (" + ownerName + "'s penis, average):** Fills your mouth snugly; deep strokes brush the back of your throat." %}
+                            {% elif sizeTier == "L" %}
+                                {% set partCue = "**Oral (" + ownerName + "'s penis, large):** Stretches your jaw wide; deep strokes push against your throat and trigger gagging." %}
+                            {% elif sizeTier == "XL" %}
+                                {% set partCue = "**Oral (" + ownerName + "'s penis, very large):** Heavy jaw strain; you can only take part of it at a time, deepthroating is a real struggle." %}
+                            {% elif sizeTier == "XXL" %}
+                                {% set partCue = "**Oral (" + ownerName + "'s penis, massive):** Barely fits past your lips; jaw aches wide open and you can only take the tip and upper shaft." %}
+                            {% elif sizeTier == "XXXL" %}
+                                {% set partCue = "**Oral (" + ownerName + "'s penis, monstrous):** Absurdly too big for your mouth; lips can barely stretch around the tip, mostly licking and kissing the outside." %}
+                            {% endif %}
+                        {% endif %}
+                    {% elif act == "penilelicking" %}
+                        {% if isOwner %}
+                            {% if sizeTier == "XS" or sizeTier == "S" %}
+                                {% set partCue = "**Licking penis (your penis, " + sizeLabel + "):** Short, quick flicks of " + partnerName + "'s tongue easily cover your entire shaft." %}
+                            {% elif sizeTier == "M" or sizeTier == "L" %}
+                                {% set partCue = "**Licking penis (your penis, " + sizeLabel + "):** Steady, full licks from " + partnerName + " run smoothly up your length." %}
+                            {% elif sizeTier == "XL" or sizeTier == "XXL" or sizeTier == "XXXL" %}
+                                {% set partCue = "**Licking penis (your penis, " + sizeLabel + "):** Long, slow drags of " + partnerName + "'s tongue up the massive expanse of your shaft." %}
+                            {% endif %}
+                        {% else %}
+                            {% if sizeTier == "XS" or sizeTier == "S" %}
+                                {% set partCue = "**Licking penis (" + ownerName + "'s penis, " + sizeLabel + "):** Short, quick flicks of your tongue easily cover the entire shaft." %}
+                            {% elif sizeTier == "M" or sizeTier == "L" %}
+                                {% set partCue = "**Licking penis (" + ownerName + "'s penis, " + sizeLabel + "):** Steady, full licks run smoothly up the length of the shaft." %}
+                            {% elif sizeTier == "XL" or sizeTier == "XXL" or sizeTier == "XXXL" %}
+                                {% set partCue = "**Licking penis (" + ownerName + "'s penis, " + sizeLabel + "):** Long, slow drags of your tongue up a massive expanse of heavy shaft." %}
+                            {% endif %}
+                        {% endif %}
+                    {% elif act == "handjob" %}
+                        {% if isOwner %}
+                            {% if sizeTier == "XS" %}
+                                {% set partCue = "**Handjob (your penis, very small):** Barely fills " + partnerName + "'s fist; mostly worked with fingers." %}
+                            {% elif sizeTier == "S" %}
+                                {% set partCue = "**Handjob (your penis, small):** Fits easily inside " + partnerName + "'s closed hand with light, nimble strokes." %}
+                            {% elif sizeTier == "M" %}
+                                {% set partCue = "**Handjob (your penis, average):** Fills " + partnerName + "'s hand solidly with a clean, full grip." %}
+                            {% elif sizeTier == "L" %}
+                                {% set partCue = "**Handjob (your penis, large):** Thick, substantial grip in " + partnerName + "'s hand with long strokes, or both hands." %}
+                            {% elif sizeTier == "XL" %}
+                                {% set partCue = "**Handjob (your penis, very large):** " + partnerName + "'s fingers barely close around you; takes both hands to work your full length." %}
+                            {% elif sizeTier == "XXL" %}
+                                {% set partCue = "**Handjob (your penis, massive):** Too thick for one hand - " + partnerName + " grips hard with both hands just to stroke you." %}
+                            {% elif sizeTier == "XXXL" %}
+                                {% set partCue = "**Handjob (your penis, monstrous):** Dwarfs both of " + partnerName + "'s hands; stroking you is a heavy two-handed effort." %}
+                            {% endif %}
+                        {% else %}
+                            {% if sizeTier == "XS" %}
+                                {% set partCue = "**Handjob (" + ownerName + "'s penis, very small):** Barely fills your fist; mostly worked with fingers rather than a full grip." %}
+                            {% elif sizeTier == "S" %}
+                                {% set partCue = "**Handjob (" + ownerName + "'s penis, small):** Fits easily inside one closed hand with light, nimble strokes." %}
+                            {% elif sizeTier == "M" %}
+                                {% set partCue = "**Handjob (" + ownerName + "'s penis, average):** Fills your hand solidly with a clean, full grip." %}
+                            {% elif sizeTier == "L" %}
+                                {% set partCue = "**Handjob (" + ownerName + "'s penis, large):** Thick, substantial grip; takes a full hand and long strokes, or both hands." %}
+                            {% elif sizeTier == "XL" %}
+                                {% set partCue = "**Handjob (" + ownerName + "'s penis, very large):** Your fingers barely close around it; needs both hands to work the full shaft." %}
+                            {% elif sizeTier == "XXL" %}
+                                {% set partCue = "**Handjob (" + ownerName + "'s penis, massive):** Too thick for one hand to close around; requires both hands gripping hard just to stroke it." %}
+                            {% elif sizeTier == "XXXL" %}
+                                {% set partCue = "**Handjob (" + ownerName + "'s penis, monstrous):** Absurd, heavy shaft that dwarfs both hands; stroking it is a two-handed physical effort." %}
+                            {% endif %}
+                        {% endif %}
+                    {% elif act == "footjob" %}
+                        {% if isOwner %}
+                            {% if sizeTier == "XS" or sizeTier == "S" %}
+                                {% set partCue = "**Footjob (your penis, " + sizeLabel + "):** Easily tucked between " + partnerName + "'s soles with light, nimble pressure." %}
+                            {% elif sizeTier == "M" or sizeTier == "L" %}
+                                {% set partCue = "**Footjob (your penis, " + sizeLabel + "):** Held solidly between " + partnerName + "'s feet with firm, steady friction." %}
+                            {% elif sizeTier == "XL" or sizeTier == "XXL" or sizeTier == "XXXL" %}
+                                {% set partCue = "**Footjob (your penis, " + sizeLabel + "):** Dwarfs " + partnerName + "'s feet; both soles press wide along your sides rather than wrapping you." %}
+                            {% endif %}
+                        {% else %}
+                            {% if sizeTier == "XS" or sizeTier == "S" %}
+                                {% set partCue = "**Footjob (" + ownerName + "'s penis, " + sizeLabel + "):** Easily tucked between your soles with light, nimble pressure." %}
+                            {% elif sizeTier == "M" or sizeTier == "L" %}
+                                {% set partCue = "**Footjob (" + ownerName + "'s penis, " + sizeLabel + "):** Sits solidly between both feet with firm, steady friction." %}
+                            {% elif sizeTier == "XL" or sizeTier == "XXL" or sizeTier == "XXXL" %}
+                                {% set partCue = "**Footjob (" + ownerName + "'s penis, " + sizeLabel + "):** Heavy, massive shaft that dwarfs your feet; both soles press wide along its sides rather than wrapping it." %}
+                            {% endif %}
+                        {% endif %}
+                    {% elif act == "rubbingpenisagainstface" %}
+                        {% if isOwner %}
+                            {% if sizeTier == "XS" or sizeTier == "S" %}
+                                {% set partCue = "**Penis on face (your penis, " + sizeLabel + "):** Brushes lightly and nimbly across " + partnerName + "'s cheeks and lips." %}
+                            {% elif sizeTier == "M" or sizeTier == "L" %}
+                                {% set partCue = "**Penis on face (your penis, " + sizeLabel + "):** Warm, heavy shaft dragging solidly across " + partnerName + "'s face." %}
+                            {% elif sizeTier == "XL" or sizeTier == "XXL" or sizeTier == "XXXL" %}
+                                {% set partCue = "**Penis on face (your penis, " + sizeLabel + "):** Absurd, heavy weight resting across the whole of " + partnerName + "'s face and lips." %}
+                            {% endif %}
+                        {% else %}
+                            {% if sizeTier == "XS" or sizeTier == "S" %}
+                                {% set partCue = "**Penis on face (" + ownerName + "'s penis, " + sizeLabel + "):** Light, nimble brush across your cheeks and lips." %}
+                            {% elif sizeTier == "M" or sizeTier == "L" %}
+                                {% set partCue = "**Penis on face (" + ownerName + "'s penis, " + sizeLabel + "):** Warm, heavy shaft dragging solidly across your face." %}
+                            {% elif sizeTier == "XL" or sizeTier == "XXL" or sizeTier == "XXXL" %}
+                                {% set partCue = "**Penis on face (" + ownerName + "'s penis, " + sizeLabel + "):** Absurd, heavy weight resting across your whole face and lips." %}
+                            {% endif %}
+                        {% endif %}
+                    {% elif act == "grindingpenis" %}
+                        {% if isOwner %}
+                            {% if sizeTier == "XS" or sizeTier == "S" %}
+                                {% set partCue = "**Grinding (your penis, " + sizeLabel + "):** Light, easy friction grinding directly against " + partnerName + "." %}
+                            {% elif sizeTier == "M" or sizeTier == "L" %}
+                                {% set partCue = "**Grinding (your penis, " + sizeLabel + "):** Thick, hard ridge pressing firmly into " + partnerName + " on every grind." %}
+                            {% elif sizeTier == "XL" or sizeTier == "XXL" or sizeTier == "XXXL" %}
+                                {% set partCue = "**Grinding (your penis, " + sizeLabel + "):** Massive, heavy shaft pressing hard against " + partnerName + "'s vulva and hips, dominating every grind." %}
+                            {% endif %}
+                        {% else %}
+                            {% if sizeTier == "XS" or sizeTier == "S" %}
+                                {% set partCue = "**Grinding (" + ownerName + "'s penis, " + sizeLabel + "):** Light, easy friction grinding directly against your hips and vulva." %}
+                            {% elif sizeTier == "M" or sizeTier == "L" %}
+                                {% set partCue = "**Grinding (" + ownerName + "'s penis, " + sizeLabel + "):** Thick, hard ridge pressing firmly against your vulva on every grind." %}
+                            {% elif sizeTier == "XL" or sizeTier == "XXL" or sizeTier == "XXXL" %}
+                                {% set partCue = "**Grinding (" + ownerName + "'s penis, " + sizeLabel + "):** Massive, heavy shaft pressing hard against your vulva and hips, dominating every grind." %}
+                            {% endif %}
+                        {% endif %}
+                    {% elif act == "tailjob" %}
+                        {% if isOwner %}
+                            {% if sizeTier == "XS" or sizeTier == "S" %}
+                                {% set partCue = "**Tailjob (your penis, " + sizeLabel + "):** " + partnerName + "'s tail easily coils all the way around you with nimble strokes." %}
+                            {% elif sizeTier == "M" or sizeTier == "L" %}
+                                {% set partCue = "**Tailjob (your penis, " + sizeLabel + "):** " + partnerName + "'s tail wraps snugly around you with firm, sliding friction." %}
+                            {% elif sizeTier == "XL" or sizeTier == "XXL" or sizeTier == "XXXL" %}
+                                {% set partCue = "**Tailjob (your penis, " + sizeLabel + "):** Your massive shaft strains " + partnerName + "'s tail coils, sliding heavily against them." %}
+                            {% endif %}
+                        {% else %}
+                            {% if sizeTier == "XS" or sizeTier == "S" %}
+                                {% set partCue = "**Tailjob (" + ownerName + "'s penis, " + sizeLabel + "):** Your tail easily coils all the way around the shaft with nimble strokes." %}
+                            {% elif sizeTier == "M" or sizeTier == "L" %}
+                                {% set partCue = "**Tailjob (" + ownerName + "'s penis, " + sizeLabel + "):** Your tail wraps snugly around the shaft with firm, sliding friction." %}
+                            {% elif sizeTier == "XL" or sizeTier == "XXL" or sizeTier == "XXXL" %}
+                                {% set partCue = "**Tailjob (" + ownerName + "'s penis, " + sizeLabel + "):** Thick, massive shaft strains your tail's coils, sliding heavily against it." %}
+                            {% endif %}
+                        {% endif %}
+                    {% elif act == "boobjob_penis" %}
+                        {% if isOwner %}
+                            {% if sizeTier == "XS" %}
+                                {% set partCue = "**Boobjob (your penis, very small):** Barely reaches into " + partnerName + "'s cleavage." %}
+                            {% elif sizeTier == "S" %}
+                                {% set partCue = "**Boobjob (your penis, small):** Reaches just into " + partnerName + "'s cleavage, mostly hidden when pressed together." %}
+                            {% elif sizeTier == "M" %}
+                                {% set partCue = "**Boobjob (your penis, average):** Sits cleanly through " + partnerName + "'s cleavage with your tip peeking out at the top." %}
+                            {% elif sizeTier == "L" %}
+                                {% set partCue = "**Boobjob (your penis, large):** Pushes well out the top of " + partnerName + "'s cleavage on every thrust." %}
+                            {% elif sizeTier == "XL" or sizeTier == "XXL" or sizeTier == "XXXL" %}
+                                {% set partCue = "**Boobjob (your penis, " + sizeLabel + "):** Thrusts far past the top of " + partnerName + "'s cleavage toward their chin and face." %}
+                            {% endif %}
+                        {% else %}
+                            {% if sizeTier == "XS" %}
+                                {% set partCue = "**Boobjob (" + ownerName + "'s penis, very small):** Barely reaches into your cleavage." %}
+                            {% elif sizeTier == "S" %}
+                                {% set partCue = "**Boobjob (" + ownerName + "'s penis, small):** Reaches just into your cleavage, mostly hidden when pressed together." %}
+                            {% elif sizeTier == "M" %}
+                                {% set partCue = "**Boobjob (" + ownerName + "'s penis, average):** Sits cleanly through your cleavage with the tip peeking out at the top." %}
+                            {% elif sizeTier == "L" %}
+                                {% set partCue = "**Boobjob (" + ownerName + "'s penis, large):** Pushes well out the top of your cleavage on every thrust." %}
+                            {% elif sizeTier == "XL" or sizeTier == "XXL" or sizeTier == "XXXL" %}
+                                {% set partCue = "**Boobjob (" + ownerName + "'s penis, " + sizeLabel + "):** Thrusts far past the top of your cleavage toward your chin and face." %}
+                            {% endif %}
+                        {% endif %}
+                    {% elif act == "buttjob_penis" %}
+                        {% if isOwner %}
+                            {% if sizeTier == "XS" %}
+                                {% set partCue = "**Buttjob (your penis, very small):** Barely reaches into the cleft between " + partnerName + "'s cheeks." %}
+                            {% elif sizeTier == "S" %}
+                                {% set partCue = "**Buttjob (your penis, small):** Sits shallowly in the cleft between " + partnerName + "'s cheeks." %}
+                            {% elif sizeTier == "M" %}
+                                {% set partCue = "**Buttjob (your penis, average):** Glides cleanly along " + partnerName + "'s cleft with your tip peeking at the top." %}
+                            {% elif sizeTier == "L" %}
+                                {% set partCue = "**Buttjob (your penis, large):** Thrusts firmly past the top of " + partnerName + "'s cheeks on every stroke." %}
+                            {% elif sizeTier == "XL" or sizeTier == "XXL" or sizeTier == "XXXL" %}
+                                {% set partCue = "**Buttjob (your penis, " + sizeLabel + "):** Thrusts well past the top of " + partnerName + "'s cheeks along their lower back." %}
+                            {% endif %}
+                        {% else %}
+                            {% if sizeTier == "XS" %}
+                                {% set partCue = "**Buttjob (" + ownerName + "'s penis, very small):** Barely reaches into the cleft between your cheeks." %}
+                            {% elif sizeTier == "S" %}
+                                {% set partCue = "**Buttjob (" + ownerName + "'s penis, small):** Sits shallowly in the cleft between your cheeks." %}
+                            {% elif sizeTier == "M" %}
+                                {% set partCue = "**Buttjob (" + ownerName + "'s penis, average):** Glides cleanly along your cleft with the tip peeking at the top." %}
+                            {% elif sizeTier == "L" %}
+                                {% set partCue = "**Buttjob (" + ownerName + "'s penis, large):** Thrusts firmly past the top of your cheeks on every stroke." %}
+                            {% elif sizeTier == "XL" or sizeTier == "XXL" or sizeTier == "XXXL" %}
+                                {% set partCue = "**Buttjob (" + ownerName + "'s penis, " + sizeLabel + "):** Thrusts well past the top of your cheeks along your lower back." %}
+                            {% endif %}
+                        {% endif %}
+                    {% elif act == "thighjob_penis" %}
+                        {% if isOwner %}
+                            {% if sizeTier == "XS" %}
+                                {% set partCue = "**Thighjob (your penis, very small):** Barely pokes between " + partnerName + "'s thighs." %}
+                            {% elif sizeTier == "S" %}
+                                {% set partCue = "**Thighjob (your penis, small):** Tucks neatly between " + partnerName + "'s thighs with little sticking out." %}
+                            {% elif sizeTier == "M" %}
+                                {% set partCue = "**Thighjob (your penis, average):** Glides cleanly between " + partnerName + "'s thighs with your tip emerging on each thrust." %}
+                            {% elif sizeTier == "L" %}
+                                {% set partCue = "**Thighjob (your penis, large):** Pushes well past " + partnerName + "'s thighs with every thrust." %}
+                            {% elif sizeTier == "XL" or sizeTier == "XXL" or sizeTier == "XXXL" %}
+                                {% set partCue = "**Thighjob (your penis, " + sizeLabel + "):** Extends far out past " + partnerName + "'s thighs on every stroke." %}
+                            {% endif %}
+                        {% else %}
+                            {% if sizeTier == "XS" %}
+                                {% set partCue = "**Thighjob (" + ownerName + "'s penis, very small):** Barely pokes between your thighs." %}
+                            {% elif sizeTier == "S" %}
+                                {% set partCue = "**Thighjob (" + ownerName + "'s penis, small):** Tucks neatly between your thighs with little sticking out." %}
+                            {% elif sizeTier == "M" %}
+                                {% set partCue = "**Thighjob (" + ownerName + "'s penis, average):** Glides cleanly between your thighs with the tip emerging on each thrust." %}
+                            {% elif sizeTier == "L" %}
+                                {% set partCue = "**Thighjob (" + ownerName + "'s penis, large):** Pushes well past your thighs with every thrust." %}
+                            {% elif sizeTier == "XL" or sizeTier == "XXL" or sizeTier == "XXXL" %}
+                                {% set partCue = "**Thighjob (" + ownerName + "'s penis, " + sizeLabel + "):** Extends far out past your thighs on every stroke." %}
+                            {% endif %}
+                        {% endif %}
+                    {% elif act == "gropingtesticles" %}
+                        {% if isOwner %}
+                            {% if sizeTier == "XS" or sizeTier == "S" %}
+                                {% set partCue = "**Groping testicles (your testicles, " + sizeLabel + "):** Small and light - " + partnerName + " rolls them easily with fingertips." %}
+                            {% elif sizeTier == "M" or sizeTier == "L" %}
+                                {% set partCue = "**Groping testicles (your testicles, " + sizeLabel + "):** Warm, heavy weight resting solidly in " + partnerName + "'s palm." %}
+                            {% elif sizeTier == "XL" or sizeTier == "XXL" or sizeTier == "XXXL" %}
+                                {% set partCue = "**Groping testicles (your testicles, " + sizeLabel + "):** Huge, heavy weight filling and overflowing " + partnerName + "'s hand." %}
+                            {% endif %}
+                        {% else %}
+                            {% if sizeTier == "XS" or sizeTier == "S" %}
+                                {% set partCue = "**Groping testicles (" + ownerName + "'s testicles, " + sizeLabel + "):** Small and light, easily rolled with your fingertips." %}
+                            {% elif sizeTier == "M" or sizeTier == "L" %}
+                                {% set partCue = "**Groping testicles (" + ownerName + "'s testicles, " + sizeLabel + "):** Warm, heavy weight resting solidly in your palm." %}
+                            {% elif sizeTier == "XL" or sizeTier == "XXL" or sizeTier == "XXXL" %}
+                                {% set partCue = "**Groping testicles (" + ownerName + "'s testicles, " + sizeLabel + "):** Huge, heavy weight filling and overflowing your hand." %}
+                            {% endif %}
+                        {% endif %}
+                    {% elif act == "testicularlicking" %}
+                        {% if isOwner %}
+                            {% if sizeTier == "XS" or sizeTier == "S" %}
+                                {% set partCue = "**Licking testicles (your testicles, " + sizeLabel + "):** Small enough for " + partnerName + " to take both into their mouth at once." %}
+                            {% elif sizeTier == "M" or sizeTier == "L" %}
+                                {% set partCue = "**Licking testicles (your testicles, " + sizeLabel + "):** Warm, full weight filling " + partnerName + "'s mouth one at a time." %}
+                            {% elif sizeTier == "XL" or sizeTier == "XXL" or sizeTier == "XXXL" %}
+                                {% set partCue = "**Licking testicles (your testicles, " + sizeLabel + "):** Too big and heavy for " + partnerName + " to take whole - their tongue drags across the heavy skin." %}
+                            {% endif %}
+                        {% else %}
+                            {% if sizeTier == "XS" or sizeTier == "S" %}
+                                {% set partCue = "**Licking testicles (" + ownerName + "'s testicles, " + sizeLabel + "):** Small enough to take both into your mouth at once." %}
+                            {% elif sizeTier == "M" or sizeTier == "L" %}
+                                {% set partCue = "**Licking testicles (" + ownerName + "'s testicles, " + sizeLabel + "):** Warm, full weight filling your mouth one at a time." %}
+                            {% elif sizeTier == "XL" or sizeTier == "XXL" or sizeTier == "XXXL" %}
+                                {% set partCue = "**Licking testicles (" + ownerName + "'s testicles, " + sizeLabel + "):** Too big and heavy to take whole - your tongue drags across large, heavy skin." %}
+                            {% endif %}
+                        {% endif %}
+                    {% endif %}
+                {% endif %}
+            {% else %}
+                {% set partData = ttlb_get_body_parts(partEntry.actorUUID) %}
+                {% if partData.valid %}
+                    {% if act == "boobjob" %}
+                        {% set bTier = default(partData.breasts, "") %}
+                        {% if isOwner %}
+                            {% if bTier == "flat" %}
+                                {% set partCue = "**Boobjob (your breasts, flat):** Too flat to wrap - " + partnerName + "'s shaft just rubs flat against your chest." %}
+                            {% elif bTier == "small" %}
+                                {% set partCue = "**Boobjob (your breasts, small):** Too modest to wrap alone - your hands have to squeeze them tightly inward around " + partnerName + "'s shaft." %}
+                            {% elif bTier == "average" %}
+                                {% set partCue = "**Boobjob (your breasts, average):** Pressing your breasts together cradles " + partnerName + "'s shaft snugly, though the tip stays well exposed." %}
+                            {% elif bTier == "large" %}
+                                {% set partCue = "**Boobjob (your breasts, large):** Your deep, plush cleavage easily swallows and grips " + partnerName + "'s shaft tightly." %}
+                            {% elif bTier == "huge" %}
+                                {% set partCue = "**Boobjob (your breasts, huge):** Your heavy softness buries " + partnerName + "'s shaft deep, enveloping almost the entire length." %}
+                            {% elif bTier == "impossible" %}
+                                {% set partCue = "**Boobjob (your breasts, impossible):** Your immense, heavy breasts completely swallow " + partnerName + "'s shaft." %}
+                            {% endif %}
+                        {% else %}
+                            {% if bTier == "flat" %}
+                                {% set partCue = "**Boobjob (" + ownerName + "'s breasts, flat):** Too flat to wrap - your shaft just rubs flat against her chest." %}
+                            {% elif bTier == "small" %}
+                                {% set partCue = "**Boobjob (" + ownerName + "'s breasts, small):** Too modest to wrap alone - hands have to squeeze them tightly inward around your shaft." %}
+                            {% elif bTier == "average" %}
+                                {% set partCue = "**Boobjob (" + ownerName + "'s breasts, average):** Pressed snugly around your shaft with hands helping, though your tip stays well exposed." %}
+                            {% elif bTier == "large" %}
+                                {% set partCue = "**Boobjob (" + ownerName + "'s breasts, large):** Deep, plush cleavage easily swallows and grips your shaft tightly." %}
+                            {% elif bTier == "huge" %}
+                                {% set partCue = "**Boobjob (" + ownerName + "'s breasts, huge):** Buries your shaft deep in heavy softness, enveloping almost your entire length." %}
+                            {% elif bTier == "impossible" %}
+                                {% set partCue = "**Boobjob (" + ownerName + "'s breasts, impossible):** Completely swallows your shaft under immense, heavy softness." %}
+                            {% endif %}
+                        {% endif %}
+                    {% elif act == "breastsmothering" %}
+                        {% set bTier = default(partData.breasts, "") %}
+                        {% if isOwner %}
+                            {% if bTier == "flat" or bTier == "small" %}
+                                {% set partCue = "**Breast smothering (your breasts, " + bTier + "):** Barely covers " + partnerName + "'s face - presses your firm chest directly against them rather than smothering." %}
+                            {% elif bTier == "average" %}
+                                {% set partCue = "**Breast smothering (your breasts, average):** Softly cushions " + partnerName + "'s face pressed close against you, warm without cutting off air." %}
+                            {% elif bTier == "large" %}
+                                {% set partCue = "**Breast smothering (your breasts, large):** " + partnerName + "'s face buries deep into your warm, plush softness." %}
+                            {% elif bTier == "huge" %}
+                                {% set partCue = "**Breast smothering (your breasts, huge):** Your heavy, enveloping breasts smother " + partnerName + "'s face and muffle their breath." %}
+                            {% elif bTier == "impossible" %}
+                                {% set partCue = "**Breast smothering (your breasts, impossible):** Your overwhelming weight completely buries and suffocates " + partnerName + "'s face." %}
+                            {% endif %}
+                        {% else %}
+                            {% if bTier == "flat" or bTier == "small" %}
+                                {% set partCue = "**Breast smothering (" + ownerName + ", " + bTier + "):** Barely covers your face - firm chest skin presses directly against you rather than smothering." %}
+                            {% elif bTier == "average" %}
+                                {% set partCue = "**Breast smothering (" + ownerName + ", average):** Softly cushions your face when pressed close, warm without cutting off air." %}
+                            {% elif bTier == "large" %}
+                                {% set partCue = "**Breast smothering (" + ownerName + ", large):** Your face buries deep into " + ownerName + "'s warm, plush softness." %}
+                            {% elif bTier == "huge" %}
+                                {% set partCue = "**Breast smothering (" + ownerName + ", huge):** Heavy, enveloping softness smothers your face and muffles your breath." %}
+                            {% elif bTier == "impossible" %}
+                                {% set partCue = "**Breast smothering (" + ownerName + ", impossible):** Overwhelming, breathless weight completely buries and suffocates your face." %}
+                            {% endif %}
+                        {% endif %}
+                    {% elif act == "breastsliding" %}
+                        {% set bTier = default(partData.breasts, "") %}
+                        {% if isOwner %}
+                            {% if bTier == "flat" or bTier == "small" %}
+                                {% set partCue = "**Breast sliding (your breasts, " + bTier + "):** Light, perky friction as your chest glides across " + partnerName + "'s skin." %}
+                            {% elif bTier == "average" %}
+                                {% set partCue = "**Breast sliding (your breasts, average):** Soft, warm gliding pressure as you slide across " + partnerName + "." %}
+                            {% elif bTier == "large" or bTier == "huge" or bTier == "impossible" %}
+                                {% set partCue = "**Breast sliding (your breasts, " + bTier + "):** Your heavy, plush breasts drag and press deeply across " + partnerName + " with every slide." %}
+                            {% endif %}
+                        {% else %}
+                            {% if bTier == "flat" or bTier == "small" %}
+                                {% set partCue = "**Breast sliding (" + ownerName + ", " + bTier + "):** Light, perky friction gliding across your skin." %}
+                            {% elif bTier == "average" %}
+                                {% set partCue = "**Breast sliding (" + ownerName + ", average):** Soft, warm gliding pressure across your body." %}
+                            {% elif bTier == "large" or bTier == "huge" or bTier == "impossible" %}
+                                {% set partCue = "**Breast sliding (" + ownerName + ", " + bTier + "):** Heavy, plush breasts drag and press deeply across your skin with every slide." %}
+                            {% endif %}
+                        {% endif %}
+                    {% elif act == "gropingbreast" %}
+                        {% set bTier = default(partData.breasts, "") %}
+                        {% if isOwner %}
+                            {% if bTier == "flat" %}
+                                {% set partCue = "**Groping breasts (your breasts, flat):** Almost nothing to grab - " + partnerName + "'s palms mostly rub flat over your chest and nipples." %}
+                            {% elif bTier == "small" %}
+                                {% set partCue = "**Groping breasts (your breasts, small):** Easily cupped whole inside " + partnerName + "'s hand, firm and perky." %}
+                            {% elif bTier == "average" %}
+                                {% set partCue = "**Groping breasts (your breasts, average):** Fills " + partnerName + "'s hand comfortably with soft, natural give." %}
+                            {% elif bTier == "large" %}
+                                {% set partCue = "**Groping breasts (your breasts, large):** Spills past " + partnerName + "'s fingers with heavy, plush bounce." %}
+                            {% elif bTier == "huge" or bTier == "impossible" %}
+                                {% set partCue = "**Groping breasts (your breasts, " + bTier + "):** Far too big for one hand - " + partnerName + "'s fingers sink deep into your heavy, overflowing softness." %}
+                            {% endif %}
+                        {% else %}
+                            {% if bTier == "flat" %}
+                                {% set partCue = "**Groping breasts (" + ownerName + ", flat):** Almost nothing to grab - your palms mostly rub flat over her chest and nipples." %}
+                            {% elif bTier == "small" %}
+                                {% set partCue = "**Groping breasts (" + ownerName + ", small):** Easily cupped whole in one hand, firm and perky." %}
+                            {% elif bTier == "average" %}
+                                {% set partCue = "**Groping breasts (" + ownerName + ", average):** Fills your hand comfortably with soft, natural give." %}
+                            {% elif bTier == "large" %}
+                                {% set partCue = "**Groping breasts (" + ownerName + ", large):** Spills past your fingers with heavy, plush bounce." %}
+                            {% elif bTier == "huge" or bTier == "impossible" %}
+                                {% set partCue = "**Groping breasts (" + ownerName + ", " + bTier + "):** Far too big for one hand - your fingers sink deep into heavy, overflowing softness." %}
+                            {% endif %}
+                        {% endif %}
+                    {% elif act == "breastslapping" %}
+                        {% set bTier = default(partData.breasts, "") %}
+                        {% if isOwner %}
+                            {% if bTier == "flat" %}
+                                {% set partCue = "**Breast slapping (your breasts, flat):** Lands directly on your flat chest - all surface sting with no give." %}
+                            {% elif bTier == "small" %}
+                                {% set partCue = "**Breast slapping (your breasts, small):** Firm, perky flesh takes the impact cleanly with a sharp surface sting." %}
+                            {% elif bTier == "average" %}
+                                {% set partCue = "**Breast slapping (your breasts, average):** Your breasts give slightly under the impact with a light bounce." %}
+                            {% elif bTier == "large" %}
+                                {% set partCue = "**Breast slapping (your breasts, large):** Your heavy breasts absorb the impact, swinging and jiggling afterward." %}
+                            {% elif bTier == "huge" or bTier == "impossible" %}
+                                {% set partCue = "**Breast slapping (your breasts, " + bTier + "):** Your massive weight absorbs the impact, heaving and rippling heavily afterward." %}
+                            {% endif %}
+                        {% else %}
+                            {% if bTier == "flat" %}
+                                {% set partCue = "**Breast slapping (" + ownerName + ", flat):** Your palm lands directly on her flat chest - all surface sting with no give." %}
+                            {% elif bTier == "small" %}
+                                {% set partCue = "**Breast slapping (" + ownerName + ", small):** Firm, perky flesh takes the impact cleanly under your hand with a sharp surface sting." %}
+                            {% elif bTier == "average" %}
+                                {% set partCue = "**Breast slapping (" + ownerName + ", average):** Flesh gives slightly under your hand with a light bounce." %}
+                            {% elif bTier == "large" %}
+                                {% set partCue = "**Breast slapping (" + ownerName + ", large):** Heavy breasts absorb the impact, swinging and jiggling afterward." %}
+                            {% elif bTier == "huge" or bTier == "impossible" %}
+                                {% set partCue = "**Breast slapping (" + ownerName + ", " + bTier + "):** Massive weight absorbs the impact under your hand, heaving and rippling heavily afterward." %}
+                            {% endif %}
+                        {% endif %}
+                    {% elif act == "suckingnipple" %}
+                        {% set bTier = default(partData.breasts, "") %}
+                        {% if isOwner %}
+                            {% if bTier == "flat" or bTier == "small" %}
+                                {% set partCue = "**Nipple play (your breasts, " + bTier + "):** " + partnerName + "'s lips press right against your chest with little breast flesh to take in." %}
+                            {% elif bTier == "average" %}
+                                {% set partCue = "**Nipple play (your breasts, average):** Your soft, natural curve cushions " + partnerName + "'s mouth comfortably around your nipple." %}
+                            {% elif bTier == "large" or bTier == "huge" or bTier == "impossible" %}
+                                {% set partCue = "**Nipple play (your breasts, " + bTier + "):** " + partnerName + "'s mouth fills with heavy, plush softness around your nipple." %}
+                            {% endif %}
+                        {% else %}
+                            {% if bTier == "flat" or bTier == "small" %}
+                                {% set partCue = "**Nipple play (" + ownerName + ", " + bTier + "):** Your lips press right against her chest with little breast flesh to take in." %}
+                            {% elif bTier == "average" %}
+                                {% set partCue = "**Nipple play (" + ownerName + ", average):** Soft, natural curve cushions your mouth comfortably around the nipple." %}
+                            {% elif bTier == "large" or bTier == "huge" or bTier == "impossible" %}
+                                {% set partCue = "**Nipple play (" + ownerName + ", " + bTier + "):** Your mouth fills with heavy, plush softness around the nipple." %}
+                            {% endif %}
+                        {% endif %}
+                    {% elif act == "buttjob" %}
+                        {% set gTier = default(partData.butt, "") %}
+                        {% if isOwner %}
+                            {% if gTier == "flat" or gTier == "small" %}
+                                {% set partCue = "**Buttjob (your butt, " + gTier + "):** Your shallow cleft barely grips " + partnerName + "'s shaft; takes tight squeezing to hold friction." %}
+                            {% elif gTier == "firm" or gTier == "average" %}
+                                {% set partCue = "**Buttjob (your butt, " + gTier + "):** Your cheeks press snugly around " + partnerName + "'s shaft with clean, steady friction." %}
+                            {% elif gTier == "large" or gTier == "large_muscular" %}
+                                {% set partCue = "**Buttjob (your butt, large):** Your thick cheeks swallow " + partnerName + "'s shaft deep with heavy, tight grip." %}
+                            {% elif gTier == "huge" or gTier == "huge_muscular" %}
+                                {% set partCue = "**Buttjob (your butt, huge):** Your massive cheeks completely bury " + partnerName + "'s shaft in overwhelming, plush friction." %}
+                            {% endif %}
+                        {% else %}
+                            {% if gTier == "flat" or gTier == "small" %}
+                                {% set partCue = "**Buttjob (" + ownerName + "'s butt, " + gTier + "):** Shallow cleft barely grips your shaft; needs tight squeezing to hold friction." %}
+                            {% elif gTier == "firm" or gTier == "average" %}
+                                {% set partCue = "**Buttjob (" + ownerName + "'s butt, " + gTier + "):** Cheeks press snugly around your shaft with clean, steady friction." %}
+                            {% elif gTier == "large" or gTier == "large_muscular" %}
+                                {% set partCue = "**Buttjob (" + ownerName + "'s butt, large):** Thick cheeks swallow your shaft deep with heavy, tight grip." %}
+                            {% elif gTier == "huge" or gTier == "huge_muscular" %}
+                                {% set partCue = "**Buttjob (" + ownerName + "'s butt, huge):** Massive cheeks completely bury your shaft in overwhelming, plush friction." %}
+                            {% endif %}
+                        {% endif %}
+                    {% elif act == "buttsmothering" %}
+                        {% set gTier = default(partData.butt, "") %}
+                        {% if isOwner %}
+                            {% if gTier == "flat" or gTier == "small" %}
+                                {% set partCue = "**Butt smothering (your butt, " + gTier + "):** Presses directly against " + partnerName + "'s face without much cushion to bury into." %}
+                            {% elif gTier == "firm" or gTier == "average" %}
+                                {% set partCue = "**Butt smothering (your butt, " + gTier + "):** Covers " + partnerName + "'s face snugly with warm, firm pressure." %}
+                            {% elif gTier == "large" or gTier == "large_muscular" %}
+                                {% set partCue = "**Butt smothering (your butt, large):** Your heavy, plush cheeks press down hard and bury " + partnerName + "'s face deep." %}
+                            {% elif gTier == "huge" or gTier == "huge_muscular" %}
+                                {% set partCue = "**Butt smothering (your butt, huge):** Your massive, heavy cheeks completely engulf and suffocate " + partnerName + "'s face." %}
+                            {% endif %}
+                        {% else %}
+                            {% if gTier == "flat" or gTier == "small" %}
+                                {% set partCue = "**Butt smothering (" + ownerName + ", " + gTier + "):** Presses directly against your face without much cushion to bury into." %}
+                            {% elif gTier == "firm" or gTier == "average" %}
+                                {% set partCue = "**Butt smothering (" + ownerName + ", " + gTier + "):** Covers your face snugly with warm, firm pressure." %}
+                            {% elif gTier == "large" or gTier == "large_muscular" %}
+                                {% set partCue = "**Butt smothering (" + ownerName + ", large):** Heavy, plush cheeks press down hard and bury your face deep." %}
+                            {% elif gTier == "huge" or gTier == "huge_muscular" %}
+                                {% set partCue = "**Butt smothering (" + ownerName + ", huge):** Massive, heavy cheeks completely engulf and suffocate your face." %}
+                            {% endif %}
+                        {% endif %}
+                    {% elif act == "gropingbutt" %}
+                        {% set gTier = default(partData.butt, "") %}
+                        {% if isOwner %}
+                            {% if gTier == "flat" or gTier == "small" %}
+                                {% set partCue = "**Groping butt (your butt, " + gTier + "):** Compact and tight in " + partnerName + "'s hands with little soft flesh to squeeze." %}
+                            {% elif gTier == "firm" or gTier == "average" %}
+                                {% set partCue = "**Groping butt (your butt, " + gTier + "):** Solid, balanced handfuls under " + partnerName + "'s palms with natural give." %}
+                            {% elif gTier == "large" or gTier == "large_muscular" %}
+                                {% set partCue = "**Groping butt (your butt, large):** Overflowing handfuls; " + partnerName + "'s fingers dig deep into your thick, heavy cheeks." %}
+                            {% elif gTier == "huge" or gTier == "huge_muscular" %}
+                                {% set partCue = "**Groping butt (your butt, huge):** Far too much for two hands - " + partnerName + "'s fingers sink deep into your massive, heavy cheeks." %}
+                            {% endif %}
+                        {% else %}
+                            {% if gTier == "flat" or gTier == "small" %}
+                                {% set partCue = "**Groping butt (" + ownerName + ", " + gTier + "):** Compact and tight in your hands with little soft flesh to squeeze." %}
+                            {% elif gTier == "firm" or gTier == "average" %}
+                                {% set partCue = "**Groping butt (" + ownerName + ", " + gTier + "):** Solid, balanced handfuls with natural give." %}
+                            {% elif gTier == "large" or gTier == "large_muscular" %}
+                                {% set partCue = "**Groping butt (" + ownerName + ", large):** Overflowing handfuls; your fingers dig deep into thick, heavy cheeks." %}
+                            {% elif gTier == "huge" or gTier == "huge_muscular" %}
+                                {% set partCue = "**Groping butt (" + ownerName + ", huge):** Far too much for two hands - your fingers sink deep into massive, heavy cheeks." %}
+                            {% endif %}
+                        {% endif %}
+                    {% elif act == "spanking" %}
+                        {% set gTier = default(partData.butt, "") %}
+                        {% if isOwner %}
+                            {% if gTier == "flat" or gTier == "small" %}
+                                {% set partCue = "**Spanking (your butt, " + gTier + "):** Little padding - impact registers as sharp surface sting." %}
+                            {% elif gTier == "firm" or gTier == "average" %}
+                                {% set partCue = "**Spanking (your butt, " + gTier + "):** Balanced cushion - tight bounce on impact." %}
+                            {% elif gTier == "large" or gTier == "large_muscular" %}
+                                {% set partCue = "**Spanking (your butt, large):** Your thick cushion absorbs the impact and ripples noticeably." %}
+                            {% elif gTier == "huge" or gTier == "huge_muscular" %}
+                                {% set partCue = "**Spanking (your butt, huge):** Your massive cheeks absorb the impact and ripple heavily afterward." %}
+                            {% endif %}
+                        {% else %}
+                            {% if gTier == "flat" or gTier == "small" %}
+                                {% set partCue = "**Spanking (" + ownerName + ", " + gTier + "):** Little padding under your palm - impact registers as sharp surface sting." %}
+                            {% elif gTier == "firm" or gTier == "average" %}
+                                {% set partCue = "**Spanking (" + ownerName + ", " + gTier + "):** Balanced cushion - tight bounce under your hand on impact." %}
+                            {% elif gTier == "large" or gTier == "large_muscular" %}
+                                {% set partCue = "**Spanking (" + ownerName + ", large):** Thick cushion absorbs the impact and ripples noticeably under your hand." %}
+                            {% elif gTier == "huge" or gTier == "huge_muscular" %}
+                                {% set partCue = "**Spanking (" + ownerName + ", huge):** Massive cheeks absorb the impact and ripple heavily afterward." %}
+                            {% endif %}
+                        {% endif %}
+                    {% elif act == "rimjob" %}
+                        {% set gTier = default(partData.butt, "") %}
+                        {% if isOwner %}
+                            {% if gTier == "flat" or gTier == "small" %}
+                                {% set partCue = "**Rimjob (your butt, " + gTier + "):** Your compact cheeks part effortlessly, giving " + partnerName + " open access." %}
+                            {% elif gTier == "firm" or gTier == "average" %}
+                                {% set partCue = "**Rimjob (your butt, " + gTier + "):** Your cheeks part smoothly in " + partnerName + "'s hands, framing their face lightly." %}
+                            {% elif gTier == "large" or gTier == "large_muscular" %}
+                                {% set partCue = "**Rimjob (your butt, large):** " + partnerName + " has to spread your thick cheeks wide, face framed in plush warmth." %}
+                            {% elif gTier == "huge" or gTier == "huge_muscular" %}
+                                {% set partCue = "**Rimjob (your butt, huge):** " + partnerName + "'s face buries deep between your massive, heavy cheeks pressing in from both sides." %}
+                            {% endif %}
+                        {% else %}
+                            {% if gTier == "flat" or gTier == "small" %}
+                                {% set partCue = "**Rimjob (" + ownerName + ", " + gTier + "):** Compact cheeks part effortlessly with open, unobstructed access." %}
+                            {% elif gTier == "firm" or gTier == "average" %}
+                                {% set partCue = "**Rimjob (" + ownerName + ", " + gTier + "):** Cheeks part smoothly in your hands, framing your face lightly." %}
+                            {% elif gTier == "large" or gTier == "large_muscular" %}
+                                {% set partCue = "**Rimjob (" + ownerName + ", large):** Thick cheeks have to be spread wide, framing your face in plush warmth." %}
+                            {% elif gTier == "huge" or gTier == "huge_muscular" %}
+                                {% set partCue = "**Rimjob (" + ownerName + ", huge):** Your face buries deep between massive, heavy cheeks that press in from both sides." %}
+                            {% endif %}
+                        {% endif %}
+                    {% elif act == "thighjob" %}
+                        {% set tTier = default(partData.thighs, "") %}
+                        {% if isOwner %}
+                            {% if tTier == "thin" or tTier == "spindly" %}
+                                {% set partCue = "**Thighjob (your thighs, thin):** Your slender thighs leave little cushion - narrow, lean grip around " + partnerName + "'s shaft." %}
+                            {% elif tTier == "lean" or tTier == "athletic" %}
+                                {% set partCue = "**Thighjob (your thighs, lean):** Your firm, toned thighs clamp tightly around " + partnerName + "'s shaft with clean friction." %}
+                            {% elif tTier == "average" %}
+                                {% set partCue = "**Thighjob (your thighs, average):** Comfortable, snug squeeze wrapping " + partnerName + "'s shaft evenly." %}
+                            {% elif tTier == "thick" or tTier == "muscular" or tTier == "pillars" %}
+                                {% set partCue = "**Thighjob (your thighs, thick):** Your plush, powerful thighs swallow " + partnerName + "'s shaft in heavy warmth and tight friction." %}
+                            {% elif tTier == "colossal" or tTier == "colossal_muscular" or tTier == "immense" or tTier == "immense_soft" %}
+                                {% set partCue = "**Thighjob (your thighs, massive):** Your immense, crushing thighs completely engulf " + partnerName + "'s shaft in overwhelming warmth." %}
+                            {% endif %}
+                        {% else %}
+                            {% if tTier == "thin" or tTier == "spindly" %}
+                                {% set partCue = "**Thighjob (" + ownerName + "'s thighs, thin):** Slender thighs leave little cushion - narrow, lean grip around your shaft." %}
+                            {% elif tTier == "lean" or tTier == "athletic" %}
+                                {% set partCue = "**Thighjob (" + ownerName + "'s thighs, lean):** Firm, toned thighs clamp tightly around your shaft with clean friction." %}
+                            {% elif tTier == "average" %}
+                                {% set partCue = "**Thighjob (" + ownerName + "'s thighs, average):** Comfortable, snug squeeze wrapping your shaft evenly." %}
+                            {% elif tTier == "thick" or tTier == "muscular" or tTier == "pillars" %}
+                                {% set partCue = "**Thighjob (" + ownerName + "'s thighs, thick):** Plush, powerful thighs swallow your shaft in heavy warmth and tight friction." %}
+                            {% elif tTier == "colossal" or tTier == "colossal_muscular" or tTier == "immense" or tTier == "immense_soft" %}
+                                {% set partCue = "**Thighjob (" + ownerName + "'s thighs, massive):** Immense, crushing thighs completely engulf your shaft in overwhelming warmth." %}
+                            {% endif %}
+                        {% endif %}
+                    {% elif act == "grindingthigh" %}
+                        {% set tTier = default(partData.thighs, "") %}
+                        {% if isOwner %}
+                            {% if tTier == "thin" or tTier == "spindly" %}
+                                {% set partCue = "**Thigh grinding (your thigh, thin):** Narrow, firm ridge for " + partnerName + " to grind against with little softness." %}
+                            {% elif tTier == "lean" or tTier == "athletic" %}
+                                {% set partCue = "**Thigh grinding (your thigh, lean):** Your firm, toned thigh gives crisp, steady pressure under " + partnerName + "'s grinding." %}
+                            {% elif tTier == "average" %}
+                                {% set partCue = "**Thigh grinding (your thigh, average):** Your soft, natural thigh cushions " + partnerName + "'s grinding comfortably." %}
+                            {% elif tTier == "thick" or tTier == "muscular" or tTier == "pillars" %}
+                                {% set partCue = "**Thigh grinding (your thigh, thick):** Your broad, plush thigh gives " + partnerName + " a thick, yielding cushion to ride hard." %}
+                            {% elif tTier == "colossal" or tTier == "colossal_muscular" or tTier == "immense" or tTier == "immense_soft" %}
+                                {% set partCue = "**Thigh grinding (your thigh, massive):** Your huge, soft thigh spreads wide underneath, absorbing every grind from " + partnerName + "." %}
+                            {% endif %}
+                        {% else %}
+                            {% if tTier == "thin" or tTier == "spindly" %}
+                                {% set partCue = "**Thigh grinding (" + ownerName + ", thin):** Narrow, firm ridge to grind against with little softness." %}
+                            {% elif tTier == "lean" or tTier == "athletic" %}
+                                {% set partCue = "**Thigh grinding (" + ownerName + ", lean):** Firm, toned thigh gives crisp, steady pressure to grind against." %}
+                            {% elif tTier == "average" %}
+                                {% set partCue = "**Thigh grinding (" + ownerName + ", average):** Soft, natural thigh cushions each grind comfortably." %}
+                            {% elif tTier == "thick" or tTier == "muscular" or tTier == "pillars" %}
+                                {% set partCue = "**Thigh grinding (" + ownerName + ", thick):** Broad, plush thigh offers a thick, yielding cushion to ride hard." %}
+                            {% elif tTier == "colossal" or tTier == "colossal_muscular" or tTier == "immense" or tTier == "immense_soft" %}
+                                {% set partCue = "**Thigh grinding (" + ownerName + ", massive):** Huge, soft thigh spreads wide underneath, absorbing every grind." %}
+                            {% endif %}
+                        {% endif %}
+                    {% elif act == "holdingthigh" %}
+                        {% set tTier = default(partData.thighs, "") %}
+                        {% if isOwner %}
+                            {% if tTier == "thin" or tTier == "spindly" %}
+                                {% set partCue = "**Holding thighs (your thighs, thin):** Slender enough for " + partnerName + "'s hands to wrap almost all the way around." %}
+                            {% elif tTier == "lean" or tTier == "athletic" %}
+                                {% set partCue = "**Holding thighs (your thighs, lean):** Toned and solid in " + partnerName + "'s grip, easy to leverage." %}
+                            {% elif tTier == "average" %}
+                                {% set partCue = "**Holding thighs (your thighs, average):** Comfortable, natural weight in " + partnerName + "'s hands." %}
+                            {% elif tTier == "thick" or tTier == "muscular" or tTier == "pillars" %}
+                                {% set partCue = "**Holding thighs (your thighs, thick):** Thick and heavy; " + partnerName + "'s fingers dig deep into your plush flesh for leverage." %}
+                            {% elif tTier == "colossal" or tTier == "colossal_muscular" or tTier == "immense" or tTier == "immense_soft" %}
+                                {% set partCue = "**Holding thighs (your thighs, massive):** Massive and heavy; " + partnerName + "'s hands sink deep into your thick thighs just to get a grip." %}
+                            {% endif %}
+                        {% else %}
+                            {% if tTier == "thin" or tTier == "spindly" %}
+                                {% set partCue = "**Holding thighs (" + ownerName + ", thin):** Slender enough for your hands to wrap almost all the way around." %}
+                            {% elif tTier == "lean" or tTier == "athletic" %}
+                                {% set partCue = "**Holding thighs (" + ownerName + ", lean):** Toned, solid thigh sits firmly in your hands with easy leverage." %}
+                            {% elif tTier == "average" %}
+                                {% set partCue = "**Holding thighs (" + ownerName + ", average):** Comfortable, natural weight to grip and hold open." %}
+                            {% elif tTier == "thick" or tTier == "muscular" or tTier == "pillars" %}
+                                {% set partCue = "**Holding thighs (" + ownerName + ", thick):** Thick and heavy in your hands; fingers dig deep into plush, substantial flesh for leverage." %}
+                            {% elif tTier == "colossal" or tTier == "colossal_muscular" or tTier == "immense" or tTier == "immense_soft" %}
+                                {% set partCue = "**Holding thighs (" + ownerName + ", massive):** Massive and heavy; your hands sink deep into thick thighs just to get a grip." %}
+                            {% endif %}
+                        {% endif %}
+                    {% endif %}
+                {% endif %}
+            {% endif %}
+            {% if partCue != "" %}
+                {% if not printedBodyPartHeader %}
+                    {% set printedBodyPartHeader = true %}
+**Active Body Part - Physical Impact:** (Let this color sensation and reactions naturally; don't fixate on it every turn.)
+                {% endif %}
+- {{ partCue }}
+            {% endif %}
+        {% endif %}
+    {% endfor %}
+{% endif %}

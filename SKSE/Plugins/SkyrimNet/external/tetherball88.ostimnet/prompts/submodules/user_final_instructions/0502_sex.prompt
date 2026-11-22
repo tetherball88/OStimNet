@@ -89,6 +89,9 @@
     **First-Time Experience (Subtle Background Context):** {{ npcData.name }} is a virgin experiencing partnered sexual intimacy for the first time. Let this fact color their delivery strictly according to their personality, attitude, and the encounter's intent (`{{ ostim_intent }}`).
     {% endif %}
     {% set ostimNetSettings = ostimnet_settings(player.UUID) %}
+    {% if ostimNetSettings.bodyPartSizeCues and not isSolo and currentScene and currentScene.activeBodyParts and length(currentScene.activeBodyParts) > 0 %}
+    {{ render_template("helpers\\ostimnet_sex_body_parts") }}
+    {% endif %}
     {% if ostimNetSettings.internalClimaxPromptCue and not isSolo %}
         **Conception & Pregnancy Awareness (Subtle Background Context):**
         - **Stay in the physical moment:** Do NOT fixate on, repeatedly mention, or bring up pregnancy, babies, or pulling out in every response. The overwhelming focus MUST remain on the immediate physical sensations, pleasure, touch, breathlessness, and intimacy of the current position. Conception risk is passive background knowledge — it should only surface occasionally as a fleeting thought, or when climax and finishing inside is imminent or directly addressed.

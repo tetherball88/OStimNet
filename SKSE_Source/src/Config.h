@@ -64,6 +64,9 @@ struct Config {
     /// When true, adds a dedicated prompt cue for internal climaxes (different for male and female).
     bool EnableInternalClimaxPromptCue() const;
 
+    /// When true, adds action-specific physical impact cues during sex based on Body Language part sizes.
+    bool EnableBodyPartSizeCues() const;
+
     /// Wait this many seconds after speed changes before dispatching the change.
     int SpeedChangeDebounceSeconds() const;
 

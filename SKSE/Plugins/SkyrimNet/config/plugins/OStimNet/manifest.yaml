@@ -186,6 +186,12 @@ schema:
       description: "When enabled, adds a prompt reminder during sex that sex and finishing inside can lead to pregnancy and having children, with distinct guidance for male and female characters."
       defaultValue: true
       category: "Comments"
+    - name: "Body part size cues"
+      path: "tton.settings.bodyPartSizeCues"
+      type: "bool"
+      description: "When enabled (and TT Body Language is installed), adds action-specific physical impact cues during sex based on participants' penis, breast, butt, and thigh sizes."
+      defaultValue: true
+      category: "Comments"
 
     # Spectators
     - name: "Enable spectators"

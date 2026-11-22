@@ -148,6 +148,11 @@ bool Config::EnableInternalClimaxPromptCue() const {
     return val == "true" || val == "1";
 }
 
+bool Config::EnableBodyPartSizeCues() const {
+    std::string val = GetValue("tton.settings.bodyPartSizeCues", "true");
+    return val == "true" || val == "1";
+}
+
 int Config::SpeedChangeDebounceSeconds() const {
     try { return std::stoi(GetValue("tton.settings.speedChangeDebounce", "5")); }
     catch (...) { return 5; }

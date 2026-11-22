@@ -1,5 +1,20 @@
 # Changelog
 
+## v2.8.0
+
+### Added
+
+- **Optional TT Body Language (`v2.3.0+`) integration — action-specific body part size cues** — Active sexual scenes now detect which body parts are involved in the current animation (`activeBodyParts`) and inject action-specific physical impact cues (`ostimnet_sex_body_parts.prompt`) into ongoing scene dialogue (`0502_sex.prompt`) based on participants' penis (`XS`–`XXXL`), breast, butt, and thigh size tiers:
+  - Covers vaginal/anal/oral sex, handjobs, footjobs, boobjobs, breast groping/slapping/sucking, buttjobs/spanking/rimjobs/groping, and thigh actions from both owner and partner perspectives.
+  - Added the **Body part size cues** toggle (`tton.settings.bodyPartSizeCues`, enabled by default) under *Comments* in SkyrimNet plugin settings (`manifest.yaml` / `ostimnet_settings`).
+  - Automatically registers safe fallback stubs for `ttlb_get_genitals` and `ttlb_get_body_parts` when TT Body Language is not installed so prompts remain cleanly compatible.
+
+### Changed
+
+- **Animation descriptions** — Expanded and updated custom scene descriptions in `Billyy.json` and `Moon Lovemaking Compendium.json`.
+
+---
+
 ## v2.7.4
 
 ### Fixed

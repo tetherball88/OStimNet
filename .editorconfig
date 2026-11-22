@@ -16,3 +16,6 @@ indent_size = 4
 # Web & TypeScript stack
 [*.{js,jsx,ts,tsx,json,css,html,yaml,yml}]
 indent_size = 2
+
+[SKSE/**/*.json]
+indent_size = 4

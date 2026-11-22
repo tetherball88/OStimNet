@@ -113,6 +113,147 @@ std::string ComputeThreadPaceTier(int threadID, bool isSexual) {
     return "moderate";
 }
 
+// Resolves penis/breast/butt/thigh-focused actions in the thread's current OStim scene
+// to [{"action": "...", "part": "penis"|"breasts"|"butt"|"thighs", "actorUUID": <owner>, "partnerUUID": <other>}], deduplicated.
+nlohmann::json ComputeActiveBodyParts(int threadID) {
+    auto out = nlohmann::json::array();
+    if (!g_ostimThreadInterface || !ONavGetSceneActionsDetailed || !PublicFormIDToUUID) return out;
+
+    const uint32_t uid = static_cast<uint32_t>(threadID);
+    if (!g_ostimThreadInterface->IsThreadValid(uid) || g_ostimThreadInterface->IsTransition(uid)) return out;
+
+    const char* sceneId = g_ostimThreadInterface->GetCurrentSceneID(uid);
+    if (!sceneId || sceneId[0] == '\0') return out;
+
+    constexpr uint32_t kMaxActors = 16;
+    OstimNG_API::Thread::ActorData actorBuf[kMaxActors]{};
+    const uint32_t actorCount = g_ostimThreadInterface->GetActors(uid, actorBuf, kMaxActors);
+    if (actorCount == 0) return out;
+
+    const char* detailedJson = ONavGetSceneActionsDetailed(sceneId);
+    if (!detailedJson || detailedJson[0] == '\0') return out;
+
+    try {
+        auto parsed = nlohmann::json::parse(detailedJson);
+        if (!parsed.is_array()) return out;
+
+        auto resolveSlotUUID = [&](const nlohmann::json& item, const char* field) -> uint64_t {
+            if (!item.contains(field) || !item[field].is_number_integer()) return 0;
+            const int slot = item[field].get<int>();
+            if (slot < 0 || static_cast<uint32_t>(slot) >= actorCount) return 0;
+            return ActorRefIDToUUID(actorBuf[slot].formID);
+        };
+
+        std::unordered_set<std::string> seen;
+        std::unordered_set<std::string> deepthroatPairs;
+        auto pushEntry = [&](const char* actionGroup, const char* part, const nlohmann::json& item, const char* ownerField) {
+            const char* partnerField = (std::string_view(ownerField) == "actor") ? "target" : "actor";
+            const uint64_t ownerUUID = resolveSlotUUID(item, ownerField);
+            const uint64_t partnerUUID = resolveSlotUUID(item, partnerField);
+            if (ownerUUID == 0 || partnerUUID == 0) return;
+            const std::string dedupKey = std::string(actionGroup) + ":" + std::to_string(ownerUUID) + ":" + std::to_string(partnerUUID);
+            if (!seen.insert(dedupKey).second) return;
+            out.push_back({{"action", actionGroup}, {"part", part}, {"actorUUID", ownerUUID}, {"partnerUUID", partnerUUID}});
+        };
+
+        // First pass: detect deepthroating so we can suppress duplicate blowjob cues for the same pair.
+        for (const auto& item : parsed) {
+            if (!item.is_object() || !item.contains("type") || !item["type"].is_string()) continue;
+            std::string action = item["type"].get<std::string>();
+            std::transform(action.begin(), action.end(), action.begin(),
+                           [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+            if (action == "deepthroating") {
+                const uint64_t ownerUUID = resolveSlotUUID(item, "target");
+                const uint64_t partnerUUID = resolveSlotUUID(item, "actor");
+                if (ownerUUID != 0 && partnerUUID != 0) {
+                    deepthroatPairs.insert(std::to_string(ownerUUID) + ":" + std::to_string(partnerUUID));
+                }
+            }
+        }
+
+        for (const auto& item : parsed) {
+            if (!item.is_object() || !item.contains("type") || !item["type"].is_string()) continue;
+
+            std::string action = item["type"].get<std::string>();
+            std::transform(action.begin(), action.end(), action.begin(),
+                           [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+
+            // Penis
+            if (action == "vaginalsex") {
+                pushEntry("vaginalsex", "penis", item, "actor");
+            } else if (action == "analsex") {
+                pushEntry("analsex", "penis", item, "actor");
+            } else if (action == "deepthroating") {
+                pushEntry("deepthroating", "penis", item, "target");
+            } else if (action == "blowjob" || action == "3pp_kissfellatio1" || action == "3pp_kissfellatio2") {
+                const uint64_t ownerUUID = resolveSlotUUID(item, "target");
+                const uint64_t partnerUUID = resolveSlotUUID(item, "actor");
+                if (ownerUUID != 0 && partnerUUID != 0 &&
+                    !deepthroatPairs.contains(std::to_string(ownerUUID) + ":" + std::to_string(partnerUUID))) {
+                    pushEntry("blowjob", "penis", item, "target");
+                }
+            } else if (action == "penilelicking" || action == "3pp_lickingpenis") {
+                pushEntry("penilelicking", "penis", item, "target");
+            } else if (action == "handjob") {
+                pushEntry("handjob", "penis", item, "target");
+            } else if (action == "footjob") {
+                pushEntry("footjob", "penis", item, "target");
+            } else if (action == "tailjob") {
+                pushEntry("tailjob", "penis", item, "target");
+            } else if (action == "rubbingpenisagainstface") {
+                pushEntry("rubbingpenisagainstface", "penis", item, "actor");
+            } else if (action == "grindingpenis") {
+                pushEntry("grindingpenis", "penis", item, "target");
+            } else if (action == "gropingtesticles" || action == "3pp_gropingtesticles") {
+                pushEntry("gropingtesticles", "penis", item, "target");
+            } else if (action == "testicularlicking") {
+                pushEntry("testicularlicking", "penis", item, "target");
+            }
+            // Breasts
+            else if (action == "boobjob" || action == "3pp_boobjob") {
+                pushEntry("boobjob", "breasts", item, "actor");
+                pushEntry("boobjob_penis", "penis", item, "target");
+            } else if (action == "breastsmothering") {
+                pushEntry("breastsmothering", "breasts", item, "actor");
+            } else if (action == "breastsliding") {
+                pushEntry("breastsliding", "breasts", item, "actor");
+            } else if (action == "gropingbreast" || action == "3pp_gropingbreast") {
+                pushEntry("gropingbreast", "breasts", item, "target");
+            } else if (action == "breastslapping") {
+                pushEntry("breastslapping", "breasts", item, "target");
+            } else if (action == "suckingnipple" || action == "lickingnipple") {
+                pushEntry("suckingnipple", "breasts", item, "target");
+            }
+            // Butt
+            else if (action == "buttjob" || action == "3pp_buttjob") {
+                pushEntry("buttjob", "butt", item, "actor");
+                pushEntry("buttjob_penis", "penis", item, "target");
+            } else if (action == "buttsmothering") {
+                pushEntry("buttsmothering", "butt", item, "actor");
+            } else if (action == "gropingbutt" || action == "3pp_gropingbutt") {
+                pushEntry("gropingbutt", "butt", item, "target");
+            } else if (action == "spanking") {
+                pushEntry("spanking", "butt", item, "target");
+            } else if (action == "rimjob" || action == "anallicking") {
+                pushEntry("rimjob", "butt", item, "target");
+            }
+            // Thighs
+            else if (action == "thighjob") {
+                pushEntry("thighjob", "thighs", item, "actor");
+                pushEntry("thighjob_penis", "penis", item, "target");
+            } else if (action == "grindingthigh") {
+                pushEntry("grindingthigh", "thighs", item, "target");
+            } else if (action == "holdingthigh") {
+                pushEntry("holdingthigh", "thighs", item, "target");
+            }
+        }
+    } catch (const std::exception& e) {
+        SKSE::log::warn("ComputeActiveBodyParts: failed to parse detailed actions for '{}': {}", sceneId, e.what());
+    }
+
+    return out;
+}
+
 // Builds the JSON object for a single active scene (shared by ostimnet_active_scenes
 // and ostimnet_actor_scene).
 nlohmann::json BuildSceneJson(const OStimNet::ThreadDataStore::ActiveSceneInfo& scene) {
@@ -124,6 +265,9 @@ nlohmann::json BuildSceneJson(const OStimNet::ThreadDataStore::ActiveSceneInfo& 
     bool isSexualVal = sexual.value_or(false);
     s["isSexual"]    = isSexualVal;
     s["paceTier"]    = ComputeThreadPaceTier(scene.threadID, isSexualVal);
+    s["activeBodyParts"] = (isSexualVal && OStimNet::Config::GetSingleton().EnableBodyPartSizeCues())
+        ? ComputeActiveBodyParts(scene.threadID)
+        : nlohmann::json::array();
 
     auto actors = nlohmann::json::array();
     for (auto formID : scene.actorFormIDs) {
@@ -216,6 +360,26 @@ void Register() {
             auto val = OStimNet::OVirginityService::GetSingleton().GetCachedVirginity(actor);
             return val.has_value() ? (*val ? "true" : "false") : "";
         });
+
+    // BodyLanguage registers ttlb_get_genitals and ttlb_get_body_parts during kPostPostLoad
+    // (before OStimNet's kDataLoaded). If BodyLanguage is not installed, register no-op stubs
+    // so prompts calling them still parse cleanly in Inja.
+    if (PublicHasDecorator && !PublicHasDecorator("ttlb_get_genitals")) {
+        RegisterDecorator(
+            "ttlb_get_genitals",
+            "Fallback stub when BodyLanguage is not installed. Always returns {\"hasGenitals\":false}.",
+            [](RE::Actor*) -> std::string {
+                return "{\"hasGenitals\":false}";
+            });
+    }
+    if (PublicHasDecorator && !PublicHasDecorator("ttlb_get_body_parts")) {
+        RegisterDecorator(
+            "ttlb_get_body_parts",
+            "Fallback stub when BodyLanguage is not installed. Always returns {\"valid\":false}.",
+            [](RE::Actor*) -> std::string {
+                return "{\"valid\":false}";
+            });
+    }
 
     RegisterDecorator(
         "ostimnet_active_scenes",
@@ -743,12 +907,13 @@ void Register() {
     RegisterDecorator(
         "ostimnet_settings",
         "JSON object containing current OStimNet settings relevant to scene behaviour. "
-        "Fields: enableAggressiveIntent (bool), playerSelectionChance (string: 'regular', 'reduced', 'never'), internalClimaxPromptCue (bool).",
+        "Fields: enableAggressiveIntent (bool), playerSelectionChance (string: 'regular', 'reduced', 'never'), internalClimaxPromptCue (bool), bodyPartSizeCues (bool).",
         [](RE::Actor*) -> std::string {
             nlohmann::json j;
             j["enableAggressiveIntent"]  = OStimNet::Config::GetSingleton().EnableAggressiveIntent();
             j["playerSelectionChance"]   = OStimNet::Config::GetSingleton().LocationScanPlayerSelectionChance();
             j["internalClimaxPromptCue"] = OStimNet::Config::GetSingleton().EnableInternalClimaxPromptCue();
+            j["bodyPartSizeCues"]        = OStimNet::Config::GetSingleton().EnableBodyPartSizeCues();
             return j.dump();
         });
 
