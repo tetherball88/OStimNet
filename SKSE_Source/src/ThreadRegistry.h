@@ -89,6 +89,85 @@ inline PulloutDecision PulloutDecisionFromString(const std::string& s) {
     return PulloutDecision::Undecided;
 }
 
+// -------------------------------------------------------------------------
+// Encounter timeline & transient reaction cue structures
+// -------------------------------------------------------------------------
+enum class TimelineEntryKind {
+    Start,
+    Scene,
+    Continuation,
+    IntentChanged,
+    Pullout,
+    Climax,
+    Milestone,
+    Spectator
+};
+
+inline const char* TimelineEntryKindToLabel(TimelineEntryKind k) {
+    switch (k) {
+        case TimelineEntryKind::Start:         return "Start";
+        case TimelineEntryKind::Scene:         return "Scene";
+        case TimelineEntryKind::Continuation:  return "Joined/Changed";
+        case TimelineEntryKind::IntentChanged: return "Dynamic Shift";
+        case TimelineEntryKind::Pullout:       return "Pullout";
+        case TimelineEntryKind::Climax:        return "Climax";
+        case TimelineEntryKind::Milestone:     return "Milestone";
+        case TimelineEntryKind::Spectator:     return "Spectator";
+        default:                               return "Event";
+    }
+}
+
+struct TimelineEntry {
+    TimelineEntryKind kind = TimelineEntryKind::Scene;
+    std::string       sceneID;
+    std::string       text;
+    std::string       paceAnnotation;
+};
+
+struct SceneTransitionRecord {
+    std::string prevSceneID;
+    std::string prevDescription;
+    std::string currDescription;
+    std::string consumedContextNote;
+    uint64_t    generation   = 0;
+    bool        sceneChanged = false;
+};
+
+struct TransientReactionCue {
+    std::string                           type;
+    std::string                           cueText;
+    RE::FormID                            speakerFormID = 0;
+    RE::FormID                            targetFormID  = 0;
+    int                                   threadID      = -1;
+    std::chrono::steady_clock::time_point expiresAt{};
+};
+
+struct CapturedActorPhysicalTraits {
+    std::string actorName;
+    std::string genitalSize;   // XS, S, M, L, XL, XXL, XXXL (captured while naked)
+    std::string breastsTier;   // flat, small, average, large, huge, impossible
+    std::string buttTier;      // flat, small, average, large, huge, impossible
+    bool        bodyPartsChecked = false;
+};
+
+struct EncounterStopSnapshot {
+    int                        threadID     = -1;
+    bool                       isOStimNet   = false;
+    bool                       isSexual     = false;
+    Intent                     intent       = Intent::Unset;
+    std::string                actorNames;
+    std::string                mainActorNames;
+    std::string                secondaryActorNames;
+    std::vector<uint32_t>      actorFormIDs;
+    RE::FormID                 speakerFormID = 0;
+    std::string                speakerName;
+    bool                       skipTrigger  = false;
+    bool                       interrupted  = false;
+    std::string                interruptReason;
+    std::vector<TimelineEntry> timeline;
+    std::string                notablePhysicalTraits;
+};
+
 
 // -------------------------------------------------------------------------
 // Per-thread data store and lifecycle manager.
@@ -1099,11 +1178,21 @@ public:
             SKSE::log::info("ThreadRegistry: CopyStateForContinuation same-ID restart, no override, checking for joiners");
         }
 
-        // Copy sexual phase — continuation always inherits the predecessor's phase.
+        // Copy sexual phase & encounter timeline — continuation always inherits predecessor's history.
         nw.sexualPhase = old.sexualPhase;
         if (oldThreadID != newThreadID) {
             nw.playerCrimeGoldAtStart = old.playerCrimeGoldAtStart;
             nw.crimeGoldSnapshotted   = old.crimeGoldSnapshotted;
+            nw.lastSceneID            = old.lastSceneID;
+            nw.lastSceneDescription   = old.lastSceneDescription;
+            nw.lastPaceTier           = old.lastPaceTier;
+            nw.timeline               = old.timeline;
+            nw.pendingContextNote     = old.pendingContextNote;
+            nw.transitionGen          = old.transitionGen + 1;
+            nw.lastCommentAt          = old.lastCommentAt;
+            nw.capturedPhysicalTraits = old.capturedPhysicalTraits;
+        } else {
+            ++nw.transitionGen;
         }
 
         // Clear override fields and consumed continuation marker — for same-ID
@@ -1185,12 +1274,343 @@ public:
         state.pulloutCueFired          = false;
         state.playerCrimeGoldAtStart   = GetTotalPlayerCrimeGold();
         state.crimeGoldSnapshotted     = true;
+        state.lastSceneID.clear();
+        state.lastSceneDescription.clear();
+        state.lastPaceTier.clear();
+        state.timeline.clear();
+        state.pendingContextNote.clear();
+        state.capturedPhysicalTraits.clear();
+        ++state.transitionGen;
+        state.lastCommentAt            = {};
+    }
+
+    // =========================================================================
+    // Encounter timeline, transition generation, cooldown & transient cues
+    // =========================================================================
+
+    void RecordInitialScene(int threadID,
+                            const std::string& sceneID,
+                            const std::string& baseDesc,
+                            const std::string& paceTier) {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
+        auto& state                = _threads[threadID];
+        state.lastSceneID          = sceneID;
+        state.lastSceneDescription = baseDesc;
+        state.lastPaceTier         = paceTier;
+        state.timeline.clear();
+        state.pendingContextNote.clear();
+        state.capturedPhysicalTraits.clear();
+        ++state.transitionGen;
+        if (!baseDesc.empty()) {
+            std::string paceNote = (paceTier == "slow" || paceTier == "fast") ? ("pace: " + paceTier) : "";
+            state.timeline.push_back(TimelineEntry{
+                TimelineEntryKind::Start, sceneID, baseDesc, std::move(paceNote)});
+        }
+    }
+
+    SceneTransitionRecord RecordSceneTransition(int threadID,
+                                                const std::string& sceneID,
+                                                const std::string& baseDesc,
+                                                const std::string& paceTier) {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
+        auto& state = _threads[threadID];
+        SceneTransitionRecord rec;
+        rec.prevSceneID         = state.lastSceneID;
+        rec.prevDescription     = state.lastSceneDescription;
+        rec.currDescription     = baseDesc;
+        rec.consumedContextNote = std::move(state.pendingContextNote);
+        state.pendingContextNote.clear();
+        rec.sceneChanged        = (rec.prevSceneID != sceneID) || (rec.prevDescription != baseDesc);
+
+        state.lastSceneID          = sceneID;
+        state.lastSceneDescription = baseDesc;
+        state.lastPaceTier         = paceTier;
+        rec.generation             = ++state.transitionGen;
+
+        if (!baseDesc.empty()) {
+            bool isDuplicateLastScene = false;
+            for (auto it = state.timeline.rbegin(); it != state.timeline.rend(); ++it) {
+                if (it->kind == TimelineEntryKind::Scene || it->kind == TimelineEntryKind::Start) {
+                    if ((!sceneID.empty() && it->sceneID == sceneID) || it->text == baseDesc) {
+                        isDuplicateLastScene = true;
+                    }
+                    break;
+                }
+            }
+            if (!isDuplicateLastScene) {
+                AppendTimelineEntryBounded(state.timeline, TimelineEntry{
+                    TimelineEntryKind::Scene,
+                    sceneID,
+                    baseDesc,
+                    (paceTier == "slow" || paceTier == "fast") ? ("pace: " + paceTier) : ""});
+            }
+        }
+        return rec;
+    }
+
+    SceneTransitionRecord RecordContinuationTransition(int threadID,
+                                                       const std::string& joinSummary,
+                                                       const std::string& newSceneID,
+                                                       const std::string& newBaseDesc,
+                                                       const std::string& paceTier) {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
+        auto& state = _threads[threadID];
+        SceneTransitionRecord rec;
+        rec.prevSceneID         = state.lastSceneID;
+        rec.prevDescription     = state.lastSceneDescription;
+        rec.currDescription     = newBaseDesc;
+        rec.consumedContextNote = joinSummary;
+        if (!state.pendingContextNote.empty()) {
+            if (!rec.consumedContextNote.empty()) rec.consumedContextNote += " ";
+            rec.consumedContextNote += state.pendingContextNote;
+            state.pendingContextNote.clear();
+        }
+        rec.sceneChanged           = true;
+        state.lastSceneID          = newSceneID;
+        state.lastSceneDescription = newBaseDesc;
+        state.lastPaceTier         = paceTier;
+        rec.generation             = ++state.transitionGen;
+
+        if (!joinSummary.empty()) {
+            AppendTimelineEntryBounded(state.timeline, TimelineEntry{
+                TimelineEntryKind::Continuation, "", joinSummary, ""});
+        }
+        if (!newBaseDesc.empty()) {
+            AppendTimelineEntryBounded(state.timeline, TimelineEntry{
+                TimelineEntryKind::Scene,
+                newSceneID,
+                newBaseDesc,
+                (paceTier == "slow" || paceTier == "fast") ? ("pace: " + paceTier) : ""});
+        }
+        return rec;
+    }
+
+    // Updates pace annotation on the latest Scene/Start timeline entry in-place.
+    // Returns true if the pace tier or direction represents a meaningful change.
+    bool AnnotateCurrentScenePace(int threadID,
+                                  const std::string& paceTier,
+                                  const std::string& direction) {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
+        auto it = _threads.find(threadID);
+        if (it == _threads.end()) return false;
+        auto& state = it->second;
+        bool tierChanged = (!paceTier.empty() && paceTier != state.lastPaceTier);
+        if (!paceTier.empty()) state.lastPaceTier = paceTier;
+
+        std::string note = "pace " + direction;
+        if (!paceTier.empty()) note += " (" + paceTier + ")";
+
+        for (auto rit = state.timeline.rbegin(); rit != state.timeline.rend(); ++rit) {
+            if (rit->kind == TimelineEntryKind::Scene || rit->kind == TimelineEntryKind::Start) {
+                rit->paceAnnotation = note;
+                break;
+            }
+        }
+        return tierChanged || !direction.empty();
+    }
+
+    void AppendTimelineEvent(int threadID,
+                             TimelineEntryKind kind,
+                             const std::string& text,
+                             const std::string& contextNoteForNextScene = "") {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
+        auto it = _threads.find(threadID);
+        if (it == _threads.end()) return;
+        auto& state = it->second;
+        if (!text.empty()) {
+            AppendTimelineEntryBounded(state.timeline, TimelineEntry{kind, "", text, ""});
+        }
+        if (!contextNoteForNextScene.empty()) {
+            if (!state.pendingContextNote.empty()) state.pendingContextNote += " ";
+            state.pendingContextNote += contextNoteForNextScene;
+        }
+    }
+
+    std::string GetLastSceneID(int threadID) const {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
+        auto it = _threads.find(threadID);
+        return it != _threads.end() ? it->second.lastSceneID : std::string{};
+    }
+
+    std::string GetLastSceneDescription(int threadID) const {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
+        auto it = _threads.find(threadID);
+        return it != _threads.end() ? it->second.lastSceneDescription : std::string{};
+    }
+
+    uint64_t GetTransitionGeneration(int threadID) const {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
+        auto it = _threads.find(threadID);
+        return it != _threads.end() ? it->second.transitionGen : 0;
+    }
+
+    uint64_t BumpTransitionGeneration(int threadID) {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
+        return ++_threads[threadID].transitionGen;
+    }
+
+    bool TryConsumeCommentCooldown(int threadID, int cooldownSeconds) {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
+        auto it = _threads.find(threadID);
+        if (it == _threads.end()) return false;
+        auto now = std::chrono::steady_clock::now();
+        if (cooldownSeconds > 0 && it->second.lastCommentAt.time_since_epoch().count() > 0) {
+            auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - it->second.lastCommentAt).count();
+            if (elapsed < cooldownSeconds) {
+                return false;
+            }
+        }
+        it->second.lastCommentAt = now;
+        return true;
+    }
+
+    void SetActiveCueForActor(RE::FormID speakerFormID,
+                              RE::FormID targetFormID,
+                              int threadID,
+                              std::string type,
+                              std::string cueText,
+                              std::chrono::seconds ttl = std::chrono::seconds(15)) {
+        if (speakerFormID == 0 || cueText.empty()) return;
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
+        // Clear any prior non-interrupted cues on the same thread so only one speaker holds a cue per beat.
+        if (threadID >= 0) {
+            for (auto it = _actorCues.begin(); it != _actorCues.end();) {
+                if (it->second.threadID == threadID && it->first != speakerFormID && it->second.type != "interrupted") {
+                    it = _actorCues.erase(it);
+                } else {
+                    ++it;
+                }
+            }
+        }
+        _actorCues[speakerFormID] = TransientReactionCue{
+            std::move(type),
+            std::move(cueText),
+            speakerFormID,
+            targetFormID,
+            threadID,
+            std::chrono::steady_clock::now() + ttl};
+    }
+
+    std::optional<TransientReactionCue> GetActiveCueForActor(RE::FormID actorFormID) const {
+        if (actorFormID == 0) return std::nullopt;
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
+        auto it = _actorCues.find(actorFormID);
+        if (it == _actorCues.end()) return std::nullopt;
+        if (std::chrono::steady_clock::now() >= it->second.expiresAt) {
+            _actorCues.erase(it);
+            return std::nullopt;
+        }
+        return it->second;
+    }
+
+    void ConsumeCueForActor(RE::FormID actorFormID) {
+        if (actorFormID == 0) return;
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
+        _actorCues.erase(actorFormID);
+    }
+
+    void ClearNonInterruptedCuesForThread(int threadID) {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
+        for (auto it = _actorCues.begin(); it != _actorCues.end();) {
+            if (it->second.threadID == threadID && it->second.type != "interrupted") {
+                it = _actorCues.erase(it);
+            } else {
+                ++it;
+            }
+        }
+    }
+
+    void GetPhysicalTraitCaptureNeeds(int threadID,
+                                      uint32_t formID,
+                                      bool& needGenitals,
+                                      bool& needBodyParts) const {
+        needGenitals  = true;
+        needBodyParts = true;
+        if (formID == 0) {
+            needGenitals  = false;
+            needBodyParts = false;
+            return;
+        }
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
+        auto it = _threads.find(threadID);
+        if (it == _threads.end()) {
+            needGenitals  = false;
+            needBodyParts = false;
+            return;
+        }
+        auto pit = it->second.capturedPhysicalTraits.find(formID);
+        if (pit != it->second.capturedPhysicalTraits.end()) {
+            needGenitals  = pit->second.genitalSize.empty();
+            needBodyParts = !pit->second.bodyPartsChecked;
+        }
+    }
+
+    void StoreCapturedGenitalSize(int threadID,
+                                  uint32_t formID,
+                                  const std::string& actorName,
+                                  const std::string& sizeTier) {
+        if (formID == 0 || sizeTier.empty()) return;
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
+        auto it = _threads.find(threadID);
+        if (it == _threads.end()) return;
+        auto& entry = it->second.capturedPhysicalTraits[formID];
+        if (entry.actorName.empty() && !actorName.empty()) entry.actorName = actorName;
+        entry.genitalSize = sizeTier;
+    }
+
+    void StoreCapturedBodyParts(int threadID,
+                                uint32_t formID,
+                                const std::string& actorName,
+                                const std::string& breastsTier,
+                                const std::string& buttTier) {
+        if (formID == 0) return;
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
+        auto it = _threads.find(threadID);
+        if (it == _threads.end()) return;
+        auto& entry = it->second.capturedPhysicalTraits[formID];
+        if (entry.actorName.empty() && !actorName.empty()) entry.actorName = actorName;
+        entry.breastsTier      = breastsTier;
+        entry.buttTier         = buttTier;
+        entry.bodyPartsChecked = true;
+    }
+
+    EncounterStopSnapshot SnapshotForStop(int threadID,
+                                          RE::Actor* speaker,
+                                          bool skipTrigger,
+                                          const std::string& interruptReason) const {
+        std::lock_guard<std::recursive_mutex> lock(_mutex);
+        EncounterStopSnapshot snap;
+        snap.threadID        = threadID;
+        snap.speakerFormID   = speaker ? speaker->GetFormID() : 0;
+        snap.speakerName     = GetActorDisplayName(speaker, "");
+        snap.skipTrigger     = skipTrigger;
+        snap.interrupted     = !interruptReason.empty();
+        snap.interruptReason = interruptReason;
+
+        auto it = _threads.find(threadID);
+        if (it != _threads.end()) {
+            const auto& state          = it->second;
+            snap.isOStimNet            = state.isOStimNet;
+            snap.isSexual              = state.sexual.value_or(false);
+            snap.intent                = state.intent;
+            snap.actorFormIDs          = state.actors.formIDs;
+            snap.actorNames            = FormatActorList(state.actors.names);
+            snap.mainActorNames        = FormatActorNames(state.mainActors);
+            snap.secondaryActorNames   = FormatActorNames(state.secondaryActors);
+            snap.timeline              = state.timeline;
+            snap.notablePhysicalTraits = FormatNotablePhysicalTraits(state);
+            if (snap.mainActorNames.empty() && !state.actors.names.empty()) {
+                snap.mainActorNames = state.actors.names[0];
+            }
+        }
+        return snap;
     }
 
     // Call from HandleEnd to free all per-thread state.
     // Also discards any orphaned claim record for this threadID.
     void ClearThread(int threadID) {
         std::lock_guard<std::recursive_mutex> lock(_mutex);
+        ClearNonInterruptedCuesForThread(threadID);
         auto it = _threads.find(threadID);
         if (it != _threads.end()) {
             int tok = it->second.claimToken;
@@ -1207,6 +1627,7 @@ public:
         _threads.clear();
         _claimRecords.clear();
         _alreadyNotified.clear();
+        _actorCues.clear();
     }
 
 private:
@@ -1269,15 +1690,110 @@ private:
         bool                    pulloutEvaluatedForCycle = false;
         bool                    pulloutCueFired          = false;
         std::chrono::steady_clock::time_point pulloutStallStartTime;
+
+        // --- encounter timeline & transition tracking ---
+        std::string                lastSceneID;
+        std::string                lastSceneDescription;
+        std::string                lastPaceTier;
+        std::vector<TimelineEntry> timeline;
+        std::string                pendingContextNote;
+        uint64_t                   transitionGen = 0;
+        std::chrono::steady_clock::time_point lastCommentAt{};
+        std::unordered_map<uint32_t, CapturedActorPhysicalTraits> capturedPhysicalTraits;
     };
+
+    static std::string FormatNotablePhysicalTraits(const ThreadState& state) {
+        if (state.capturedPhysicalTraits.empty()) return "";
+
+        auto mapGenitalSize = [](const std::string& tier) -> const char* {
+            if (tier == "XS")   return "very small penis";
+            if (tier == "S")    return "small penis";
+            if (tier == "L")    return "large penis";
+            if (tier == "XL")   return "very large penis";
+            if (tier == "XXL")  return "massive penis";
+            if (tier == "XXXL") return "monstrous penis";
+            return nullptr;
+        };
+
+        auto isNotablePartTier = [](const std::string& tier) -> bool {
+            return tier == "flat" || tier == "small" || tier == "large" ||
+                   tier == "huge" || tier == "impossible";
+        };
+
+        std::string out;
+        auto appendActorTraits = [&](uint32_t fid, const CapturedActorPhysicalTraits& t) {
+            std::vector<std::string> parts;
+            if (const char* g = mapGenitalSize(t.genitalSize)) {
+                parts.emplace_back(g);
+            }
+            if (isNotablePartTier(t.breastsTier)) {
+                parts.emplace_back(t.breastsTier + " breasts");
+            }
+            if (isNotablePartTier(t.buttTier)) {
+                parts.emplace_back(t.buttTier + " butt");
+            }
+            if (parts.empty()) return;
+
+            std::string name = t.actorName;
+            if (name.empty()) {
+                for (size_t i = 0; i < state.actors.formIDs.size() && i < state.actors.names.size(); ++i) {
+                    if (state.actors.formIDs[i] == fid) {
+                        name = state.actors.names[i];
+                        break;
+                    }
+                }
+            }
+            if (name.empty()) return;
+
+            if (!out.empty()) out += "; ";
+            out += name + ": ";
+            for (size_t i = 0; i < parts.size(); ++i) {
+                if (i > 0) out += ", ";
+                out += parts[i];
+            }
+        };
+
+        std::unordered_set<uint32_t> emitted;
+        for (uint32_t fid : state.actors.formIDs) {
+            auto it = state.capturedPhysicalTraits.find(fid);
+            if (it != state.capturedPhysicalTraits.end()) {
+                appendActorTraits(fid, it->second);
+                emitted.insert(fid);
+            }
+        }
+        for (const auto& [fid, traits] : state.capturedPhysicalTraits) {
+            if (!emitted.count(fid)) {
+                appendActorTraits(fid, traits);
+            }
+        }
+        return out;
+    }
+
+    static constexpr size_t kMaxTimelineEntries = 24;
+
+    static void AppendTimelineEntryBounded(std::vector<TimelineEntry>& vec, TimelineEntry entry) {
+        if (vec.size() >= kMaxTimelineEntries) {
+            // Preserve index 0 ([Start]) and drop the oldest mid-thread Scene entry if possible.
+            auto dropIt = vec.begin() + 1;
+            for (auto it = vec.begin() + 1; it != vec.end(); ++it) {
+                if (it->kind == TimelineEntryKind::Scene) {
+                    dropIt = it;
+                    break;
+                }
+            }
+            vec.erase(dropIt);
+        }
+        vec.push_back(std::move(entry));
+    }
 
     mutable std::recursive_mutex          _mutex;
     int _nextClaimToken = 1;
-    std::unordered_map<int, ClaimRecord>  _claimRecords;  // token  → pre-start data
-    std::unordered_map<int, ThreadState>  _threads;       // threadID → runtime state
+    std::unordered_map<int, ClaimRecord>  _claimRecords;  // token  -> pre-start data
+    std::unordered_map<int, ThreadState>  _threads;       // threadID -> runtime state
     // Global scan-dedup: spectatorFormIDs that have been assigned (ostimnet_add_spectator fired).
     // Not per-thread because a spectator can only watch one thread at a time.
     std::unordered_set<RE::FormID>        _alreadyNotified;
+    mutable std::unordered_map<RE::FormID, TransientReactionCue> _actorCues;
 };
 
 // Backward-compatibility alias — callers use ThreadDataStore::GetSingleton().

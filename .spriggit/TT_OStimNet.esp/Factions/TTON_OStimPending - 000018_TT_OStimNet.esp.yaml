@@ -1,0 +1,9 @@
+FormKey: 000018:TT_OStimNet.esp
+EditorID: TTON_OStimPending
+Name:
+  TargetLanguage: English
+  Value: TTON_OStimPending
+CrimeValues:
+  Arrest: True
+  AttackOnSight: True
+VendorValues: {}

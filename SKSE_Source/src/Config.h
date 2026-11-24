@@ -39,6 +39,12 @@ struct Config {
     /// Speaker gender probability for scene change events (0 = always male, 100 = always female).
     int CommentGenderPriority() const;
 
+    /// Minimum seconds between mid-scene spoken transition/pace comments per thread.
+    int CommentCooldownSeconds() const;
+
+    /// When true, debounced speed/pace changes can trigger mid-scene spoken NPC reactions.
+    bool EnablePaceChangeComments() const;
+
     /// Cooldown in seconds per action per originator actor before the same action can be shown again.
     int ActionsCooldown() const;
 
@@ -196,6 +202,9 @@ struct Config {
 
     /// SkyrimNet LLM variant used for Game Master evaluations.
     std::string GmLlmVariant() const;
+
+    /// SkyrimNet fast LLM variant used for plain-text scene transition diffs and encounter summaries.
+    std::string FastLlmVariant() const;
 
     /// When true, OStimNet uses SkyrimNet's typed Jev Decisions API (prompts/decisions/*)
     /// for evaluations instead of regular Game Master chat prompts, with automatic fallback.

@@ -821,6 +821,10 @@ void OVirginityService::CheckThreadVirginityLoss(int threadID, const std::string
             if (speaker) {
                 std::string jsonStr = EventPayloadBuilder::BuildVirginityLost(
                     threadID, virginActor, partnerActor, speaker, intent, virginIsMain);
+                auto parsed = nlohmann::json::parse(jsonStr, nullptr, /*allow_exceptions=*/false);
+                if (!parsed.is_discarded() && parsed.is_object()) {
+                    store.AppendTimelineEvent(threadID, TimelineEntryKind::Milestone, parsed.value("msg", ""));
+                }
                 DispatchRegisterEvent(jsonStr, speaker, target);
             }
 

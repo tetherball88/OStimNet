@@ -560,6 +560,11 @@ static void RegisterLatentFixed(RE::BSScript::IVirtualMachine* vm,
         const RE::FormID targetID = OStimNet::ThreadRegistry::GetSingleton().GetSpectatorTargetFormID(spectator->GetFormID());
         RE::Actor* target = targetID ? RE::TESForm::LookupByID<RE::Actor>(targetID) : nullptr;
         const std::string s = OStimNet::EventPayloadBuilder::BuildSpectatorAdded(threadID, spectator, target);
+        auto parsed = nlohmann::json::parse(s, nullptr, /*allow_exceptions=*/false);
+        if (!parsed.is_discarded() && parsed.is_object()) {
+            OStimNet::ThreadRegistry::GetSingleton().AppendTimelineEvent(
+                threadID, OStimNet::TimelineEntryKind::Spectator, parsed.value("msg", ""));
+        }
         SKSE::log::info("BuildSpectatorAddedEventJson:event: {}", s);
         return RE::BSFixedString(s.c_str());
     }
@@ -584,6 +589,13 @@ static void RegisterLatentFixed(RE::BSScript::IVirtualMachine* vm,
         if (!spectator) return RE::BSFixedString("");
         const int threadID = OStimNet::ThreadRegistry::GetSingleton().GetSpectatorThreadID(spectator->GetFormID());
         const std::string s = OStimNet::EventPayloadBuilder::BuildSpectatorFled(threadID, spectator);
+        if (threadID != -1) {
+            auto parsed = nlohmann::json::parse(s, nullptr, /*allow_exceptions=*/false);
+            if (!parsed.is_discarded() && parsed.is_object()) {
+                OStimNet::ThreadRegistry::GetSingleton().AppendTimelineEvent(
+                    threadID, OStimNet::TimelineEntryKind::Spectator, parsed.value("msg", ""));
+            }
+        }
         return RE::BSFixedString(s.c_str());
     }
 

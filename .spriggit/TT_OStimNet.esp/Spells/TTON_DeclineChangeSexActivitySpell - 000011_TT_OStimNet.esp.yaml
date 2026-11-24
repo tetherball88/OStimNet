@@ -1,0 +1,13 @@
+FormKey: 000011:TT_OStimNet.esp
+EditorID: TTON_DeclineChangeSexActivitySpell
+Name:
+  TargetLanguage: English
+  Value: TTON_DeclineChangeSexActivitySpell
+EquipmentType: 013F44:Skyrim.esm
+Description:
+  TargetLanguage: English
+  Value: ''
+Type: Ability
+Effects:
+- BaseEffect: 00000B:TT_OStimNet.esp
+  Data: {}

@@ -44,6 +44,7 @@ schema:
       defaultValue: "gamemaster_evaluation"
       options:
         - default
+        - meta
         - AgentDefault
         - CharacterProfileGeneration
         - DiaryGeneration
@@ -53,6 +54,23 @@ schema:
         - gamemaster_evaluation
         - memory
         - vision
+      category: "General"
+    - name: "Fast LLM variant (scene deltas & summaries):"
+      path: "tton.gm.fastLlmVariant"
+      type: "select"
+      description: "Select the LLM variant used to generate physical scene-transition deltas and end-of-encounter summaries."
+      defaultValue: "gamemaster_evaluation"
+      options:
+        - gamemaster_evaluation
+        - meta
+        - default
+        - memory
+        - action_evaluation
+        - combat
+        - AgentDefault
+        - CharacterProfileGeneration
+        - DiaryGeneration
+        - UniversalTranslator
       category: "General"
     - name: "Use Jev Decisions for evaluations"
       path: "tton.gm.useDecisions"
@@ -191,6 +209,20 @@ schema:
       type: "bool"
       description: "When enabled (and TT Body Language is installed), adds action-specific physical impact cues during sex based on participants' penis, breast, butt, and thigh sizes."
       defaultValue: true
+      category: "Comments"
+    - name: "Mid-scene comment cooldown (seconds)"
+      path: "tton.settings.commentCooldownSeconds"
+      type: "int"
+      min: 0
+      max: 300
+      defaultValue: 20
+      description: "Minimum seconds between automatic NPC reactions to mid-scene position or pace changes on the same thread."
+      category: "Comments"
+    - name: "Enable pace change comments"
+      path: "tton.settings.enablePaceChangeComments"
+      type: "bool"
+      defaultValue: false
+      description: "When enabled, NPCs can react out loud when the animation speed/pace changes during a scene (subject to the mid-scene comment cooldown). Pace changes are always tracked in the encounter timeline regardless of this setting."
       category: "Comments"
 
     # Spectators

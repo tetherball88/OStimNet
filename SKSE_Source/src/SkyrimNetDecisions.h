@@ -78,5 +78,16 @@ bool EvaluatePulloutDecision(
     int threadID,
     std::function<void()> fallbackToChat);
 
+// 9. Mid-scene speaker selection (when 2+ non-player participants are in the thread)
+//    Template: prompts/decisions/ostimnet_select_transition_speaker.prompt
+//    Resolves immediately with 0 LLM calls when <= 1 non-player actor is present.
+//    Never displays a blocking retry modal; silently falls back to SelectSpeakerActor on error.
+void SelectTransitionSpeaker(
+    int threadID,
+    const std::string& prevDescription,
+    const std::string& currDescription,
+    const std::string& contextNote,
+    std::function<void(RE::FormID)> onDone);
+
 }  // namespace OStimNet::SkyrimNetDecisions
 

@@ -1,0 +1,13 @@
+FormKey: 000009:TT_OStimNet.esp
+EditorID: TTON_DeclineStartAffectionSceneSpell
+Name:
+  TargetLanguage: English
+  Value: TTON_DeclineStartAffectionSceneSpell
+EquipmentType: 013F44:Skyrim.esm
+Description:
+  TargetLanguage: English
+  Value: ''
+Type: Ability
+Effects:
+- BaseEffect: 000004:TT_OStimNet.esp
+  Data: {}

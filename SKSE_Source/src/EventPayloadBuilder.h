@@ -63,29 +63,58 @@ inline std::string BuildStart(int threadID, const std::string& overrideMsg, RE::
 
 // --- ostimnet_continue_thread -----------------------------------------------
 
-// oldThreadID: the thread that just ended — provides intent, actors ("main").
+// oldThreadID: the thread that just ended — provides prior participants ("main").
 // newThreadID: the replacement thread — newly joined actors appear as "secondary".
-inline std::string BuildContinueThread(int oldThreadID, int newThreadID, RE::Actor* speaker = nullptr) {
+// Emits a concise 1-line milestone (no full scene description dump).
+inline std::string BuildContinueThread(int oldThreadID,
+                                       int newThreadID,
+                                       const std::vector<uint32_t>& preUpdateOldFormIDs = {},
+                                       RE::Actor* speaker = nullptr) {
     auto& store = ThreadDataStore::GetSingleton();
 
-    const auto& oldPtrs = store.GetActorPtrs(oldThreadID);
-    std::unordered_set<uint32_t> oldFormIDs;
-    oldFormIDs.reserve(oldPtrs.size());
-    for (auto* a : oldPtrs)
-        if (a) oldFormIDs.insert(a->GetFormID());
+    std::unordered_set<uint32_t> oldFormIDs(preUpdateOldFormIDs.begin(), preUpdateOldFormIDs.end());
+    std::vector<RE::Actor*> oldActors;
+    if (oldFormIDs.empty()) {
+        for (auto* a : store.GetActorPtrs(oldThreadID)) {
+            if (a) {
+                oldFormIDs.insert(a->GetFormID());
+                oldActors.push_back(a);
+            }
+        }
+    } else {
+        for (uint32_t fid : preUpdateOldFormIDs) {
+            if (auto* a = RE::TESForm::LookupByID<RE::Actor>(fid)) {
+                oldActors.push_back(a);
+            }
+        }
+    }
 
     std::vector<RE::Actor*> joinedActors;
     for (auto* a : store.GetActorPtrs(newThreadID))
         if (a && !oldFormIDs.count(a->GetFormID()))
             joinedActors.push_back(a);
 
-    std::string msg = GetSceneDescription(static_cast<uint32_t>(newThreadID));
+    const std::string oldNames    = ThreadDataStore::FormatActorNames(oldActors);
+    const std::string joinedNames = ThreadDataStore::FormatActorNames(joinedActors);
+
+    std::string msg;
+    if (!joinedNames.empty() && !oldNames.empty()) {
+        msg = joinedNames + " joined " + oldNames + " in the ongoing intimate encounter.";
+    } else if (!joinedNames.empty()) {
+        msg = joinedNames + " joined the ongoing intimate encounter.";
+    } else if (!oldNames.empty()) {
+        msg = "Participants in " + oldNames + "'s intimate encounter shifted roles.";
+    } else {
+        msg = "Participants in the ongoing intimate encounter changed.";
+    }
+
     std::string speakerName = ThreadDataStore::GetActorDisplayName(speaker, "");
+    // skipTrigger = true because spoken continuation reactions go through TriggerSceneTransitionReaction.
     return BuildBaseEventJson("sex_continue_thread", msg, newThreadID,
-                              Config::GetSingleton().IsMuted(), "",
-                              store.GetIntent(oldThreadID), store.GetSexual(oldThreadID),
-                              ThreadDataStore::FormatActorNames(oldPtrs),
-                              ThreadDataStore::FormatActorNames(joinedActors),
+                              /*skipTrigger=*/true, "",
+                              store.GetIntent(newThreadID), store.GetSexual(newThreadID),
+                              oldNames.empty() ? store.GetFormattedMainActorNames(newThreadID) : oldNames,
+                              joinedNames.empty() ? store.GetFormattedSecondaryActorNames(newThreadID) : joinedNames,
                               speakerName).dump();
 }
 
@@ -177,12 +206,15 @@ inline std::string BuildClimax(int threadID, const DebounceQueue::ClimaxBatchDat
 
 // --- ostimnet_stop ----------------------------------------------------------
 
-inline std::string BuildStop(int threadID, RE::Actor* speaker = nullptr, const std::string& interruptReason = "") {
+inline std::string BuildStop(int threadID,
+                             RE::Actor* speaker = nullptr,
+                             const std::string& interruptReason = "",
+                             const std::string& summaryMsg = "") {
     auto& store = ThreadDataStore::GetSingleton();
     std::string speakerName = ThreadDataStore::GetActorDisplayName(speaker, "");
     const bool interrupted = !interruptReason.empty();
-    std::string msg;
-    if (interrupted) {
+    std::string msg = summaryMsg;
+    if (msg.empty() && interrupted) {
         std::string names = ThreadDataStore::FormatActorNames(store.GetActorPtrs(threadID));
         if (names.empty()) names = "participants";
         if (interruptReason == "arrest") {
@@ -194,6 +226,34 @@ inline std::string BuildStop(int threadID, RE::Actor* speaker = nullptr, const s
     nlohmann::json j = BuildBaseEventJson("sex_stop", msg, threadID, Config::GetSingleton().IsMuted(), speakerName);
     j["interrupted"]     = interrupted;
     j["interruptReason"] = interruptReason;
+    return j.dump();
+}
+
+// Builds sex_stop payload from a pre-ClearThread EncounterStopSnapshot (safe after async LLM completion).
+inline std::string BuildStopFromSnapshot(const EncounterStopSnapshot& snap,
+                                         const std::string& summaryMsg) {
+    std::string msg = summaryMsg;
+    if (msg.empty() && snap.interrupted) {
+        std::string names = snap.actorNames.empty() ? "participants" : snap.actorNames;
+        if (snap.interruptReason == "arrest") {
+            msg = "The intimate encounter involving " + names + " was abruptly cut short by crime and guard intervention.";
+        } else {
+            msg = "The intimate encounter involving " + names + " was abruptly interrupted by sudden combat and danger.";
+        }
+    }
+    nlohmann::json j = BuildBaseEventJson(
+        "sex_stop",
+        msg,
+        snap.threadID,
+        snap.skipTrigger,
+        "",
+        snap.intent,
+        snap.isSexual,
+        snap.mainActorNames,
+        snap.secondaryActorNames,
+        snap.speakerName);
+    j["interrupted"]     = snap.interrupted;
+    j["interruptReason"] = snap.interruptReason;
     return j.dump();
 }
 

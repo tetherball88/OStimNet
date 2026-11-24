@@ -1,0 +1,13 @@
+FormKey: 000015:TT_OStimNet.esp
+EditorID: TTON_DeclineStopSexSpell
+Name:
+  TargetLanguage: English
+  Value: TTON_DeclineStopSexSpell
+EquipmentType: 013F44:Skyrim.esm
+Description:
+  TargetLanguage: English
+  Value: ''
+Type: Ability
+Effects:
+- BaseEffect: 00000F:TT_OStimNet.esp
+  Data: {}

@@ -65,9 +65,9 @@ public:
     // =========================================================================
     // Callback types
     // =========================================================================
-    using SceneChangeCb = std::function<void(int threadID, const std::string& sceneID)>;
-    using ClimaxCb      = std::function<void(int threadID, const ClimaxBatchData&)>;
-    using SpeedChangeCb = std::function<void(int threadID, int32_t speed)>;
+    using SceneChangeCb = std::function<void(int threadID, const std::string& sceneID, bool fromEndFlush)>;
+    using ClimaxCb      = std::function<void(int threadID, const ClimaxBatchData&, bool suppressReaction)>;
+    using SpeedChangeCb = std::function<void(int threadID, int32_t speed, bool fromEndFlush)>;
 
     // Fires ostimnet_remove_spectator for the given spectator (game-thread only).
     static void FireRemoveSpectatorEvent(RE::FormID spectatorID, RE::FormID targetActorFormID, int threadID) {
@@ -124,7 +124,7 @@ public:
             _pendingSceneID.erase(it);
             CancelUnderLock({EventType::SceneChange, threadID});
         }
-        _sceneChangeCb(threadID, sceneID);
+        _sceneChangeCb(threadID, sceneID, /*fromEndFlush=*/true);
     }
 
     // Cancel any pending scene change for a thread without firing it.
@@ -167,20 +167,21 @@ public:
     }
 
     // Flush all accumulated climax data for a thread immediately (e.g. on thread end).
-    // Calls the callback directly on the calling (game) thread.
-    void FlushClimax(int threadID) {
+    // Calls the callback directly on the calling (game) thread. Returns true if a batch was flushed.
+    bool FlushClimax(int threadID, bool suppressReaction = false) {
         ClimaxBatchData data;
         {
             std::lock_guard<std::mutex> lk(_mutex);
             auto it = _pendingClimax.find(threadID);
-            if (it == _pendingClimax.end()) return;
+            if (it == _pendingClimax.end()) return false;
             data.climaxEvents = std::move(it->second.events);
             data.cumApplied   = std::move(it->second.cumApplied);
             data.squirts      = std::move(it->second.squirts);
             _pendingClimax.erase(it);
             CancelUnderLock({EventType::Climax, threadID});
         }
-        _climaxCb(threadID, data);
+        _climaxCb(threadID, data, suppressReaction);
+        return true;
     }
 
     // =========================================================================
@@ -207,7 +208,7 @@ public:
             _pendingSpeed.erase(it);
             CancelUnderLock({EventType::SpeedChange, threadID});
         }
-        _speedChangeCb(threadID, speed);
+        _speedChangeCb(threadID, speed, /*fromEndFlush=*/true);
     }
 
     // Cancel any pending speed change for a thread without firing it.
@@ -468,17 +469,17 @@ private:
         switch (fd.type) {
             case EventType::SceneChange:
                 SKSE::log::info("DebounceQueue: thread {} scene change debounce resolved", fd.threadID);
-                _sceneChangeCb(fd.threadID, fd.sceneID);
+                _sceneChangeCb(fd.threadID, fd.sceneID, /*fromEndFlush=*/false);
                 break;
             case EventType::Climax:
                 SKSE::log::info("DebounceQueue: thread {} climax batch debounce resolved ({} climax)",
                                 fd.threadID, fd.climax.climaxEvents.size());
-                _climaxCb(fd.threadID, fd.climax);
+                _climaxCb(fd.threadID, fd.climax, /*suppressReaction=*/false);
                 break;
             case EventType::SpeedChange:
                 SKSE::log::info("DebounceQueue: thread {} speed change debounce resolved (speed={})",
                                 fd.threadID, fd.speed);
-                _speedChangeCb(fd.threadID, fd.speed);
+                _speedChangeCb(fd.threadID, fd.speed, /*fromEndFlush=*/false);
                 break;
             case EventType::SpectatorScan:
                 PerformScan();

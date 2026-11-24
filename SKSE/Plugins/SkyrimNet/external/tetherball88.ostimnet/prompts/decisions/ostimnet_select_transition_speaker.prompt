@@ -1,0 +1,26 @@
+{# Decision template: selects which non-player participant vocalizes in response to a mid-scene transition. #}
+[ state scene_transition ]
+    An intimate `{{ intent }}` encounter involving {{ actorNames }} just shifted.
+    Leading / Primary Participants: {{ mainActorNames }}
+    {% if secondaryActorNames != "" %}Receptive / Supporting Participants: {{ secondaryActorNames }}{% endif %}
+    {% if previousDescription != "" %}Previous State: {{ previousDescription }}{% endif %}
+    {% if contextNote != "" %}Transition Note: {{ contextNote }}{% endif %}
+    New State: {{ currentDescription }}
+[ end state ]
+
+[ state candidate_profiles ]
+    {% for c in candidatesList %}
+        ### {{ c.name }} ({{ c.role }} participant)
+        {{ render_character_profile("tton_gm", c.uuid) }}
+        ---
+    {% endfor %}
+[ end state ]
+
+[ question speaker choice ]
+    Select which non-player participant in `candidate_profiles` would most naturally vocalize first right now in response to `scene_transition` — favor the participant most directly affected by the new physical contact, position change, pace shift, or join event, or the one actively initiating the move.
+    [ criteria ]
+        {% for c in candidatesList -%}
+            {{ c.key }}: {{ c.name }} ({{ c.role }} participant)
+        {% endfor -%}
+    [ end criteria ]
+[ end question ]

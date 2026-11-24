@@ -13,81 +13,6 @@
 #include "SceneDescriptionUtils.h"
 #include "ThreadRegistry.h"
 
-// =============================================================================
-// Canonical-position helpers (OStimNavigatorAPI)
-// =============================================================================
-
-namespace OStimNavigatorAPI {
-
-// Returns a reference to the lazily-built position-id→display-name map,
-// populated once from ONavGetPositionDisplayNames().
-// Returns an empty map if OStimNavigator is not loaded.
-inline const std::unordered_map<std::string, std::string>& GetPositionDisplayNameMap() {
-    static const std::unordered_map<std::string, std::string> s = []() {
-        std::unordered_map<std::string, std::string> out;
-        if (ONavGetPositionDisplayNames) {
-            try {
-                auto obj = nlohmann::json::parse(ONavGetPositionDisplayNames());
-                for (auto it = obj.begin(); it != obj.end(); ++it)
-                    if (it.value().is_string())
-                        out.emplace(it.key(), it.value().get<std::string>());
-            } catch (...) {}
-        }
-        return out;
-    }();
-    return s;
-}
-
-// Returns a reference to the lazily-built alias→canonical map,
-// populated once from ONavGetPositionAliases().
-// Returns an empty map if OStimNavigator is not loaded.
-inline const std::unordered_map<std::string, std::string>& GetPositionAliasMap() {
-    static const std::unordered_map<std::string, std::string> s = []() {
-        std::unordered_map<std::string, std::string> out;
-        if (ONavGetPositionAliases) {
-            try {
-                auto obj = nlohmann::json::parse(ONavGetPositionAliases());
-                for (auto it = obj.begin(); it != obj.end(); ++it)
-                    if (it.value().is_string())
-                        out.emplace(it.key(), it.value().get<std::string>());
-            } catch (...) {}
-        }
-        return out;
-    }();
-    return s;
-}
-
-// Returns a reference to the lazily-built set of canonical position names,
-// populated once from ONavGetCanonicalPositions().
-// Returns an empty set if OStimNavigator is not loaded.
-inline const std::unordered_set<std::string>& GetCanonicalPositionSet() {
-    static const std::unordered_set<std::string> s = []() {
-        std::unordered_set<std::string> out;
-        if (ONavGetCanonicalPositions) {
-            try {
-                auto arr = nlohmann::json::parse(ONavGetCanonicalPositions());
-                for (const auto& item : arr)
-                    if (item.is_string())
-                        out.emplace(item.get<std::string>());
-            } catch (...) {}
-        }
-        return out;
-    }();
-    return s;
-}
-
-// Returns true when tag (already lowercase) is a canonical position name or a known alias.
-// Resolves the canonical name into `out` when returning true.
-inline bool ResolvePosition(const std::string& tag, std::string& out) {
-    if (GetCanonicalPositionSet().count(tag)) { out = tag; return true; }
-    const auto& aliases = GetPositionAliasMap();
-    auto it = aliases.find(tag);
-    if (it != aliases.end()) { out = it->second; return true; }
-    return false;
-}
-
-} // namespace OStimNavigatorAPI
-
 namespace OStimNet {
 
 // --- JSON helpers -----------------------------------------------------------
@@ -491,27 +416,6 @@ inline std::string FormatClimaxMessage(
 //     { "actorFormID": N }   <- penisless / squirt / unresolved: no "targets" key
 //   ]
 // }
-// --- position extraction ----------------------------------------------------
-
-// Scans the tags returned by ONavGetSceneTags for the first canonical position name.
-// Returns the canonical position string (e.g. "missionary") or "" if none found.
-inline std::string ExtractPositionFromSceneTags(const char* sceneId) {
-    if (!ONavGetSceneTags || !sceneId || sceneId[0] == '\0') return "";
-    const char* raw = ONavGetSceneTags(sceneId);
-    if (!raw || raw[0] == '\0' || (raw[0] == '[' && raw[1] == ']')) return "";
-    try {
-        auto arr = nlohmann::json::parse(raw);
-        if (!arr.is_array()) return "";
-        std::string resolved;
-        for (const auto& item : arr) {
-            if (!item.is_string()) continue;
-            if (OStimNavigatorAPI::ResolvePosition(item.get_ref<const std::string&>(), resolved))
-                return resolved;
-        }
-    } catch (...) {}
-    return "";
-}
-
 // --- event dispatch helper --------------------------------------------------
 #include "ModEventDispatch.h"
 

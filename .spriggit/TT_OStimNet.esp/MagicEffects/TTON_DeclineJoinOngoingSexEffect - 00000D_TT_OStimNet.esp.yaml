@@ -1,0 +1,28 @@
+FormKey: 00000D:TT_OStimNet.esp
+EditorID: TTON_DeclineJoinOngoingSexEffect
+VirtualMachineAdapter:
+  Scripts:
+  - Name: TTON_DeclineEffect
+    Properties:
+    - MutagenObjectType: ScriptObjectProperty
+      Name: currentSpell
+      Object: 000013:TT_OStimNet.esp
+Name:
+  TargetLanguage: English
+  Value: TTON_DeclineJoinOngoingSexEffect
+Flags:
+- NoHitEvent
+- NoDuration
+- NoMagnitude
+- NoArea
+- HideInUI
+- NoHitEffect
+Archetype:
+  MutagenObjectType: MagicEffectArchetype
+  Type: Script
+DualCastScale: 1
+CastingSoundLevel: Normal
+Sounds: []
+Description:
+  TargetLanguage: English
+  Value: ''

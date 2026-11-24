@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include "RE/Skyrim.h"
+#include "ThreadRegistry.h"
 
 namespace OStimNet::SkyrimNetIntegration {
 
@@ -177,5 +178,52 @@ namespace OStimNet::SkyrimNetIntegration {
      * Evaluates pullout decision with the LLM using Jev Decisions or GmLlmVariant prompt.
      */
     bool EvaluatePulloutDecision(int threadID, bool forceChat = false);
+
+    /**
+     * Sets a 15s transient reaction cue for `speaker` (read by `ostimnet_transient_cue` decorator)
+     * and dispatches ModEvent `ostimnet_transient_reaction` so Papyrus triggers an immediate
+     * non-persistent `DirectNarration("", speaker, target)` (with optional `PurgeDialogue` and
+     * optional keyed `RegisterShortLivedEvent`).
+     */
+    void DispatchTransientReaction(
+        int threadID,
+        RE::Actor* speaker,
+        RE::Actor* target,
+        const std::string& cueType,
+        const std::string& cueText,
+        bool interrupt = false,
+        const std::string& shortLivedKey = "",
+        const std::string& shortLivedDesc = "",
+        int shortLivedTtlMs = 0);
+
+    /**
+     * Runs the fast ("meta") LLM 1-sentence plain-text transition diff in parallel with
+     * Jev speaker selection (when 2+ NPCs are in the thread), then fires a transient reaction
+     * if the thread is still active on the same transition generation.
+     */
+    void TriggerSceneTransitionReaction(
+        int threadID,
+        const SceneTransitionRecord& transition,
+        const std::string& cueType = "scene_change");
+
+    /**
+     * Selects a speaker (via Jev if 2+ NPCs) and triggers a non-persistent pace-change reaction.
+     */
+    void TriggerPaceChangeReaction(
+        int threadID,
+        const std::string& direction,
+        const std::string& paceTier);
+
+    /**
+     * Captures notable physical traits (genital size while naked, breasts/butt tiers) from
+     * BodyLanguage.dll (optional soft dependency) into ThreadDataStore while actors are undressed.
+     */
+    void CaptureThreadPhysicalTraits(int threadID);
+
+    /**
+     * Condenses a multi-stage sexual encounter timeline via the fast ("meta") LLM into a
+     * 2-4 sentence plain-text summary (with deterministic C++ fallback) and dispatches `ostimnet_stop`.
+     */
+    void SummarizeEncounterAndFireStop(EncounterStopSnapshot snapshot);
 
 }  // namespace OStimNet::SkyrimNetIntegration

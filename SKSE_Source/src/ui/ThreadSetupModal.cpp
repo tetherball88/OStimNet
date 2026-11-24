@@ -178,17 +178,53 @@ namespace OStimNet::UI {
         }
 
         RE::Actor* speaker = SelectSpeakerActor(threadID, Config::GetSingleton().CommentGenderPriority());
-        const std::string json = EventPayloadBuilder::BuildIntentChanged(
-            threadID,
-            oldIntentStr,
-            intentLower,
-            mainActorsSame,
-            speaker);
-        if (auto* source = SKSE::GetModCallbackEventSource()) {
-            SKSE::ModCallbackEvent e{ "ostimnet_intent_changed", json.c_str(), static_cast<float>(threadID), speaker };
-            source->SendEvent(&e);
+        const std::string mainNames = registry.GetFormattedMainActorNames(threadID);
+        const std::string secNames  = registry.GetFormattedSecondaryActorNames(threadID);
+
+        std::string shiftMsg;
+        if (oldIntentStr != intentLower && !oldIntentStr.empty() && oldIntentStr != "unset") {
+            shiftMsg = "Encounter dynamic shifted from " + oldIntentStr + " to " + intentLower;
+        } else {
+            shiftMsg = "Participant roles shifted within " + intentLower + " dynamic";
         }
-        SKSE::log::info("[ThreadSetupModal] Fired ostimnet_intent_changed: {}", json);
+        if (!mainNames.empty() && !secNames.empty()) {
+            shiftMsg += " (" + mainNames + " leading, " + secNames + " receptive).";
+        } else {
+            shiftMsg += ".";
+        }
+
+        registry.AppendTimelineEvent(threadID, TimelineEntryKind::IntentChanged, shiftMsg, shiftMsg);
+
+        RE::FormID spkID = speaker ? speaker->GetFormID() : 0;
+        if (spkID == 0) {
+            const auto ptrs = registry.GetActorPtrs(threadID);
+            if (!ptrs.empty() && ptrs[0]) spkID = ptrs[0]->GetFormID();
+        }
+        if (spkID != 0) {
+            const auto epoch     = GetSessionEpoch();
+            std::string shortKey = "tton_intent_" + std::to_string(threadID);
+            AddEpochTask(epoch, [shortKey, shiftMsg, spkID]() {
+                auto* spk = RE::TESForm::LookupByID<RE::Actor>(spkID);
+                auto* vm  = RE::BSScript::Internal::VirtualMachine::GetSingleton();
+                if (vm && spk) {
+                    RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> nullCallback;
+                    auto evId   = RE::BSFixedString(shortKey);
+                    auto evType = RE::BSFixedString("tton_intent_changed");
+                    auto desc   = RE::BSFixedString(shiftMsg);
+                    auto data   = RE::BSFixedString("");
+                    int  ttlMs  = 90000;
+                    RE::Actor* tgt = nullptr;
+                    vm->DispatchStaticCall(
+                        "SkyrimNetApi",
+                        "RegisterShortLivedEvent",
+                        RE::MakeFunctionArguments(
+                            std::move(evId), std::move(evType), std::move(desc), std::move(data),
+                            std::move(ttlMs), std::move(spk), std::move(tgt)),
+                        nullCallback);
+                }
+            });
+        }
+        SKSE::log::info("[ThreadSetupModal] Recorded intent/role shift in timeline + short-lived context: {}", shiftMsg);
     }
 
     void ThreadSetupModal::ShowExternalThreadSetup(int threadID) {

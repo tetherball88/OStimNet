@@ -337,48 +337,68 @@ void PulloutService::FirePulloutSensoryCue(int threadID) {
     if (!speaker) speaker = target;
     if (!target) target = speaker;
 
-    std::string jsonStr = EventPayloadBuilder::BuildPartnerNearEdge(threadID, speaker);
+    if (Config::GetSingleton().IsMuted()) return;
 
-    // Dispatch directly to SkyrimNet via SkyrimNetApi.RegisterEvent
-    if (auto* taskIF = SKSE::GetTaskInterface()) {
-        taskIF->AddTask([jsonStr, speaker, target]() {
-            auto vm = RE::BSScript::Internal::VirtualMachine::GetSingleton();
-            if (vm) {
-                RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> nullCallback;
-                auto eventType = RE::BSFixedString("tton_event");
-                auto msg = RE::BSFixedString(jsonStr);
-                auto spk = speaker;
-                auto tgt = target;
-                vm->DispatchStaticCall("SkyrimNetApi", "RegisterEvent",
-                    RE::MakeFunctionArguments(std::move(eventType), std::move(msg), std::move(spk), std::move(tgt)),
-                    nullCallback);
-                SKSE::log::info("PulloutService: dispatched tton_event (partner_near_edge) to SkyrimNetApi (speaker=0x{:08X}, target=0x{:08X})",
-                    speaker ? speaker->GetFormID() : 0, target ? target->GetFormID() : 0);
-            }
-        });
+    auto* player = RE::PlayerCharacter::GetSingleton();
+    if (player && speaker == static_cast<RE::Actor*>(player)) {
+        // Female player is receiving from an NPC giver: let the NPC giver voice a near-edge cue.
+        if (target && target != static_cast<RE::Actor*>(player)) {
+            std::string playerName = ThreadDataStore::GetActorDisplayName(player, "your partner");
+            std::string cue = "You are tensing up, breathing raggedly, and right on the edge of climax inside " + playerName + ".";
+            SkyrimNetIntegration::DispatchTransientReaction(
+                threadID, target, player, "giver_near_edge", cue, /*interrupt=*/false);
+        }
+        return;
     }
+
+    std::string giverName = ThreadDataStore::GetActorDisplayName(target, "Your partner");
+    std::string cue = giverName + " is tensing up, breathing heavily, and right on the edge of climax inside you.";
+    SkyrimNetIntegration::DispatchTransientReaction(
+        threadID, speaker, target, "partner_near_edge", cue, /*interrupt=*/false);
 }
 
 void PulloutService::FirePulloutEvent(int threadID, RE::Actor* giver, RE::Actor* receiver) {
-    std::string jsonStr = EventPayloadBuilder::BuildPullout(threadID, giver, receiver);
+    std::string giverName    = ThreadDataStore::GetActorDisplayName(giver, "");
+    std::string receiverName = ThreadDataStore::GetActorDisplayName(receiver, "");
+    std::string pulloutMsg;
+    if (!giverName.empty() && !receiverName.empty()) {
+        pulloutMsg = giverName + " pulled out just before climaxing inside " + receiverName + ".";
+    } else if (!giverName.empty()) {
+        pulloutMsg = giverName + " pulled out just before climaxing inside.";
+    } else {
+        pulloutMsg = "Pulled out just before climaxing inside.";
+    }
+
+    ThreadDataStore::GetSingleton().AppendTimelineEvent(
+        threadID, TimelineEntryKind::Pullout, pulloutMsg, pulloutMsg);
 
     RE::Actor* speaker = giver ? giver : receiver;
-    RE::Actor* target = receiver ? receiver : giver;
+    RE::Actor* target  = receiver ? receiver : giver;
+    RE::FormID spkID   = speaker ? speaker->GetFormID() : 0;
+    RE::FormID tgtID   = target ? target->GetFormID() : 0;
+    std::string shortKey = "tton_pullout_" + std::to_string(threadID);
 
     if (auto* taskIF = SKSE::GetTaskInterface()) {
-        taskIF->AddTask([jsonStr, speaker, target]() {
-            auto vm = RE::BSScript::Internal::VirtualMachine::GetSingleton();
-            if (vm) {
+        taskIF->AddTask([shortKey, pulloutMsg, spkID, tgtID]() {
+            auto* spk = spkID ? RE::TESForm::LookupByID<RE::Actor>(spkID) : nullptr;
+            auto* tgt = tgtID ? RE::TESForm::LookupByID<RE::Actor>(tgtID) : nullptr;
+            auto* vm  = RE::BSScript::Internal::VirtualMachine::GetSingleton();
+            if (vm && spk) {
                 RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> nullCallback;
-                auto eventType = RE::BSFixedString("tton_event");
-                auto msg = RE::BSFixedString(jsonStr);
-                auto spk = speaker;
-                auto tgt = target;
-                vm->DispatchStaticCall("SkyrimNetApi", "RegisterEvent",
-                    RE::MakeFunctionArguments(std::move(eventType), std::move(msg), std::move(spk), std::move(tgt)),
+                auto evId   = RE::BSFixedString(shortKey);
+                auto evType = RE::BSFixedString("tton_pullout");
+                auto desc   = RE::BSFixedString(pulloutMsg);
+                auto data   = RE::BSFixedString("");
+                int  ttlMs  = 90000;
+                vm->DispatchStaticCall(
+                    "SkyrimNetApi",
+                    "RegisterShortLivedEvent",
+                    RE::MakeFunctionArguments(
+                        std::move(evId), std::move(evType), std::move(desc), std::move(data),
+                        std::move(ttlMs), std::move(spk), std::move(tgt)),
                     nullCallback);
-                SKSE::log::info("PulloutService: dispatched tton_event (pullout) to SkyrimNetApi (speaker=0x{:08X}, target=0x{:08X})",
-                    speaker ? speaker->GetFormID() : 0, target ? target->GetFormID() : 0);
+                SKSE::log::info("PulloutService: registered short-lived pullout event '{}' (speaker=0x{:08X}, target=0x{:08X})",
+                                shortKey, spkID, tgtID);
             }
         });
     }

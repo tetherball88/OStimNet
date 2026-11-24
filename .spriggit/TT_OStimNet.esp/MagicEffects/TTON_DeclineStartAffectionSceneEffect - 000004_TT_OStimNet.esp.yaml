@@ -1,0 +1,28 @@
+FormKey: 000004:TT_OStimNet.esp
+EditorID: TTON_DeclineStartAffectionSceneEffect
+VirtualMachineAdapter:
+  Scripts:
+  - Name: TTON_DeclineEffect
+    Properties:
+    - MutagenObjectType: ScriptObjectProperty
+      Name: currentSpell
+      Object: 000009:TT_OStimNet.esp
+Name:
+  TargetLanguage: English
+  Value: TTON_DeclineStartAffectionSceneEffect
+Flags:
+- NoHitEvent
+- NoDuration
+- NoMagnitude
+- NoArea
+- HideInUI
+- NoHitEffect
+Archetype:
+  MutagenObjectType: MagicEffectArchetype
+  Type: Script
+DualCastScale: 1
+CastingSoundLevel: Normal
+Sounds: []
+Description:
+  TargetLanguage: English
+  Value: ''

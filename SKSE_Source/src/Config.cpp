@@ -83,6 +83,10 @@ std::string Config::GmLlmVariant() const {
     return GetValue("tton.gm.gmLlmVariant", "gamemaster_evaluation");
 }
 
+std::string Config::FastLlmVariant() const {
+    return GetValue("tton.gm.fastLlmVariant", "gamemaster_evaluation");
+}
+
 bool Config::UseDecisions() const {
     std::string val = GetValue("tton.gm.useDecisions", "true");
     return val == "true" || val == "1";
@@ -116,6 +120,16 @@ bool Config::CommentsPrioritizeNearestThread() const {
 int Config::CommentGenderPriority() const {
     try { return std::stoi(GetValue("tton.settings.commentGenderPriority", "50")); }
     catch (...) { return 50; }
+}
+
+int Config::CommentCooldownSeconds() const {
+    try { return std::stoi(GetValue("tton.settings.commentCooldownSeconds", "20")); }
+    catch (...) { return 20; }
+}
+
+bool Config::EnablePaceChangeComments() const {
+    std::string val = GetValue("tton.settings.enablePaceChangeComments", "false");
+    return val == "true" || val == "1";
 }
 
 bool Config::EnableSpectators() const {

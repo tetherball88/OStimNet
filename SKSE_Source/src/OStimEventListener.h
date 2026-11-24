@@ -182,9 +182,9 @@ private:
     // runs the periodic spectator scan. Replaces SceneChangeDebouncer, ClimaxDebouncer,
     // and SpectatorScanner.
     DebounceQueue _dq{
-        [this](int tid, const std::string& sid) { OnSceneChanged(tid, sid); },
-        [this](int tid, const DebounceQueue::ClimaxBatchData& data) { OnClimaxBatch(tid, data); },
-        [this](int tid, int32_t speed) { OnSpeedChangeFired(tid, speed); },
+        [this](int tid, const std::string& sid, bool fromEndFlush) { OnSceneChanged(tid, sid, fromEndFlush); },
+        [this](int tid, const DebounceQueue::ClimaxBatchData& data, bool suppressReaction) { OnClimaxBatch(tid, data, suppressReaction); },
+        [this](int tid, int32_t speed, bool fromEndFlush) { OnSpeedChangeFired(tid, speed, fromEndFlush); },
         []() {
             auto activeActors = ThreadRegistry::GetSingleton().GetActiveThreadActors();
             DebounceQueue::ActiveThreadList result;
@@ -245,8 +245,12 @@ private:
         }
         if (sourceID != -1) {
             SKSE::log::info("OStimEventListener: thread {} is continuation of thread {}", threadID, sourceID);
+            std::vector<uint32_t> oldActorFIDs = (sourceID == threadID)
+                ? preUpdateFormIDs
+                : ThreadRegistry::GetSingleton().GetActorFormIDs(sourceID);
             ThreadDataStore::GetSingleton().CopyStateForContinuation(sourceID, threadID, preUpdateFormIDs);
-            OnThreadContinued(sourceID, threadID);
+            _suppressNextSpeedChange.insert(threadID);
+            OnThreadContinued(sourceID, threadID, oldActorFIDs);
             OVirginityService::GetSingleton().TransferForContinuation(sourceID, threadID, newActors);
             // Carry non-participant spectators over; drop the ones who just joined the scene.
             for (auto [specID, targetID] : ThreadRegistry::GetSingleton().TransferSpectatorsForContinuation(sourceID, threadID, newActors))
@@ -412,8 +416,15 @@ private:
 
 
         // Build start event — use approach-specific description when opening with undressing.
+        std::string curSceneID;
+        if (g_ostimThreadInterface && g_ostimThreadInterface->IsThreadValid(static_cast<uint32_t>(threadID))) {
+            const char* rawScene = g_ostimThreadInterface->GetCurrentSceneID(static_cast<uint32_t>(threadID));
+            if (rawScene) curSceneID = rawScene;
+        }
+
         RE::Actor* speaker = SelectSpeakerActor(threadID, Config::GetSingleton().CommentGenderPriority());
         std::string startJson;
+        std::string initialBaseDesc;
         if (startsWithUndressing) {
             const auto& actorPtrs = ThreadRegistry::GetSingleton().GetActorPtrs(threadID);
             std::string name0 = actorPtrs.size() > 0
@@ -423,17 +434,27 @@ private:
             bool isOStimApproach = (ThreadRegistry::GetSingleton().IsPlayerThread(threadID)
                 ? OStimNet::Config::GetSingleton().UndressingApproachPlayer()
                 : OStimNet::Config::GetSingleton().UndressingApproachNpc()) == "OStim";
-            std::string msg;
             if (isOStimApproach)
-                msg = name1 + " undresses themselves. " + name1 + " undresses " + name0 + ". Both actors are standing.";
+                initialBaseDesc = name1 + " undresses themselves. " + name1 + " undresses " + name0 + ". Both actors are standing.";
             else
-                msg = name0 + " undresses " + name1 + " and " + name1 + " undresses " + name0 + ". Both actors are standing.";
+                initialBaseDesc = name0 + " undresses " + name1 + " and " + name1 + " undresses " + name0 + ". Both actors are standing.";
             SKSE::log::info("OStimEventListener: thread {} undressing start msg (approach={}): {}",
-                threadID, isOStimApproach ? "OStim" : "non-OStim", msg);
-            startJson = EventPayloadBuilder::BuildStart(threadID, msg, speaker);
+                threadID, isOStimApproach ? "OStim" : "non-OStim", initialBaseDesc);
+            startJson = EventPayloadBuilder::BuildStart(threadID, initialBaseDesc, speaker);
         } else {
+            initialBaseDesc = GetSceneDescriptionWithoutPace(static_cast<uint32_t>(threadID), curSceneID);
             startJson = EventPayloadBuilder::BuildStart(threadID, speaker);
         }
+
+        const std::string initialPace = startsWithUndressing
+            ? ""
+            : ComputeScenePaceTier(static_cast<uint32_t>(threadID));
+        if (!curSceneID.empty()) {
+            ThreadDataStore::GetSingleton().SetCurrentPosition(
+                threadID, ExtractPositionFromSceneTags(curSceneID.c_str()));
+        }
+        ThreadDataStore::GetSingleton().RecordInitialScene(threadID, curSceneID, initialBaseDesc, initialPace);
+        SkyrimNetIntegration::CaptureThreadPhysicalTraits(threadID);
 
         FireModEvent("ostimnet_start", startJson.c_str(), static_cast<float>(threadID), speaker);
     }
@@ -441,21 +462,61 @@ private:
     // Fired when a thread starts that continues an older thread (actor was added/removed).
     // oldThreadID: the thread that just ended
     // newThreadID: the new thread that replaced it
-    // Main actors = participants of the old thread; secondary actors = newly joined actors.
-    void OnThreadContinued(int oldThreadID, int newThreadID) {
+    void OnThreadContinued(int oldThreadID, int newThreadID, const std::vector<uint32_t>& oldActorFIDs) {
         SKSE::log::info("OStimEventListener: thread {} continued as {}, firing ostimnet_continue_thread", oldThreadID, newThreadID);
+        ScheduledEvalService::GetSingleton().OnThreadStart(newThreadID);
+
+        std::string curSceneID;
+        if (g_ostimThreadInterface && g_ostimThreadInterface->IsThreadValid(static_cast<uint32_t>(newThreadID))) {
+            const char* rawScene = g_ostimThreadInterface->GetCurrentSceneID(static_cast<uint32_t>(newThreadID));
+            if (rawScene) curSceneID = rawScene;
+        }
+        if (!curSceneID.empty()) {
+            ThreadDataStore::GetSingleton().SetCurrentPosition(
+                newThreadID, ExtractPositionFromSceneTags(curSceneID.c_str()));
+        }
+
         RE::Actor* speaker = SelectSpeakerActor(newThreadID, Config::GetSingleton().CommentGenderPriority());
-        std::string json = EventPayloadBuilder::BuildContinueThread(oldThreadID, newThreadID, speaker);
+        std::string json = EventPayloadBuilder::BuildContinueThread(oldThreadID, newThreadID, oldActorFIDs, speaker);
+
+        std::string joinSummary;
+        {
+            auto parsed = nlohmann::json::parse(json, nullptr, /*allow_exceptions=*/false);
+            if (!parsed.is_discarded() && parsed.is_object()) {
+                joinSummary = parsed.value("msg", "");
+            }
+        }
+
+        const std::string newBaseDesc = GetSceneDescriptionWithoutPace(static_cast<uint32_t>(newThreadID), curSceneID);
+        const std::string paceTier    = ComputeScenePaceTier(static_cast<uint32_t>(newThreadID));
+        auto transition = ThreadDataStore::GetSingleton().RecordContinuationTransition(
+            newThreadID, joinSummary, curSceneID, newBaseDesc, paceTier);
+        SkyrimNetIntegration::CaptureThreadPhysicalTraits(newThreadID);
+
+        // Concise 1-line persistent milestone in recent_events (skipTrigger=true).
         FireModEvent("ostimnet_continue_thread", json.c_str(), static_cast<float>(newThreadID), speaker);
+
+        // Trigger spoken transition reaction via "meta" diff + Jev speaker if unmuted & priority thread.
+        bool skipTrigger = Config::GetSingleton().IsMuted() ||
+                           !ThreadDataStore::GetSingleton().GetSexual(newThreadID).value_or(false);
+        if (!skipTrigger && Config::GetSingleton().CommentsPrioritizeNearestThread()) {
+            int priorityThread = SelectPriorityThread(ThreadRegistry::GetSingleton().GetActiveThreadActors());
+            if (priorityThread != -1 && priorityThread != newThreadID) {
+                skipTrigger = true;
+            }
+        }
+        if (!skipTrigger) {
+            ThreadDataStore::GetSingleton().TryConsumeCommentCooldown(newThreadID, 0);
+            SkyrimNetIntegration::TriggerSceneTransitionReaction(newThreadID, transition, "continue_join");
+        }
     }
 
     // Called by the poll thread (via AddTask) and by OnThreadEnd flush when debounce resolves.
-    // Applies thread priority and speaker selection filters, then fires ostimnet_scene_change.
-    void OnSceneChanged(int threadID, const std::string& sceneID) {
-        SKSE::log::info("OStimEventListener: thread {} scene change fired ({})", threadID, sceneID);
+    // Records settled scene in timeline; triggers non-persistent "meta" diff + Jev speaker reaction when eligible.
+    void OnSceneChanged(int threadID, const std::string& sceneID, bool fromEndFlush = false) {
+        SKSE::log::info("OStimEventListener: thread {} scene change fired ({}, fromEndFlush={})",
+                        threadID, sceneID, fromEndFlush);
 
-        // Extract position from scene tags and persist to ThreadRegistry so
-        // EventPayloadBuilder can include it in the payload without a re-call.
         std::string position = ExtractPositionFromSceneTags(sceneID.c_str());
         ThreadDataStore::GetSingleton().SetCurrentPosition(threadID, position);
 
@@ -479,13 +540,37 @@ private:
             }
         }
 
-        ScheduledEvalService::GetSingleton().OnSceneChanged(threadID);
+        if (!fromEndFlush) {
+            ScheduledEvalService::GetSingleton().OnSceneChanged(threadID);
+        }
 
         if (!position.empty())
             SKSE::log::info("OStimEventListener: thread {} position = '{}'", threadID, position);
 
-        // Thread priority filter: set skipTrigger=true for non-priority threads.
-        bool skipTrigger = Config::GetSingleton().IsMuted();
+        const std::string baseDesc = GetSceneDescriptionWithoutPace(static_cast<uint32_t>(threadID), sceneID);
+        const std::string paceTier = ComputeScenePaceTier(static_cast<uint32_t>(threadID));
+        auto transition = ThreadDataStore::GetSingleton().RecordSceneTransition(threadID, sceneID, baseDesc, paceTier);
+        if (!fromEndFlush) {
+            SkyrimNetIntegration::CaptureThreadPhysicalTraits(threadID);
+        }
+
+        const bool postSpecialSkip = (_skipNextSceneTrigger.erase(threadID) > 0);
+        if (fromEndFlush) {
+            return;
+        }
+
+        if (!transition.sceneChanged && transition.consumedContextNote.empty()) {
+            SKSE::log::info("OStimEventListener: thread {} settled on unchanged scene '{}', skipping reaction",
+                            threadID, sceneID);
+            return;
+        }
+
+        bool skipTrigger = Config::GetSingleton().IsMuted() ||
+                           postSpecialSkip ||
+                           !ThreadDataStore::GetSingleton().GetSexual(threadID).value_or(false);
+        if (postSpecialSkip) {
+            SKSE::log::info("OStimEventListener: thread {} scene change skipTrigger=true (post-climax/virginity transition)", threadID);
+        }
         if (!skipTrigger && Config::GetSingleton().CommentsPrioritizeNearestThread()) {
             int priorityThread = SelectPriorityThread(ThreadRegistry::GetSingleton().GetActiveThreadActors());
             if (priorityThread != -1 && priorityThread != threadID) {
@@ -494,17 +579,19 @@ private:
                 skipTrigger = true;
             }
         }
-        // Post-climax transition: force skipTrigger for the scene immediately following
-        // a transition where an actor had the 'climaxing' tag.
-        if (!skipTrigger && _skipNextSceneTrigger.erase(threadID) > 0) {
-            SKSE::log::info("OStimEventListener: thread {} scene change skipTrigger=true (post-climax transition)", threadID);
-            skipTrigger = true;
+
+        if (skipTrigger) {
+            return;
         }
 
-        // Speaker selection: pick actor based on gender priority config.
-        RE::Actor* speaker = SelectSpeakerActor(threadID, Config::GetSingleton().CommentGenderPriority());
-        std::string json = EventPayloadBuilder::BuildSceneChange(threadID, sceneID, skipTrigger, speaker);
-        FireModEvent("ostimnet_scene_change", json.c_str(), static_cast<float>(threadID), speaker);
+        const int cooldownSec = Config::GetSingleton().CommentCooldownSeconds();
+        if (!ThreadDataStore::GetSingleton().TryConsumeCommentCooldown(threadID, cooldownSec)) {
+            SKSE::log::info("OStimEventListener: thread {} scene change comment on cooldown ({}s), recorded in timeline only",
+                            threadID, cooldownSec);
+            return;
+        }
+
+        SkyrimNetIntegration::TriggerSceneTransitionReaction(threadID, transition, "scene_change");
     }
 
     // Fired when the animation speed of a thread changes.
@@ -519,15 +606,29 @@ private:
     }
 
     // Called by DebounceQueue (via AddTask) when the speed-change debounce resolves.
-    void OnSpeedChangeFired(int threadID, int32_t speed) {
+    void OnSpeedChangeFired(int threadID, int32_t speed, bool fromEndFlush = false) {
         if (speed == 0) {
             SKSE::log::info("OStimEventListener: thread {} speed change ignored (speed=0)", threadID);
             return;
         }
         int32_t oldSpeed = ThreadDataStore::GetSingleton().ExchangeCurrentSpeed(threadID, speed);
-        SKSE::log::info("OStimEventListener: thread {} speed change fired {} -> {}", threadID, oldSpeed, speed);
+        if (speed == oldSpeed) {
+            SKSE::log::info("OStimEventListener: thread {} speed change ignored (unchanged={})", threadID, speed);
+            return;
+        }
+        SKSE::log::info("OStimEventListener: thread {} speed change fired {} -> {} (fromEndFlush={})",
+                        threadID, oldSpeed, speed, fromEndFlush);
 
-        bool skipTrigger = Config::GetSingleton().IsMuted();
+        const std::string direction = (oldSpeed < 0 || speed > oldSpeed) ? "increased" : "decreased";
+        const std::string paceTier  = ComputeScenePaceTier(static_cast<uint32_t>(threadID));
+        ThreadDataStore::GetSingleton().AnnotateCurrentScenePace(threadID, paceTier, direction);
+
+        if (fromEndFlush || !Config::GetSingleton().EnablePaceChangeComments()) {
+            return;
+        }
+
+        bool skipTrigger = Config::GetSingleton().IsMuted() ||
+                           !ThreadDataStore::GetSingleton().GetSexual(threadID).value_or(false);
         if (!skipTrigger && Config::GetSingleton().CommentsPrioritizeNearestThread()) {
             int priorityThread = SelectPriorityThread(ThreadRegistry::GetSingleton().GetActiveThreadActors());
             if (priorityThread != -1 && priorityThread != threadID) {
@@ -536,18 +637,21 @@ private:
                 skipTrigger = true;
             }
         }
-
-        RE::Actor* speaker = SelectSpeakerActor(threadID, Config::GetSingleton().CommentGenderPriority());
-        auto json = EventPayloadBuilder::BuildSpeedChange(threadID, oldSpeed, speed, skipTrigger, speaker);
-        if (!json.has_value()) {
-            SKSE::log::info("OStimEventListener: thread {} speed change ignored (no direction change)", threadID);
+        if (skipTrigger) {
             return;
         }
-        FireModEvent("ostimnet_speed_change", json->c_str(), static_cast<float>(threadID), speaker);
+
+        const int cooldownSec = Config::GetSingleton().CommentCooldownSeconds();
+        if (!ThreadDataStore::GetSingleton().TryConsumeCommentCooldown(threadID, cooldownSec)) {
+            SKSE::log::info("OStimEventListener: thread {} pace change comment on cooldown ({}s)", threadID, cooldownSec);
+            return;
+        }
+
+        SkyrimNetIntegration::TriggerPaceChangeReaction(threadID, direction, paceTier);
     }
 
     // Fired when an actor climaxes. Registers the event with the climax debouncer;
-    // the batch handler fires ostimnet_climax after 2s of silence on this thread.
+    // the batch handler fires after 2s of silence on this thread.
     //   numArg = threadID  |  strArg = sceneID  |  sender = orgasming actor
     void OnClimax(int threadID, const char* sceneID, RE::Actor* actor) {
         SKSE::log::info("OStimEventListener: actor climax registered on thread {} scene {}", threadID, sceneID ? sceneID : "");
@@ -568,14 +672,41 @@ private:
         }
     }
 
-    // Called by ClimaxDebouncer (via AddTask) and by OnThreadEnd flush when the debounce resolves.
-    // Builds a description from all collected data and fires ostimnet_climax.
-    void OnClimaxBatch(int threadID, const DebounceQueue::ClimaxBatchData& data) {
-        SKSE::log::info("OStimEventListener: thread {} climax batch fired ({} climax, {} cum applied, {} squirts)",
-                        threadID, data.climaxEvents.size(), data.cumApplied.size(), data.squirts.size());
+    // Called by DebounceQueue (via AddTask) and by OnThreadEnd flush when the climax debounce resolves.
+    // Records climax in timeline and triggers non-persistent climax reaction + 2-min short-lived context event.
+    void OnClimaxBatch(int threadID, const DebounceQueue::ClimaxBatchData& data, bool suppressReaction = false) {
+        SKSE::log::info("OStimEventListener: thread {} climax batch fired ({} climax, {} cum applied, {} squirts, suppressReaction={})",
+                        threadID, data.climaxEvents.size(), data.cumApplied.size(), data.squirts.size(), suppressReaction);
+
+        ClimaxActorSnapshot snapshot;
+        if (g_ostimThreadInterface) {
+            snapshot.count = g_ostimThreadInterface->GetActors(
+                static_cast<uint32_t>(threadID), snapshot.buffer, ClimaxActorSnapshot::kMaxActors);
+        }
+        auto actorResults    = BuildClimaxActorData(data, snapshot);
+        std::string humanMsg = FormatClimaxMessage(threadID, actorResults, snapshot);
+
+        auto& store = ThreadDataStore::GetSingleton();
+        store.AppendTimelineEvent(threadID, TimelineEntryKind::Climax, humanMsg);
+        store.BumpTransitionGeneration(threadID);
+
+        if (suppressReaction || Config::GetSingleton().IsMuted() || humanMsg.empty()) {
+            return;
+        }
+
         RE::Actor* speaker = SelectClimaxSpeakerActor(threadID, data);
-        std::string json = EventPayloadBuilder::BuildClimax(threadID, data, speaker);
-        FireModEvent("ostimnet_climax", json.c_str(), static_cast<float>(threadID), speaker);
+        if (!speaker) return;
+
+        SkyrimNetIntegration::DispatchTransientReaction(
+            threadID,
+            speaker,
+            nullptr,
+            "climax",
+            humanMsg,
+            /*interrupt=*/true,
+            "tton_climax_" + std::to_string(threadID),
+            humanMsg,
+            120000);
     }
 
     // Detects whether an ending OStim thread was forcibly interrupted by combat or arrest
@@ -645,29 +776,48 @@ private:
     }
 
     // Fired when any OStim thread ends (after continuation check).
-    // Fires papyrus mod event: ostimnet_stop
-    //   numArg = threadID  |  strArg = ""  |  sender = None
+    // Snapshots the timeline, fires immediate interrupted cue if busted/attacked, and condenses sex_stop.
     void OnThreadEnd(int threadID, const std::string& interruptReason = "") {
         SKSE::log::info("OStimEventListener: thread {} ended (interruptReason='{}')", threadID, interruptReason);
         PulloutService::GetSingleton().OnThreadEnd(threadID);
         OVirginityService::GetSingleton().OnThreadEnd(threadID);
         _suppressNextSceneChange.erase(threadID);  // clean up if thread ended before first scene change
-        _suppressNextSpeedChange.erase(threadID);   // clean up if thread ended before first speed change
+        _suppressNextSpeedChange.erase(threadID);  // clean up if thread ended before first speed change
         _skipNextSceneTrigger.erase(threadID);     // clean up if thread ended before the marked scene change
-        if (!interruptReason.empty()) {
+
+        const bool isInterrupted = !interruptReason.empty();
+        bool flushedClimaxSpoke  = false;
+        if (isInterrupted) {
             _dq.CancelSceneChange(threadID);
-            _dq.FlushClimax(threadID);
+            _dq.FlushClimax(threadID, /*suppressReaction=*/true);
             _dq.CancelSpeedChange(threadID);
         } else {
             _dq.FlushSceneChange(threadID);
-            _dq.FlushClimax(threadID);
+            flushedClimaxSpoke = _dq.FlushClimax(threadID, /*suppressReaction=*/false) &&
+                                 !Config::GetSingleton().IsMuted();
             _dq.FlushSpeedChange(threadID);
         }
+
         for (auto [specID, targetID] : ThreadRegistry::GetSingleton().TakeSpectators(threadID))
             DebounceQueue::FireRemoveSpectatorEvent(specID, targetID, threadID);
+
         RE::Actor* speaker = SelectSpeakerActor(threadID, Config::GetSingleton().CommentGenderPriority());
-        std::string json = EventPayloadBuilder::BuildStop(threadID, speaker, interruptReason);
-        FireModEvent("ostimnet_stop", json.c_str(), static_cast<float>(threadID), speaker);
+        bool skipStopTrigger = Config::GetSingleton().IsMuted() || flushedClimaxSpoke;
+
+        if (isInterrupted) {
+            skipStopTrigger = true;
+            if (!Config::GetSingleton().IsMuted() && speaker) {
+                std::string interruptCue = (interruptReason == "arrest")
+                    ? "The intimate encounter was just abruptly busted by law enforcement / crime intervention! Participants hastily broke apart."
+                    : "The intimate encounter was just violently interrupted mid-act by sudden combat and danger! Participants broke apart immediately to face the threat.";
+                SkyrimNetIntegration::DispatchTransientReaction(
+                    threadID, speaker, nullptr, "interrupted", interruptCue, /*interrupt=*/true);
+            }
+        }
+
+        EncounterStopSnapshot snapshot = ThreadDataStore::GetSingleton().SnapshotForStop(
+            threadID, speaker, skipStopTrigger, interruptReason);
+        SkyrimNetIntegration::SummarizeEncounterAndFireStop(std::move(snapshot));
     }
 };
 

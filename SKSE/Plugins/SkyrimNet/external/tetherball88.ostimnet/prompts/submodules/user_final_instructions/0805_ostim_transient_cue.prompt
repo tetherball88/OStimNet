@@ -1,0 +1,31 @@
+{% set npcData = decnpc(npc.UUID) %}
+{% if not npcData.isVirtual %}
+    {% set cueData = ostimnet_transient_cue(npc.UUID) %}
+    {% if cueData and cueData.hasCue %}
+        {% if cueData.type == "scene_change" %}
+**Immediate Physical Shift (Respond to What Just Changed):** {{ cueData.cue }}
+React directly to this physical shift right now — the movement, changed angle, new contact, grip, or eye contact — rather than describing the static pose. Let {{ npcData.name }}'s unfiltered reaction carry the emotional thread forward.
+        {% elif cueData.type == "continue_join" %}
+**Immediate Scene Shift — Participant Joined:** {{ cueData.cue }}
+React directly in character to how the encounter just shifted with the newcomer joining in.
+        {% elif cueData.type == "pace_change" %}
+**Immediate Pace Shift:** {{ cueData.cue }}
+Let {{ npcData.name }}'s immediate, unfiltered reaction to this shift in rhythm and intensity slip out naturally.
+        {% elif cueData.type == "partner_near_edge" %}
+**Immediate Sensory Cue — Partner Near Climax:** {{ cueData.cue }}
+React with spoken dialogue in this intense moment, and make an action call to `PulloutDecision` deciding whether to request pulling out or allow finishing inside.
+        {% elif cueData.type == "giver_near_edge" %}
+**Immediate Sensory Cue — On the Edge of Climax:** {{ cueData.cue }}
+Let out an immediate, breathless in-character reaction or warning right on the edge of climax.
+        {% elif cueData.type == "climax" %}
+**Climax Just Happened (Respond Immediately):** {{ cueData.cue }}
+{{ npcData.name }} reacts immediately and unfiltered to this climax — whether climaxing themselves, feeling someone finish in or on them, or both.
+        {% elif cueData.type == "interrupted" %}
+**Scene Abruptly Interrupted (Respond Immediately):** {{ cueData.cue }}
+Snap out of passion immediately and react in character to getting interrupted mid-act — shock, alarm, embarrassment, frustration, or battle readiness.
+        {% else %}
+**Immediate Moment:** {{ cueData.cue }}
+React directly in character to what just happened.
+        {% endif %}
+    {% endif %}
+{% endif %}

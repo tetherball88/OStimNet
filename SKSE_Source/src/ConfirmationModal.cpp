@@ -250,32 +250,6 @@ namespace OStimNet {
                    ", but " + player + " declined the proposal.";
         }
 
-        std::string BuildDeclineJson(
-            const std::string& actionType,
-            Intent intent,
-            bool isSexual,
-            const std::string& activity,
-            const std::string& mainActorList,
-            const std::string& secondaryActorList,
-            bool skipTrigger) {
-            std::string msg = BuildDeclineMsg(actionType, mainActorList, secondaryActorList, activity);
-            std::string speakerName = ThreadDataStore::GetActorDisplayName(
-                RE::PlayerCharacter::GetSingleton(),
-                "Player");
-            return BuildBaseEventJson(
-                       "action_decline",
-                       msg,
-                       0,
-                       skipTrigger,
-                       actionType,
-                       intent,
-                       isSexual,
-                       mainActorList,
-                       secondaryActorList,
-                       speakerName)
-                .dump();
-        }
-
     }  // namespace
 
     ConfirmationModal& ConfirmationModal::GetSingleton() {
@@ -591,6 +565,14 @@ namespace OStimNet {
                         actionTypeLower,
                         display.message);
 
+        RE::FormID originatorFormID = 0;
+        for (RE::Actor* actor : mainActors) {
+            if (actor && !IsPlayer(actor)) {
+                originatorFormID = actor->GetFormID();
+                break;
+            }
+        }
+
         UI::ModalManager::GetSingleton().ShowModal(
             std::move(req),
             [this,
@@ -605,7 +587,8 @@ namespace OStimNet {
              isSexual,
              activityStr,
              mainActorList,
-             secondaryActorList](const UI::ModalResponse& resp) {
+             secondaryActorList,
+             originatorFormID](const UI::ModalResponse& resp) {
                 if (!UI::IsSessionEpochCurrent(expectedEpoch)) {
                     SKSE::log::debug("ConfirmationModal: dropped stale modal response for '{}'", actionTypeLower);
                     return;
@@ -634,21 +617,36 @@ namespace OStimNet {
                 if (resp.buttonId == "decline_explain") {
                     SetCooldownAll(keys, declineSec);
 
-                    const std::string json = BuildDeclineJson(
+                    const std::string declineMsg = BuildDeclineMsg(
                         actionTypeLower,
-                        intent,
-                        isSexual,
-                        activityStr,
                         mainActorList,
                         secondaryActorList,
-                        /*skipTrigger=*/true);
-                    FireModEvent("ostimnet_decline", json.c_str(), 0.0f, RE::PlayerCharacter::GetSingleton());
+                        activityStr);
 
-                    UI::AddEpochTask(expectedEpoch, []() {
+                    UI::AddEpochTask(expectedEpoch, [declineMsg, originatorFormID]() {
                         auto* innerVm = RE::BSScript::Internal::VirtualMachine::GetSingleton();
                         if (!innerVm) {
                             SKSE::log::warn("ConfirmationModal: VirtualMachine unavailable for TriggerTextInput");
                             return;
+                        }
+                        if (!declineMsg.empty()) {
+                            RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> nullShortCb;
+                            auto* playerActor = static_cast<RE::Actor*>(RE::PlayerCharacter::GetSingleton());
+                            auto* origActor   = originatorFormID
+                                ? RE::TESForm::LookupByID<RE::Actor>(originatorFormID)
+                                : nullptr;
+                            auto evId         = RE::BSFixedString("tton_action_decline");
+                            auto evType       = RE::BSFixedString("tton_action_decline");
+                            auto desc         = RE::BSFixedString(declineMsg);
+                            auto data         = RE::BSFixedString("");
+                            std::int32_t ttl  = 60000;
+                            innerVm->DispatchStaticCall(
+                                "SkyrimNetApi",
+                                "RegisterShortLivedEvent",
+                                RE::MakeFunctionArguments(
+                                    std::move(evId), std::move(evType), std::move(desc), std::move(data),
+                                    std::move(ttl), std::move(playerActor), std::move(origActor)),
+                                nullShortCb);
                         }
                         RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> nullCallback;
                         if (!innerVm->DispatchStaticCall(

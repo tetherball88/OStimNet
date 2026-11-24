@@ -1,0 +1,9 @@
+FormKey: 000002:TT_OStimNet.esp
+EditorID: TTON_SpectatorFleeFaction
+Name:
+  TargetLanguage: English
+  Value: TTON_SpectatorFleeFaction
+CrimeValues:
+  Arrest: True
+  AttackOnSight: True
+VendorValues: {}

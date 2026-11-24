@@ -3049,5 +3049,131 @@ bool EvaluatePulloutDecision(
     return true;
 }
 
+// =============================================================================
+// 9. SelectTransitionSpeaker
+// =============================================================================
+
+void SelectTransitionSpeaker(
+    int threadID,
+    const std::string& prevDescription,
+    const std::string& currDescription,
+    const std::string& contextNote,
+    std::function<void(RE::FormID)> onDone) {
+    if (!onDone) return;
+
+    auto& store       = ThreadDataStore::GetSingleton();
+    const auto actors = store.GetActorPtrs(threadID);
+    if (actors.empty()) {
+        onDone(0);
+        return;
+    }
+
+    std::vector<RE::Actor*> nonPlayerActors;
+    std::vector<std::string> allNames;
+    for (RE::Actor* a : actors) {
+        if (!a) continue;
+        allNames.push_back(SanitizeSingleLine(ThreadDataStore::GetActorDisplayName(a, "Actor"), "Actor"));
+        if (!IsPlayerFormID(a->GetFormID())) {
+            nonPlayerActors.push_back(a);
+        }
+    }
+
+    if (nonPlayerActors.empty()) {
+        onDone(0);
+        return;
+    }
+    if (nonPlayerActors.size() == 1) {
+        // Only 1 NPC in the thread — deterministic, 0 Jev calls needed.
+        onDone(nonPlayerActors[0]->GetFormID());
+        return;
+    }
+
+    RE::Actor* fallbackActor = SelectSpeakerActor(threadID, Config::GetSingleton().CommentGenderPriority());
+    RE::FormID fallbackFID   = fallbackActor ? fallbackActor->GetFormID() : nonPlayerActors[0]->GetFormID();
+
+    if (!IsAvailable()) {
+        onDone(fallbackFID);
+        return;
+    }
+
+    const auto mainPtrs = store.GetMainActors(threadID);
+    nlohmann::json candidatesList = nlohmann::json::array();
+    std::vector<std::pair<std::string, RE::FormID>> keyToFormID;
+    keyToFormID.reserve(nonPlayerActors.size());
+
+    for (size_t i = 0; i < nonPlayerActors.size(); ++i) {
+        RE::Actor* a = nonPlayerActors[i];
+        uint64_t uuid = ActorToUUID(a);
+        if (uuid == 0) continue;
+
+        std::string key  = "p_" + std::to_string(keyToFormID.size() + 1);
+        std::string name = SanitizeSingleLine(ThreadDataStore::GetActorDisplayName(a, "Actor"), "Actor");
+        bool isMain      = std::find(mainPtrs.begin(), mainPtrs.end(), a) != mainPtrs.end();
+
+        nlohmann::json cObj;
+        cObj["key"]  = key;
+        cObj["uuid"] = uuid;
+        cObj["name"] = name;
+        cObj["role"] = isMain ? "main" : "secondary";
+        candidatesList.push_back(std::move(cObj));
+        keyToFormID.emplace_back(std::move(key), a->GetFormID());
+    }
+
+    if (keyToFormID.size() < 2) {
+        onDone(keyToFormID.size() == 1 ? keyToFormID[0].second : fallbackFID);
+        return;
+    }
+
+    nlohmann::json ctx;
+    ctx["candidatesList"]      = std::move(candidatesList);
+    ctx["actorNames"]          = OStimNet::FormatActorList(allNames);
+    ctx["mainActorNames"]      = store.GetFormattedMainActorNames(threadID);
+    ctx["secondaryActorNames"] = store.GetFormattedSecondaryActorNames(threadID);
+    ctx["intent"]              = OStimNet::IntentToString(store.GetIntent(threadID));
+    ctx["previousDescription"] = prevDescription;
+    ctx["currentDescription"]  = currDescription;
+    ctx["contextNote"]         = contextNote;
+
+    std::string contextJson  = ctx.dump();
+    std::string templateName = "ostimnet_select_transition_speaker";
+
+    bool queued = PublicSendCustomDecisionToLLM(
+        templateName.c_str(),
+        contextJson.c_str(),
+        kDefaultMaxProbabilities,
+        [keyToFormID = std::move(keyToFormID), fallbackFID, threadID, onDone](
+            const char* answer, const char* resultJson, int success) {
+            if (!success) {
+                SKSE::log::debug("SkyrimNetDecisions::SelectTransitionSpeaker: Jev failed on thread {}, using fallback 0x{:08X}",
+                                 threadID, fallbackFID);
+                onDone(fallbackFID);
+                return;
+            }
+
+            std::string chosenKey = (answer && answer[0] != '\0') ? std::string(answer) : std::string{};
+            if (chosenKey.empty() && resultJson && resultJson[0] != '\0') {
+                auto parsed = nlohmann::json::parse(resultJson, nullptr, /*allow_exceptions=*/false);
+                if (!parsed.is_discarded() && parsed.contains("answers")) {
+                    chosenKey = GetChoiceAnswer(parsed["answers"], "speaker", "");
+                }
+            }
+
+            for (const auto& [k, fid] : keyToFormID) {
+                if (k == chosenKey) {
+                    SKSE::log::info("SkyrimNetDecisions::SelectTransitionSpeaker: selected {} (0x{:08X}) for thread {}",
+                                    k, fid, threadID);
+                    onDone(fid);
+                    return;
+                }
+            }
+
+            onDone(fallbackFID);
+        });
+
+    if (!queued) {
+        onDone(fallbackFID);
+    }
+}
+
 }  // namespace OStimNet::SkyrimNetDecisions
 

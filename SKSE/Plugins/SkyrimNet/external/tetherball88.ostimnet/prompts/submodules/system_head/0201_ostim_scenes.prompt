@@ -159,7 +159,9 @@
             {% else %}
                 {{scene.mainActorNames}} initiated this encounter and {{scene.secondaryActorNames}} joined in.
             {% endif %}
+            {% if not (contains(actors, to_string(npc.UUID)) and scene.isSexual) %}
             {{ sceneDescription }}
+            {% endif %}
             {% if not loop.is_last %}
                 ---
             {% endif %}

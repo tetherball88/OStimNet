@@ -1,0 +1,36 @@
+FormKey: 000800:TT_OStimNet.esp
+EditorID: TTON_MainController
+VirtualMachineAdapter:
+  Scripts:
+  - Name: TTON_Actions
+  - Name: TTON_GameMaster
+  - Name: TTON_MainController
+    Properties:
+    - MutagenObjectType: ScriptObjectProperty
+      Name: TTON_IsOstimActive
+      Object: 000001:TT_OStimNet.esp
+  - Name: TTON_MCM
+  FileName: ''
+  Aliases:
+  - Property:
+      Name: ''
+      Object: 000800:TT_OStimNet.esp
+      Alias: 1
+    Scripts:
+    - Name: TTON_PlayerRef
+Name:
+  TargetLanguage: English
+  Value: OStimNet - Main Controller Quest
+Flags:
+- StartGameEnabled
+- 0x10
+- RunOnce
+Priority: 80
+NextAliasID: 2
+Aliases:
+- ID: 1
+  Name: PlayerRef
+  Flags:
+  - AllowReuseInQuest
+  ForcedReference: 000014:Skyrim.esm
+  VoiceTypes: Null

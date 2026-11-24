@@ -1,0 +1,28 @@
+FormKey: 00000E:TT_OStimNet.esp
+EditorID: TTON_DeclineChangeSexPaceEffect
+VirtualMachineAdapter:
+  Scripts:
+  - Name: TTON_DeclineEffect
+    Properties:
+    - MutagenObjectType: ScriptObjectProperty
+      Name: currentSpell
+      Object: 000014:TT_OStimNet.esp
+Name:
+  TargetLanguage: English
+  Value: TTON_DeclineChangeSexPaceEffect
+Flags:
+- NoHitEvent
+- NoDuration
+- NoMagnitude
+- NoArea
+- HideInUI
+- NoHitEffect
+Archetype:
+  MutagenObjectType: MagicEffectArchetype
+  Type: Script
+DualCastScale: 1
+CastingSoundLevel: Normal
+Sounds: []
+Description:
+  TargetLanguage: English
+  Value: ''

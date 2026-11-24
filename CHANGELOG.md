@@ -1,5 +1,24 @@
 # Changelog
 
+## v2.9.0
+
+### Added
+
+- **Transient mid-scene reactions & live physical transition narration** — Replaced persistent mid-scene `tton_event` clutter with a zero-persistence transient reaction pipeline (`DispatchTransientReaction`, `ostimnet_transient_cue` decorator, and `0805_ostim_transient_cue.prompt`):
+  - On scene transitions and invite/join continuations, a dedicated LLM prompt (`ostimnet_scene_delta.prompt`) narrates the physical transition between consecutive moments (scaling output length for 2-actor vs. 3+ group scenes) while Jev Decisions (`ostimnet_select_transition_speaker.prompt`) selects the speaking NPC in parallel for multi-NPC scenes, dispatching `SkyrimNetApi.DirectNarration` directly from C++.
+  - Mid-scene climaxes, partner/giver near-edge sensory cues, pace shifts, pullouts, intent/role changes, action declines, and combat/arrest interruptions now use transient cues and short-lived context events (`RegisterShortLivedEvent`) instead of writing permanent rows to SkyrimNet's SQLite `events` table.
+  - Added **Fast LLM variant** (`tton.gm.fastLlmVariant`, defaulting to `gamemaster_evaluation`), **Comment cooldown** (`tton.settings.commentCooldownSeconds`, default `20s`), and **Pace change comments** (`tton.settings.enablePaceChangeComments`, disabled by default) to SkyrimNet plugin settings (`manifest.yaml`).
+- **Chronological encounter timeline & consolidated `sex_stop` summary** — Tracks settled scenes, pace shifts, mid-scene joiners, dynamic/role shifts, pullouts, climaxes, virginity milestones, and spectators across thread continuations, summarizing the completed encounter into a concise past-tense record (`ostimnet_summarize_encounter.prompt`) attached to the persistent `sex_stop` event.
+- **Per-thread physical trait capture for encounter summaries (optional TT Body Language integration)** — Lazily snapshots non-average physical trait tiers from `BodyLanguage.dll` while actors are undressed during active sexual scenes (via optional C-ABI lookup, carried across continuations) so notable outlier traits remain available to `ostimnet_summarize_encounter.prompt` after actors redress.
+
+### Changed
+
+- **Deduplicated ongoing scene description in dialogue prompts** — `0201_ostim_scenes.prompt` now omits the raw scene description for the speaking NPC's own active sexual scene (preserving it for bystanders, spectators, non-sexual scenes, and other concurrent scenes) while `0502_sex.prompt` renders it once at high recency beside the voice modifier.
+- **Cleaned up superseded trigger YAMLs** — Removed 6 triggers (`tton_sex_position_change`, `tton_sex_pace_change`, `tton_sex_climax`, `tton_partner_near_edge`, `tton_sex_interrupted`, `tton_action_decline`) now handled directly by the C++ transient reaction pipeline.
+- **Animation descriptions & metadata** — Expanded custom scene descriptions in `Billyy.json` and `OStim.json`, and updated `OStimNetMetaData.json`.
+
+---
+
 ## v2.8.0
 
 ### Added

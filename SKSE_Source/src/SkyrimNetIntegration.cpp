@@ -1020,6 +1020,46 @@ void Register() {
             j["hasVirgin"]           = OStimNet::OVirginityService::GetSingleton().ThreadHasActiveVirgin(threadID);
             return j.dump();
         });
+
+    RegisterDecorator(
+        "ostimnet_transient_cue",
+        "Returns a JSON object describing any active one-shot transient reaction cue for this actor "
+        "({\"hasCue\":bool,\"type\":\"...\",\"cue\":\"...\"}). Cleared automatically after the actor speaks.",
+        [](RE::Actor* actor) -> std::string {
+            if (!actor) return "{\"hasCue\":false,\"type\":\"\",\"cue\":\"\"}";
+            auto cue = OStimNet::ThreadDataStore::GetSingleton().GetActiveCueForActor(actor->GetFormID());
+            if (!cue.has_value()) {
+                return "{\"hasCue\":false,\"type\":\"\",\"cue\":\"\"}";
+            }
+            nlohmann::json j;
+            j["hasCue"] = true;
+            j["type"]   = cue->type;
+            j["cue"]    = cue->cueText;
+            return j.dump();
+        });
+
+    static bool s_dialogueCallbacksRegistered = false;
+    if (!s_dialogueCallbacksRegistered && PublicRegisterEventCallback) {
+        auto onDialogueRegistered = [](const char* eventJson) {
+            if (!eventJson || eventJson[0] == '\0') return;
+            auto j = nlohmann::json::parse(eventJson, nullptr, /*allow_exceptions=*/false);
+            if (j.is_discarded() || !j.is_object()) return;
+            uint32_t formId = 0;
+            if (j.contains("originatingActorFormId") && j["originatingActorFormId"].is_number_unsigned()) {
+                formId = j["originatingActorFormId"].get<uint32_t>();
+            } else if (j.contains("originatingActorUUID") && j["originatingActorUUID"].is_number_unsigned() && PublicUUIDToFormID) {
+                formId = PublicUUIDToFormID(j["originatingActorUUID"].get<uint64_t>());
+            }
+            if (formId != 0) {
+                OStimNet::ThreadDataStore::GetSingleton().ConsumeCueForActor(static_cast<RE::FormID>(formId));
+            }
+        };
+        uint64_t cb1 = PublicRegisterEventCallback("dialogue", onDialogueRegistered);
+        uint64_t cb2 = PublicRegisterEventCallback("dialogue_npc", onDialogueRegistered);
+        s_dialogueCallbacksRegistered = (cb1 != 0 || cb2 != 0);
+        SKSE::log::info("SkyrimNetIntegration::Register: registered dialogue event callbacks (dialogue={}, dialogue_npc={}) for transient cue auto-clear",
+                        cb1, cb2);
+    }
 }
 
 // SanitizeLLMJson is defined in JsonService.h and shared across all translation units.
@@ -2748,6 +2788,655 @@ bool EvaluatePulloutDecision(int threadID, bool forceChat) {
         return false;
     }
     return true;
+}
+
+namespace {
+
+// Cleans plain-text responses from fast ("meta") LLMs:
+// - Strips `<think>...</think>` blocks if a reasoning model is configured
+// - Strips markdown code fences and surrounding quotes
+// - Collapses internal newlines/tabs to single spaces and trims whitespace
+std::string SanitizePlainTextLLMOutput(const char* raw, size_t maxChars = 420) {
+    if (!raw || raw[0] == '\0') return "";
+    std::string s(raw);
+
+    // Strip any <think>...</think> blocks (case-sensitive common tag).
+    for (;;) {
+        size_t openPos = s.find("<think>");
+        if (openPos == std::string::npos) break;
+        size_t closePos = s.find("</think>", openPos + 7);
+        if (closePos == std::string::npos) {
+            s.erase(openPos);
+            break;
+        }
+        s.erase(openPos, (closePos + 8) - openPos);
+    }
+
+    // Strip markdown code fences if present.
+    if (s.find("```") != std::string::npos) {
+        std::string noFences;
+        noFences.reserve(s.size());
+        size_t i = 0;
+        while (i < s.size()) {
+            if (i + 2 < s.size() && s[i] == '`' && s[i + 1] == '`' && s[i + 2] == '`') {
+                i += 3;
+                while (i < s.size() && s[i] != '\n' && s[i] != ' ') ++i;
+                continue;
+            }
+            noFences.push_back(s[i++]);
+        }
+        s = std::move(noFences);
+    }
+
+    // Collapse whitespace and newlines into clean single spaces.
+    std::string collapsed;
+    collapsed.reserve(s.size());
+    bool prevSpace = true;
+    for (unsigned char c : s) {
+        if (c == '\r' || c == '\n' || c == '\t' || c == ' ') {
+            if (!prevSpace) {
+                collapsed.push_back(' ');
+                prevSpace = true;
+            }
+        } else {
+            collapsed.push_back(static_cast<char>(c));
+            prevSpace = false;
+        }
+    }
+    while (!collapsed.empty() && collapsed.back() == ' ') collapsed.pop_back();
+
+    // Strip surrounding matching quotes or backticks.
+    while (collapsed.size() >= 2 &&
+           ((collapsed.front() == '"' && collapsed.back() == '"') ||
+            (collapsed.front() == '\'' && collapsed.back() == '\'') ||
+            (collapsed.front() == '`' && collapsed.back() == '`'))) {
+        collapsed = collapsed.substr(1, collapsed.size() - 2);
+        while (!collapsed.empty() && collapsed.front() == ' ') collapsed.erase(collapsed.begin());
+        while (!collapsed.empty() && collapsed.back() == ' ') collapsed.pop_back();
+    }
+
+    if (collapsed.size() > maxChars) {
+        size_t cut = collapsed.rfind('.', maxChars);
+        if (cut != std::string::npos && cut > maxChars / 2) {
+            collapsed.resize(cut + 1);
+        } else {
+            collapsed.resize(maxChars);
+            while (!collapsed.empty() && collapsed.back() == ' ') collapsed.pop_back();
+            if (!collapsed.empty() && collapsed.back() != '.') collapsed += '.';
+        }
+    }
+
+    return collapsed;
+}
+
+RE::Actor* ResolveDefaultReactionTarget(int threadID, RE::Actor* speaker) {
+    if (!speaker || threadID < 0) return nullptr;
+    auto* player = RE::PlayerCharacter::GetSingleton();
+    const auto actors = ThreadDataStore::GetSingleton().GetActorPtrs(threadID);
+
+    if (player && speaker != static_cast<RE::Actor*>(player)) {
+        for (RE::Actor* a : actors) {
+            if (a == static_cast<RE::Actor*>(player)) {
+                return player;
+            }
+        }
+    }
+    for (RE::Actor* a : actors) {
+        if (a && a != speaker) {
+            return a;
+        }
+    }
+    return nullptr;
+}
+
+std::string BuildDeterministicEncounterSummary(const EncounterStopSnapshot& snap) {
+    const std::string participants = !snap.actorNames.empty()
+        ? snap.actorNames
+        : (!snap.mainActorNames.empty() ? snap.mainActorNames : "Participants");
+
+    if (!snap.isSexual) {
+        if (snap.interrupted) {
+            return (snap.interruptReason == "arrest")
+                ? ("The intimate moment involving " + participants + " was abruptly cut short by crime and guard intervention.")
+                : ("The intimate moment involving " + participants + " was abruptly interrupted by sudden combat and danger.");
+        }
+        for (const auto& entry : snap.timeline) {
+            if (!entry.text.empty()) return entry.text;
+        }
+        return "";
+    }
+
+    if (snap.timeline.empty()) {
+        if (snap.interrupted) {
+            return (snap.interruptReason == "arrest")
+                ? ("The sexual encounter involving " + participants + " was abruptly cut short by crime and guard intervention.")
+                : ("The sexual encounter involving " + participants + " was abruptly interrupted by sudden combat and danger.");
+        }
+        return "";
+    }
+
+    // Single-stage non-interrupted encounter: return the scene description directly without LLM call.
+    if (snap.timeline.size() == 1 && !snap.interrupted) {
+        std::string out = snap.timeline[0].text;
+        if (!snap.timeline[0].paceAnnotation.empty()) {
+            out += " (" + snap.timeline[0].paceAnnotation + ").";
+        }
+        return out;
+    }
+
+    // Multi-stage deterministic fallback: keep opening stage, key milestones/climaxes, latest scene, and interruption.
+    std::string out;
+    auto appendSentence = [&](std::string part) {
+        while (!part.empty() && part.back() == ' ') part.pop_back();
+        if (part.empty()) return;
+        if (part.back() != '.' && part.back() != '!') part.push_back('.');
+        if (!out.empty()) out.push_back(' ');
+        out += part;
+    };
+
+    const TimelineEntry* firstScene = nullptr;
+    const TimelineEntry* lastScene  = nullptr;
+    for (const auto& e : snap.timeline) {
+        if (e.kind == TimelineEntryKind::Start || e.kind == TimelineEntryKind::Scene) {
+            if (!firstScene) firstScene = &e;
+            lastScene = &e;
+        }
+    }
+
+    if (firstScene) {
+        appendSentence(firstScene->text);
+    }
+    for (const auto& e : snap.timeline) {
+        if (e.kind == TimelineEntryKind::Continuation ||
+            e.kind == TimelineEntryKind::IntentChanged ||
+            e.kind == TimelineEntryKind::Pullout ||
+            e.kind == TimelineEntryKind::Milestone ||
+            e.kind == TimelineEntryKind::Climax) {
+            appendSentence(e.text);
+        }
+    }
+    if (lastScene && lastScene != firstScene) {
+        appendSentence(lastScene->text);
+    }
+    if (snap.interrupted) {
+        appendSentence(snap.interruptReason == "arrest"
+            ? "The encounter was abruptly cut short by crime and guard intervention"
+            : "The encounter was abruptly interrupted mid-act by sudden combat and danger");
+    }
+    return out;
+}
+
+class PurgeThenNarrateCallback : public RE::BSScript::IStackCallbackFunctor {
+public:
+    PurgeThenNarrateCallback(UI::SessionEpoch epoch, RE::FormID speakerFID, RE::FormID targetFID)
+        : m_epoch(epoch), m_speakerFID(speakerFID), m_targetFID(targetFID) {}
+
+    void operator()(RE::BSScript::Variable) override {
+        UI::AddEpochTask(m_epoch, [speakerFID = m_speakerFID, targetFID = m_targetFID]() {
+            auto* spk = speakerFID ? RE::TESForm::LookupByID<RE::Actor>(speakerFID) : nullptr;
+            if (!spk) return;
+            auto* tgt = targetFID ? RE::TESForm::LookupByID<RE::Actor>(targetFID) : nullptr;
+            auto* vm  = RE::BSScript::Internal::VirtualMachine::GetSingleton();
+            if (!vm) return;
+            RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> nullCallback;
+            auto emptyContent = RE::BSFixedString("");
+            bool ok = vm->DispatchStaticCall(
+                "SkyrimNetApi",
+                "DirectNarration",
+                RE::MakeFunctionArguments(std::move(emptyContent), std::move(spk), std::move(tgt)),
+                nullCallback);
+            SKSE::log::info("DispatchTransientReaction: post-purge DirectNarration('', speaker=0x{:08X}, target=0x{:08X}) -> ok={}",
+                            speakerFID, targetFID, ok);
+        });
+    }
+
+    void SetObject(const RE::BSTSmartPointer<RE::BSScript::Object>&) override {}
+
+private:
+    UI::SessionEpoch m_epoch;
+    RE::FormID       m_speakerFID;
+    RE::FormID       m_targetFID;
+};
+
+}  // namespace
+
+void DispatchTransientReaction(
+    int threadID,
+    RE::Actor* speaker,
+    RE::Actor* target,
+    const std::string& cueType,
+    const std::string& cueText,
+    bool interrupt,
+    const std::string& shortLivedKey,
+    const std::string& shortLivedDesc,
+    int shortLivedTtlMs) {
+    if (!speaker || cueText.empty()) return;
+
+    RE::Actor* resolvedTarget = target ? target : ResolveDefaultReactionTarget(threadID, speaker);
+    RE::FormID speakerFID     = speaker->GetFormID();
+    RE::FormID targetFID      = resolvedTarget ? resolvedTarget->GetFormID() : 0;
+
+    ThreadDataStore::GetSingleton().SetActiveCueForActor(
+        speakerFID,
+        targetFID,
+        threadID,
+        cueType,
+        cueText,
+        std::chrono::seconds(15));
+
+    SKSE::log::info("DispatchTransientReaction: thread={} type='{}' speaker='{}' (0x{:08X}) target=0x{:08X} interrupt={} cue='{}'",
+                    threadID,
+                    cueType,
+                    ThreadDataStore::GetActorDisplayName(speaker, "Speaker"),
+                    speakerFID,
+                    targetFID,
+                    interrupt,
+                    cueText);
+
+    const UI::SessionEpoch epoch = UI::GetSessionEpoch();
+    auto dispatchToSkyrimNet = [epoch, speakerFID, targetFID, interrupt, shortLivedKey, shortLivedDesc, shortLivedTtlMs]() {
+        auto* spk = speakerFID ? RE::TESForm::LookupByID<RE::Actor>(speakerFID) : nullptr;
+        if (!spk) return;
+        auto* tgt = targetFID ? RE::TESForm::LookupByID<RE::Actor>(targetFID) : nullptr;
+        auto* vm  = RE::BSScript::Internal::VirtualMachine::GetSingleton();
+        if (!vm) {
+            SKSE::log::warn("DispatchTransientReaction: VirtualMachine unavailable");
+            return;
+        }
+
+        if (!shortLivedKey.empty() && !shortLivedDesc.empty() && shortLivedTtlMs > 0) {
+            RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> nullCb;
+            auto evId     = RE::BSFixedString(shortLivedKey);
+            auto evType   = RE::BSFixedString("tton_short_lived");
+            auto desc     = RE::BSFixedString(shortLivedDesc);
+            auto data     = RE::BSFixedString("");
+            std::int32_t ttl = shortLivedTtlMs;
+            auto spkShort = spk;
+            auto tgtShort = tgt;
+            vm->DispatchStaticCall(
+                "SkyrimNetApi",
+                "RegisterShortLivedEvent",
+                RE::MakeFunctionArguments(
+                    std::move(evId), std::move(evType), std::move(desc), std::move(data),
+                    std::move(ttl), std::move(spkShort), std::move(tgtShort)),
+                nullCb);
+        }
+
+        if (interrupt) {
+            RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> purgeCb =
+                RE::make_smart<PurgeThenNarrateCallback>(epoch, speakerFID, targetFID);
+            bool deferToFinished = false;
+            bool ok = vm->DispatchStaticCall(
+                "SkyrimNetApi",
+                "PurgeDialogue",
+                RE::MakeFunctionArguments(std::move(deferToFinished)),
+                purgeCb);
+            if (!ok) {
+                RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> nullCb;
+                auto emptyContent = RE::BSFixedString("");
+                vm->DispatchStaticCall(
+                    "SkyrimNetApi",
+                    "DirectNarration",
+                    RE::MakeFunctionArguments(std::move(emptyContent), std::move(spk), std::move(tgt)),
+                    nullCb);
+            }
+            return;
+        }
+
+        RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> nullCb;
+        auto emptyContent = RE::BSFixedString("");
+        bool ok = vm->DispatchStaticCall(
+            "SkyrimNetApi",
+            "DirectNarration",
+            RE::MakeFunctionArguments(std::move(emptyContent), std::move(spk), std::move(tgt)),
+            nullCb);
+        SKSE::log::info("DispatchTransientReaction: dispatched DirectNarration('', speaker=0x{:08X}, target=0x{:08X}) -> ok={}",
+                        speakerFID, targetFID, ok);
+    };
+
+    if (UI::IsInGameTaskScope()) {
+        dispatchToSkyrimNet();
+    } else {
+        UI::AddEpochTask(epoch, std::move(dispatchToSkyrimNet));
+    }
+}
+
+void TriggerSceneTransitionReaction(
+    int threadID,
+    const SceneTransitionRecord& transition,
+    const std::string& cueType) {
+    auto& store = ThreadDataStore::GetSingleton();
+    if (!store.IsActive(threadID)) return;
+
+    // Ensure at least one non-player participant exists before queuing LLM calls.
+    if (!SelectSpeakerActor(threadID, Config::GetSingleton().CommentGenderPriority())) {
+        SKSE::log::debug("TriggerSceneTransitionReaction: thread {} has no non-player speaker, skipping", threadID);
+        return;
+    }
+
+    const std::string currSceneID = store.GetLastSceneID(threadID);
+    const StructuralSceneDiff structDiff = BuildStructuralSceneDiff(
+        static_cast<uint32_t>(threadID), transition.prevSceneID, currSceneID);
+
+    std::string fallbackCue;
+    if (!transition.consumedContextNote.empty() && !structDiff.fallbackCue.empty()) {
+        fallbackCue = transition.consumedContextNote + " " + structDiff.fallbackCue;
+    } else if (!structDiff.fallbackCue.empty()) {
+        fallbackCue = structDiff.fallbackCue;
+    } else {
+        fallbackCue = transition.currDescription;
+    }
+
+    struct TransitionJoinState {
+        std::atomic<int> remaining{2};
+        std::mutex       mtx;
+        std::string      diffText;
+        RE::FormID       speakerFormID = 0;
+        int              threadID      = -1;
+        uint64_t         generation    = 0;
+        UI::SessionEpoch epoch         = 0;
+        std::string      cueType;
+        std::string      fallbackCue;
+    };
+
+    auto joinState         = std::make_shared<TransitionJoinState>();
+    joinState->threadID    = threadID;
+    joinState->generation  = transition.generation;
+    joinState->epoch       = UI::GetSessionEpoch();
+    joinState->cueType     = cueType;
+    joinState->fallbackCue = std::move(fallbackCue);
+
+    auto finishBranch = [](const std::shared_ptr<TransitionJoinState>& st) {
+        if (st->remaining.fetch_sub(1, std::memory_order_acq_rel) != 1) return;
+
+        UI::AddEpochTask(st->epoch, [st]() {
+            auto& reg = ThreadDataStore::GetSingleton();
+            if (!reg.IsActive(st->threadID)) {
+                SKSE::log::debug("TriggerSceneTransitionReaction: thread {} no longer active, dropping cue", st->threadID);
+                return;
+            }
+            if (reg.GetTransitionGeneration(st->threadID) != st->generation) {
+                SKSE::log::info("TriggerSceneTransitionReaction: thread {} transition gen {} superseded by {}, dropping stale cue",
+                                st->threadID, st->generation, reg.GetTransitionGeneration(st->threadID));
+                return;
+            }
+            if (Config::GetSingleton().IsMuted()) return;
+
+            RE::Actor* speaker = st->speakerFormID ? RE::TESForm::LookupByID<RE::Actor>(st->speakerFormID) : nullptr;
+            if (!speaker) {
+                speaker = SelectSpeakerActor(st->threadID, Config::GetSingleton().CommentGenderPriority());
+            }
+            if (!speaker) return;
+
+            std::string finalCue;
+            {
+                std::lock_guard<std::mutex> lock(st->mtx);
+                finalCue = !st->diffText.empty() ? st->diffText : st->fallbackCue;
+            }
+            if (finalCue.empty()) return;
+
+            DispatchTransientReaction(st->threadID, speaker, nullptr, st->cueType, finalCue, /*interrupt=*/false);
+        });
+    };
+
+    // Branch 1: LLM plain-text physical transition diff.
+    const bool canRunMetaDiff = PublicSendCustomPromptToLLM != nullptr &&
+                                !transition.currDescription.empty() &&
+                                (!transition.prevDescription.empty() || !transition.consumedContextNote.empty());
+    if (canRunMetaDiff) {
+        const auto actorNamesVec = store.GetActorNames(threadID);
+        nlohmann::json ctx;
+        ctx["actorNames"]          = FormatActorList(actorNamesVec);
+        ctx["participantCount"]    = static_cast<int>(actorNamesVec.size());
+        ctx["mainActorNames"]      = store.GetFormattedMainActorNames(threadID);
+        ctx["secondaryActorNames"] = store.GetFormattedSecondaryActorNames(threadID);
+        ctx["intent"]              = IntentToString(store.GetIntent(threadID));
+        ctx["previousDescription"] = transition.prevDescription;
+        ctx["currentDescription"]  = transition.currDescription;
+        ctx["contextNote"]         = transition.consumedContextNote;
+        ctx["structuralHints"]     = structDiff.hintSummary;
+        ctx["isContinuation"]      = (cueType == "continue_join");
+
+        std::string ctxStr     = ctx.dump();
+        std::string promptName = "ostimnet_evaluations/ostimnet_scene_delta";
+        std::string variant    = Config::GetSingleton().FastLlmVariant();
+
+        bool queued = PublicSendCustomPromptToLLM(
+            promptName.c_str(),
+            variant.c_str(),
+            ctxStr.c_str(),
+            [joinState, finishBranch](const char* response, int success) {
+                if (success && response && response[0] != '\0') {
+                    std::string cleaned = SanitizePlainTextLLMOutput(response, 650);
+                    if (!cleaned.empty()) {
+                        std::lock_guard<std::mutex> lock(joinState->mtx);
+                        joinState->diffText = std::move(cleaned);
+                    }
+                } else {
+                    SKSE::log::warn("TriggerSceneTransitionReaction: scene_delta prompt failed on thread {}, falling back to structural diff",
+                                    joinState->threadID);
+                }
+                finishBranch(joinState);
+            });
+        if (!queued) {
+            SKSE::log::warn("TriggerSceneTransitionReaction: PublicSendCustomPromptToLLM returned false on thread {}, using structural diff",
+                            threadID);
+            finishBranch(joinState);
+        }
+    } else {
+        finishBranch(joinState);
+    }
+
+    // Branch 2: Parallel Jev speaker selection (0 LLM calls when <= 1 NPC).
+    SkyrimNetDecisions::SelectTransitionSpeaker(
+        threadID,
+        transition.prevDescription,
+        transition.currDescription,
+        transition.consumedContextNote,
+        [joinState, finishBranch](RE::FormID fid) {
+            {
+                std::lock_guard<std::mutex> lock(joinState->mtx);
+                joinState->speakerFormID = fid;
+            }
+            finishBranch(joinState);
+        });
+}
+
+void TriggerPaceChangeReaction(
+    int threadID,
+    const std::string& direction,
+    const std::string& paceTier) {
+    auto& store = ThreadDataStore::GetSingleton();
+    if (!store.IsActive(threadID)) return;
+    if (!SelectSpeakerActor(threadID, Config::GetSingleton().CommentGenderPriority())) return;
+
+    std::string cue = "The pace just " + direction;
+    if (!paceTier.empty()) {
+        cue += " into a " + paceTier + " rhythm.";
+    } else {
+        cue += ".";
+    }
+
+    const uint64_t expectedGen     = store.GetTransitionGeneration(threadID);
+    const UI::SessionEpoch epoch   = UI::GetSessionEpoch();
+    const std::string currBaseDesc = store.GetLastSceneDescription(threadID);
+
+    SkyrimNetDecisions::SelectTransitionSpeaker(
+        threadID,
+        currBaseDesc,
+        currBaseDesc,
+        cue,
+        [threadID, expectedGen, epoch, cue](RE::FormID fid) {
+            UI::AddEpochTask(epoch, [threadID, expectedGen, fid, cue]() {
+                auto& reg = ThreadDataStore::GetSingleton();
+                if (!reg.IsActive(threadID) || reg.GetTransitionGeneration(threadID) != expectedGen) return;
+                if (Config::GetSingleton().IsMuted()) return;
+
+                RE::Actor* speaker = fid ? RE::TESForm::LookupByID<RE::Actor>(fid) : nullptr;
+                if (!speaker) {
+                    speaker = SelectSpeakerActor(threadID, Config::GetSingleton().CommentGenderPriority());
+                }
+                if (!speaker) return;
+
+                DispatchTransientReaction(threadID, speaker, nullptr, "pace_change", cue, /*interrupt=*/false);
+            });
+        });
+}
+
+void CaptureThreadPhysicalTraits(int threadID) {
+    if (!Config::GetSingleton().EnableBodyPartSizeCues()) return;
+
+    auto& store = ThreadDataStore::GetSingleton();
+    if (!store.GetSexual(threadID).value_or(false)) return;
+
+    using GetActorJsonFn = size_t (*)(RE::Actor*, char*, size_t);
+    static GetActorJsonFn s_getGenitals  = nullptr;
+    static GetActorJsonFn s_getBodyParts = nullptr;
+    static bool           s_resolved     = false;
+
+    if (!s_resolved) {
+        s_resolved = true;
+        if (HMODULE hMod = GetModuleHandleW(L"BodyLanguage.dll")) {
+            s_getGenitals = reinterpret_cast<GetActorJsonFn>(
+                GetProcAddress(hMod, "BodyLanguage_GetActorGenitalsJson"));
+            s_getBodyParts = reinterpret_cast<GetActorJsonFn>(
+                GetProcAddress(hMod, "BodyLanguage_GetActorBodyPartsJson"));
+            SKSE::log::info("CaptureThreadPhysicalTraits: BodyLanguage.dll exports genitals={} bodyParts={}",
+                            s_getGenitals != nullptr, s_getBodyParts != nullptr);
+        } else {
+            SKSE::log::debug("CaptureThreadPhysicalTraits: BodyLanguage.dll not loaded");
+        }
+    }
+
+    if (!s_getGenitals && !s_getBodyParts) return;
+
+    const auto actorPtrs  = store.GetActorPtrs(threadID);
+    const auto actorNames = store.GetActorNames(threadID);
+    char buf[512];
+
+    for (size_t i = 0; i < actorPtrs.size(); ++i) {
+        RE::Actor* actor = actorPtrs[i];
+        if (!actor || actor->IsDeleted()) continue;
+
+        const uint32_t fid = static_cast<uint32_t>(actor->GetFormID());
+        const std::string name = (i < actorNames.size() && !actorNames[i].empty())
+            ? actorNames[i]
+            : ThreadDataStore::GetActorDisplayName(actor, "");
+
+        bool needGenitals  = false;
+        bool needBodyParts = false;
+        store.GetPhysicalTraitCaptureNeeds(threadID, fid, needGenitals, needBodyParts);
+
+        if (needGenitals && s_getGenitals) {
+            const size_t n = s_getGenitals(actor, buf, sizeof(buf));
+            if (n > 0 && n < sizeof(buf)) {
+                auto j = nlohmann::json::parse(buf, buf + n, nullptr, /*allow_exceptions=*/false);
+                if (!j.is_discarded() && j.is_object() && j.value("hasGenitals", false)) {
+                    const std::string sz = j.value("size", "");
+                    if (!sz.empty()) {
+                        store.StoreCapturedGenitalSize(threadID, fid, name, sz);
+                        SKSE::log::debug("CaptureThreadPhysicalTraits: thread {} captured genital size '{}' for '{}'",
+                                         threadID, sz, name);
+                    }
+                }
+            }
+        }
+
+        if (needBodyParts && s_getBodyParts) {
+            const size_t n = s_getBodyParts(actor, buf, sizeof(buf));
+            if (n > 0 && n < sizeof(buf)) {
+                auto j = nlohmann::json::parse(buf, buf + n, nullptr, /*allow_exceptions=*/false);
+                if (!j.is_discarded() && j.is_object() && j.value("valid", false)) {
+                    const std::string breasts = j.value("breasts", "");
+                    const std::string butt    = j.value("butt", "");
+                    store.StoreCapturedBodyParts(threadID, fid, name, breasts, butt);
+                    SKSE::log::debug("CaptureThreadPhysicalTraits: thread {} captured body parts (breasts='{}', butt='{}') for '{}'",
+                                     threadID, breasts, butt, name);
+                }
+            }
+        }
+    }
+}
+
+void SummarizeEncounterAndFireStop(EncounterStopSnapshot snapshot) {
+    const UI::SessionEpoch expectedEpoch = UI::GetSessionEpoch();
+    const std::string fallbackSummary    = BuildDeterministicEncounterSummary(snapshot);
+
+    auto fireStopOnMain = [expectedEpoch](const EncounterStopSnapshot& snap, const std::string& summary) {
+        auto dispatchNow = [snap, summary]() {
+            RE::Actor* speaker = snap.speakerFormID ? RE::TESForm::LookupByID<RE::Actor>(snap.speakerFormID) : nullptr;
+            std::string json   = EventPayloadBuilder::BuildStopFromSnapshot(snap, summary);
+            SKSE::log::info("SummarizeEncounterAndFireStop: firing ostimnet_stop for thread {} (summary='{}')",
+                            snap.threadID, summary);
+            FireModEvent("ostimnet_stop", json.c_str(), static_cast<float>(snap.threadID), speaker);
+        };
+        if (UI::IsInGameTaskScope()) {
+            dispatchNow();
+        } else {
+            UI::AddEpochTask(expectedEpoch, std::move(dispatchNow));
+        }
+    };
+
+    const bool needsMetaRecap = snapshot.isSexual &&
+                                (snapshot.timeline.size() > 1 || (snapshot.interrupted && !snapshot.timeline.empty())) &&
+                                PublicSendCustomPromptToLLM != nullptr;
+
+    if (!needsMetaRecap) {
+        fireStopOnMain(snapshot, fallbackSummary);
+        return;
+    }
+
+    nlohmann::json timelineArr = nlohmann::json::array();
+    for (size_t i = 0; i < snapshot.timeline.size(); ++i) {
+        const auto& e = snapshot.timeline[i];
+        std::string line = std::to_string(i + 1) + ". [" + TimelineEntryKindToLabel(e.kind) + "] " + e.text;
+        if (!e.paceAnnotation.empty()) {
+            line += " (" + e.paceAnnotation + ")";
+        }
+        timelineArr.push_back(std::move(line));
+    }
+
+    nlohmann::json ctx;
+    ctx["actorNames"]          = snapshot.actorNames;
+    ctx["participantCount"]    = static_cast<int>(snapshot.actorFormIDs.size());
+    ctx["mainActorNames"]      = snapshot.mainActorNames;
+    ctx["secondaryActorNames"] = snapshot.secondaryActorNames;
+    ctx["intent"]              = IntentToString(snapshot.intent);
+    ctx["interrupted"]           = snapshot.interrupted;
+    ctx["interruptReason"]       = snapshot.interruptReason;
+    ctx["notablePhysicalTraits"] = snapshot.notablePhysicalTraits;
+    ctx["timelineEntries"]       = std::move(timelineArr);
+
+    std::string ctxStr     = ctx.dump();
+    std::string promptName = "ostimnet_evaluations/ostimnet_summarize_encounter";
+    std::string variant    = Config::GetSingleton().FastLlmVariant();
+
+    SKSE::log::info("SummarizeEncounterAndFireStop: queuing encounter recap for thread {} ({} timeline entries, variant='{}')",
+                    snapshot.threadID, snapshot.timeline.size(), variant);
+
+    bool queued = PublicSendCustomPromptToLLM(
+        promptName.c_str(),
+        variant.c_str(),
+        ctxStr.c_str(),
+        [snapshot, fallbackSummary, fireStopOnMain](const char* response, int success) {
+            std::string summary = fallbackSummary;
+            if (success && response && response[0] != '\0') {
+                std::string cleaned = SanitizePlainTextLLMOutput(response, 1100);
+                if (!cleaned.empty()) {
+                    summary = std::move(cleaned);
+                }
+            } else {
+                SKSE::log::warn("SummarizeEncounterAndFireStop: encounter recap failed for thread {}, using C++ fallback",
+                                snapshot.threadID);
+            }
+            fireStopOnMain(snapshot, summary);
+        });
+
+    if (!queued) {
+        SKSE::log::warn("SummarizeEncounterAndFireStop: PublicSendCustomPromptToLLM returned false for thread {}, using C++ fallback",
+                        snapshot.threadID);
+        fireStopOnMain(snapshot, fallbackSummary);
+    }
 }
 
 }  // namespace OStimNet::SkyrimNetIntegration
